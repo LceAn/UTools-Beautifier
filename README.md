@@ -93,10 +93,9 @@
 
 ```
 UTools-Beautifier/
-├── 工具箱_V1.0.0.js  # 插件源码（V1.0.0 正式版）
-├── v17.txt           # 开发版源码（v1.7）
-├── README.md         # 本文件
-└── LICENSE           # MIT License
+├── UTools-Beautifier-V1.0.0.js  # 插件源码（V1.0.0 正式版）
+├── README.md                    # 本文件
+└── LICENSE                      # MIT License
 ```
 
 ---
