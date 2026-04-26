@@ -1,0 +1,334 @@
+<script>
+(function(){
+    // ==========================================
+    // 1. 配置与持久化
+    // ==========================================
+    const CONFIG_KEY = 'kano_beautifier_v17_config';
+    let config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{"enableRadius": true, "enableShadow": true, "enableCapsule": true, "pluginStates": {}}');
+
+    // ==========================================
+    // 2. 宽屏拟态 CSS (Glassmorphism)
+    // ==========================================
+    const injectCSS = () => {
+        if (document.getElementById('kano-v17-style')) return;
+        const style = document.createElement('style');
+        style.id = 'kano-v17-style';
+        style.textContent = `
+            .box.beauty-radius { border-radius: 20px !important; overflow: hidden; }
+            .box.beauty-shadow { box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+            .box.beauty-shadow:hover { transform: translateY(-3px) !important; box-shadow: 0 12px 40px rgba(0,0,0,0.3) !important; }
+            button.beauty-capsule { border-radius: 50px !important; padding: 6px 18px !important; font-weight: 500; letter-spacing: 0.5px; transition: all 0.2s; }
+            button.beauty-capsule:hover { filter: brightness(1.1); transform: scale(1.02); }
+            
+            #toolbox_buttons button, #secondary_menu_buttons button { margin: 4px !important; white-space: nowrap; font-size: 13px !important; }
+            
+            .kn-glass-modal {
+                background: rgba(30, 30, 30, 0.65) !important; 
+                backdrop-filter: blur(25px) saturate(200%); 
+                -webkit-backdrop-filter: blur(25px) saturate(200%);
+                border: 1px solid rgba(255, 255, 255, 0.1); 
+                border-radius: 24px !important; 
+                box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            }
+
+            #KanoBeautyModal .modal { width: 50% !important; min-width: 680px; max-width: 1000px; }
+            #KanoDrawerModal .modal { width: 85% !important; max-width: 480px; padding: 25px !important; }
+
+            @media (max-width: 768px) {
+                #KanoBeautyModal .modal { width: 90% !important; min-width: unset; }
+                .kn-drag-board { grid-template-columns: 1fr !important; }
+            }
+
+            .kn-drag-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 15px; margin-bottom: 25px; }
+
+            .kn-drop-zone {
+                background: rgba(0,0,0,0.25);
+                border: 2px dashed rgba(255,255,255,0.1);
+                border-radius: 18px;
+                padding: 22px 10px 10px 10px;
+                min-height: 180px;
+                transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+                position: relative;
+                display: flex;
+                flex-wrap: wrap;
+                align-content: flex-start;
+                gap: 6px;
+            }
+            .kn-drop-zone::before {
+                content: attr(data-title);
+                position: absolute;
+                top: -14px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #2a2a2a;
+                padding: 4px 16px;
+                border-radius: 12px;
+                font-size: 13px;
+                color: #87ceeb;
+                font-weight: bold;
+                border: 1px solid rgba(255,255,255,0.15);
+                white-space: nowrap;
+                box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+                z-index: 2;
+            }
+            .kn-drop-zone.drag-over { background: rgba(135, 206, 235, 0.15); border-color: rgba(135, 206, 235, 0.8); transform: translateY(-4px) scale(1.02); box-shadow: 0 10px 25px rgba(135, 206, 235, 0.2); }
+
+            .kn-drag-item {
+                display: inline-block;
+                background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+                border: 1px solid rgba(255,255,255,0.2);
+                padding: 6px 14px;
+                border-radius: 50px; 
+                font-size: 12px;
+                color: #fff;
+                cursor: grab;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+                transition: transform 0.2s, background 0.2s;
+            }
+            .kn-drag-item:hover { background: rgba(255,255,255,0.25); }
+            .kn-drag-item:active { cursor: grabbing; transform: scale(0.92); }
+            
+            .modern-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #eee; font-size: 14px; font-weight: 500; }
+            .modern-checkbox input { accent-color: #018ad8; width: 18px; height: 18px; cursor: pointer; }
+        `;
+        document.head.appendChild(style);
+    };
+
+    // ==========================================
+    // 3. 全局弹窗控制与拖拽逻辑
+    // ==========================================
+    window.knShowBeautyModal = () => { const m = document.getElementById('KanoBeautyModal'); if (m) { renderDragZones(); m.style.display = 'flex'; } };
+    window.knCloseBeautyModal = () => { const m = document.getElementById('KanoBeautyModal'); if (m) m.style.display = 'none'; };
+    
+    window.knShowDrawerModal = () => { const m = document.getElementById('KanoDrawerModal'); if (m) m.style.display = 'flex'; };
+    window.knCloseDrawerModal = () => { const m = document.getElementById('KanoDrawerModal'); if (m) m.style.display = 'none'; };
+
+    window.knVisualChanged = () => {
+        config.enableRadius = document.getElementById('kn-radius').checked;
+        config.enableShadow = document.getElementById('kn-shadow').checked;
+        config.enableCapsule = document.getElementById('kn-capsule').checked;
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+        renderBeauty();
+    };
+
+    // 拖拽事件
+    window.knDragStart = (e, name) => { e.dataTransfer.setData('text/plain', name); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => e.target.style.opacity = '0.3', 10); };
+    window.knDragEnd = (e) => { e.target.style.opacity = '1'; };
+    window.knDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drag-over'); };
+    window.knDragLeave = (e) => { e.currentTarget.classList.remove('drag-over'); };
+    window.knDrop = (e, targetState) => {
+        e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+        const name = e.dataTransfer.getData('text/plain');
+        if (name) {
+            config.pluginStates[name] = targetState;
+            localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            renderDragZones(); applyBartenderLogic(); 
+        }
+    };
+
+    // ==========================================
+    // 4. Bartender 分发与渲染
+    // ==========================================
+    const applyBartenderLogic = () => {
+        const toolbox = document.getElementById('toolbox_buttons');
+        const secondary = document.getElementById('secondary_menu_buttons');
+        if (!toolbox || !secondary) return;
+
+        const allBtns = [...toolbox.querySelectorAll('button'), ...secondary.querySelectorAll('button')];
+        allBtns.forEach(btn => {
+            const name = btn.textContent.trim();
+            if (name === "🎨 界面工坊" || name === "📦 收纳箱") return;
+
+            const state = config.pluginStates[name] || 0; 
+            if (state === 0) { 
+                btn.style.display = 'inline-block';
+                if (btn.parentElement !== toolbox) toolbox.appendChild(btn);
+            } else if (state === 1) { 
+                btn.style.display = 'inline-block';
+                if (btn.parentElement !== secondary) secondary.appendChild(btn);
+            } else { 
+                btn.style.display = 'none'; 
+            }
+        });
+        renderBeauty();
+    };
+
+    const renderDragZones = () => {
+        const zones = { 0: document.getElementById('dz-0'), 1: document.getElementById('dz-1'), 2: document.getElementById('dz-2') };
+        const toolbox = document.getElementById('toolbox_buttons');
+        const secondary = document.getElementById('secondary_menu_buttons');
+        if (!zones[0] || !toolbox || !secondary) return;
+
+        Object.values(zones).forEach(z => z.innerHTML = '');
+
+        const pluginNames = new Set();
+        [toolbox, secondary].forEach(p => p.querySelectorAll('button').forEach(b => {
+            const n = b.textContent.trim();
+            if(n && n !== "🎨 界面工坊" && n !== "📦 收纳箱") pluginNames.add(n);
+        }));
+
+        if(pluginNames.size === 0) {
+            zones[0].innerHTML = '<div style="color:#666; font-size:12px; padding:10px; width:100%; text-align:center;">暂无插件</div>';
+            return;
+        }
+
+        Array.from(pluginNames).forEach(name => {
+            const s = config.pluginStates[name] || 0;
+            const dragItem = document.createElement('div');
+            dragItem.className = 'kn-drag-item';
+            dragItem.draggable = true;
+            dragItem.textContent = name;
+            dragItem.setAttribute('ondragstart', `window.knDragStart(event, '${name}')`);
+            dragItem.setAttribute('ondragend', `window.knDragEnd(event)`);
+            if(zones[s]) zones[s].appendChild(dragItem);
+        });
+    };
+
+    // ==========================================
+    // 5. 注入现代 UI 结构
+    // ==========================================
+    const toolBox = document.createElement('div');
+    toolBox.innerHTML = `
+        <div class="title" style="margin:8px 0; display:flex; align-items:center;">
+            <strong style="font-size:14px;">🧰 扩展工具</strong>
+            <div style="display:inline-block; margin-left:8px;" id="collapse_toolbox_btn"></div>
+            <div style="margin-left:auto; display:flex; gap:10px;">
+                <button onclick="window.knShowDrawerModal()" class="btn beauty-capsule" style="padding: 4px 16px; font-size: 13px; background: linear-gradient(135deg, rgba(52,199,89,0.25), rgba(52,199,89,0.1)); border: 1px solid rgba(52,199,89,0.4); color: #86efac; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">📦 收纳箱</button>
+                <button onclick="window.knShowBeautyModal()" class="btn beauty-capsule" style="padding: 4px 16px; font-size: 13px; background: linear-gradient(135deg, rgba(135,206,235,0.25), rgba(1,138,216,0.15)); border: 1px solid rgba(135,206,235,0.4); color: #87ceeb; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">🎨 界面工坊</button>
+            </div>
+        </div>
+        <div class="collapse" id="collapse_toolbox" data-name="close" style="transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); height:0; overflow:hidden;">
+            <div class="collapse_box" id="toolbox_buttons" style="display:flex; flex-wrap:wrap; gap:8px; padding: 10px 0; min-height:30px;"></div>
+        </div>
+    `;
+    const menuSection = document.querySelector('.collapse_box') || document.body;
+    menuSection.appendChild(toolBox);
+    if (typeof collapseGen === 'function') collapseGen("#collapse_toolbox_btn", "#collapse_toolbox",'collapse_toolbox');
+
+    // 收纳箱弹窗
+    const drawerModal = document.createElement('div');
+    drawerModal.className = 'mask';
+    drawerModal.id = "KanoDrawerModal";
+    drawerModal.style.display = 'none';
+    drawerModal.style.zIndex = '999998';
+    drawerModal.innerHTML = `
+        <div class="modal kn-glass-modal" style="display: flex; flex-direction: column;">
+            <div style="font-size:18px; font-weight:800; color:#fff; margin-bottom: 20px; text-align:center; letter-spacing:1px;">📦 我的收纳箱</div>
+            <div id="secondary_menu_buttons" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; min-height: 80px; margin-bottom: 20px;"></div>
+            <div style="text-align: center;">
+                <button onclick="window.knCloseDrawerModal()" class="beauty-capsule" style="background: rgba(255,255,255,0.1); color:#fff; border: 1px solid rgba(255,255,255,0.2); padding:8px 35px; font-size:14px; cursor:pointer;">关 闭</button>
+            </div>
+        </div>
+    `;
+    // 点击遮罩自动关闭
+    drawerModal.onclick = (e) => { if (e.target === drawerModal) window.knCloseDrawerModal(); };
+
+    // 界面工坊弹窗
+    const beautyModal = document.createElement('div');
+    beautyModal.className = 'mask';
+    beautyModal.id = "KanoBeautyModal";
+    beautyModal.style.display = 'none';
+    beautyModal.style.zIndex = '999999';
+    beautyModal.innerHTML = `
+        <div class="modal kn-glass-modal" style="padding:35px 40px; display: flex; flex-direction: column;">
+            <div style="font-size:22px; font-weight:800; color:#fff; margin-bottom: 25px; text-align:center; letter-spacing:2px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">✨ 界面与扩展工坊 ✨</div>
+            
+            <div style="display: flex; justify-content: center; gap: 30px; background: rgba(0,0,0,0.25); padding: 16px; border-radius: 20px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+                <label class="modern-checkbox"><input type="checkbox" id="kn-radius" ${config.enableRadius?'checked':''} onchange="window.knVisualChanged()">启用圆角卡片</label>
+                <label class="modern-checkbox"><input type="checkbox" id="kn-shadow" ${config.enableShadow?'checked':''} onchange="window.knVisualChanged()">启用悬浮阴影</label>
+                <label class="modern-checkbox"><input type="checkbox" id="kn-capsule" ${config.enableCapsule?'checked':''} onchange="window.knVisualChanged()">启用胶囊按钮</label>
+            </div>
+
+            <div>
+                <div style="font-size: 14px; color: #aaa; display:flex; justify-content:space-between; align-items:flex-end;">
+                    <span style="font-weight:bold;">🛠️ 拖拽路由分配表</span>
+                    <span style="font-size:12px; opacity:0.6; background: rgba(0,0,0,0.3); padding:4px 10px; border-radius:10px;">🖱️ 鼠标按住下方胶囊即可自由拖拽分配</span>
+                </div>
+                <div class="kn-drag-board">
+                    <div id="dz-0" class="kn-drop-zone" data-title="🌟 主页可见 (常驻)" ondragover="window.knDragOver(event)" ondragleave="window.knDragLeave(event)" ondrop="window.knDrop(event, 0)"></div>
+                    <div id="dz-1" class="kn-drop-zone" data-title="📦 放入收纳箱 (次级)" ondragover="window.knDragOver(event)" ondragleave="window.knDragLeave(event)" ondrop="window.knDrop(event, 1)"></div>
+                    <div id="dz-2" class="kn-drop-zone" data-title="🚫 彻底隐藏 (不可见)" ondragover="window.knDragOver(event)" ondragleave="window.knDragLeave(event)" ondrop="window.knDrop(event, 2)"></div>
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 10px;">
+                <button onclick="window.knCloseBeautyModal()" class="beauty-capsule" style="background: #018ad8; color:#fff; border: none; padding:10px 40px; font-size:15px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 15px rgba(1, 138, 216, 0.4);">完 成</button>
+            </div>
+        </div>
+    `;
+    beautyModal.onclick = (e) => { if (e.target === beautyModal) window.knCloseBeautyModal(); };
+    
+    const mainContainer = document.querySelector('.container') || document.body;
+    mainContainer.appendChild(drawerModal);
+    mainContainer.appendChild(beautyModal);
+
+    // ==========================================
+    // 6. 核心拦截与美化渲染
+    // ==========================================
+    const originalAppendChild = HTMLElement.prototype.appendChild;
+    HTMLElement.prototype.appendChild = function(element) {
+        if (this === window.collapseBtn_menu?.nextElementSibling?.querySelector('.collapse_box') && 
+            element.tagName === 'BUTTON') {
+            const toolbox = document.getElementById('toolbox_buttons');
+            const res = originalAppendChild.call(toolbox, element);
+            applyBartenderLogic(); 
+            return res;
+        }
+        return originalAppendChild.call(this, element);
+    };
+
+    const renderBeauty = () => {
+        document.querySelectorAll('.box').forEach(el => {
+            config.enableRadius ? el.classList.add('beauty-radius') : el.classList.remove('beauty-radius');
+            config.enableShadow ? el.classList.add('beauty-shadow') : el.classList.remove('beauty-shadow');
+        });
+        document.querySelectorAll('button').forEach(el => {
+            if(el.classList.contains('switch') || el.classList.contains('radio')) return;
+            config.enableCapsule ? el.classList.add('beauty-capsule') : el.classList.remove('beauty-capsule');
+        });
+    };
+
+    // ==========================================
+    // 7. 智能防遮挡 (自动收起机制)
+    // ==========================================
+    const initAutoClose = () => {
+        // 机制1：底层拦截原生 showModal
+        const hookShowModal = () => {
+            if (typeof window.showModal === 'function') {
+                if (window.showModal.__kn_hooked__) return;
+                const originalShowModal = window.showModal;
+                window.showModal = function (...args) {
+                    const target = args[0];
+                    // 只要弹出的不是收纳箱或工坊，立刻折叠收纳箱让路
+                    if (target !== '#KanoDrawerModal' && target !== '#KanoBeautyModal') {
+                        window.knCloseDrawerModal();
+                    }
+                    return originalShowModal.apply(this, args);
+                };
+                window.showModal.__kn_hooked__ = true;
+            } else {
+                setTimeout(hookShowModal, 200); // 等待系统挂载完毕
+            }
+        };
+        hookShowModal();
+
+        // 机制2：点击即走，监听收纳箱内的实体点击
+        const secMenu = document.getElementById('secondary_menu_buttons');
+        if (secMenu) {
+            secMenu.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (btn) {
+                    // 给予 150ms 缓冲，让按钮自身的事件先完整触发
+                    setTimeout(() => window.knCloseDrawerModal(), 150);
+                }
+            });
+        }
+    };
+
+    // 启动引擎
+    injectCSS();
+    renderBeauty();
+    new MutationObserver(renderBeauty).observe(document.body, { childList: true, subtree: true });
+    initAutoClose();
+})();
+</script>
