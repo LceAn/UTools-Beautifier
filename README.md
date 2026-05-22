@@ -107,8 +107,6 @@
 
 ```
 UTools-Beautifier/
-├── UTools-Beautifier-V1.0.0.js  # 界面美化插件（V1.0.0 正式版）
-├── Web重构_V1.0.js              # Web OS 分页导航插件（V1.0）
 ├── Web重构_V2.0.js              # 控制台全面重构（V2.0 最新版）
 ├── README.md                    # 本文件
 └── LICENSE                      # MIT License
