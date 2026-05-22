@@ -2,7 +2,7 @@
 
 > 专为 ZTE F50 路由器 UFI-TOOLS 打造的终极扩展框架与控制中心
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
 [![UFI-TOOLS](https://img.shields.io/badge/UFI--TOOLS-v4.0.0-orange)](#)
 
@@ -109,6 +109,7 @@
 UTools-Beautifier/
 ├── UTools-Beautifier-V1.0.0.js  # 界面美化插件（V1.0.0 正式版）
 ├── Web重构_V1.0.js              # Web OS 分页导航插件（V1.0）
+├── Web重构_V2.0.js              # 控制台全面重构（V2.0 最新版）
 ├── README.md                    # 本文件
 └── LICENSE                      # MIT License
 ```
@@ -134,6 +135,20 @@ UTools-Beautifier/
 ---
 
 ## 📝 更新日志
+
+### V2.0 Web重构 (2026-05-22) — 控制台全面重构
+
+- 🏗️ **架构重构** — 从三页 Tab 路由升级为五大分组导航（状态 / 网络 / 系统 / 工具 / 扩展）
+- 🎨 **全新 UI** — 顶部三栏布局 + 5 分组胶囊导航 + 毛玻璃 sticky 顶栏
+- 🌗 **日/夜间模式** — 新增日间模式 + 跟随系统，完整的 Light/Dark 双主题
+- 🖼️ **背景图系统** — 支持 Bing 每日风景 / 随机摄影 / CSS 渐变 / 自定义 URL
+- ⚙️ **设置面板** — 四页 Tab 设置（导航分组 / 界面美化 / 首页背景 / 关于）
+- 📦 **安全布局** — 不移动第三方插件 div，仅原地显隐，避免破坏原插件结构
+- 🎛️ **面板分组** — 插件面板可自由拖拽到任意分组，或设为隐藏
+- 🎨 **10+ 美化选项** — 圆角 / 阴影 / 胶囊按钮 / 玻璃拟态 / 渐变标题 / 悬停动效 / 滚动条 / 柔和分割线 / 文字增强 / 紧凑布局
+- 🔧 **主题调色** — 强调色 / 渐变色 / 顶栏模糊 / 透明度 / 背景遮罩等参数可调
+- 📋 **配置管理** — 导出 / 导入配置，恢复默认，刷新不丢失
+- 📱 **响应式适配** — 平板/手机端自适应布局
 
 ### V1.0 Web重构 (2026-04-26) — Web OS 分页导航
 
