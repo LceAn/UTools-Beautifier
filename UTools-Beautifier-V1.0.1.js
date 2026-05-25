@@ -3,7 +3,7 @@
     // ==========================================
     // 0. 核心版本定义与热重载卫士
     // ==========================================
-    const CURRENT_VERSION = "V1.0.0"; // 正式版本号
+    const CURRENT_VERSION = "V1.0.1-no-beauty"; // 去除界面美化功能，保留收纳功能
     
     // 防重复挂载：清理旧的 DOM，方便直接修改代码后生效
     const oldToolbox = document.getElementById('collapse_toolbox');
@@ -44,61 +44,166 @@
                 justify-content: center !important; align-items: center !important;
             }
 
-            .box.beauty-radius { border-radius: 20px !important; overflow: hidden; }
-            .box.beauty-shadow { box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-            button.beauty-capsule { border-radius: 50px !important; padding: 6px 18px !important; font-weight: 500; letter-spacing: 0.5px; transition: all 0.2s; }
-            button.beauty-capsule:hover { filter: brightness(1.1); transform: scale(1.02); }
-            
-            .box.beauty-glass { background: rgba(255, 255, 255, 0.04) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; }
-            .box.beauty-compact { padding: 12px !important; margin-bottom: 12px !important; }
-            .box.beauty-hover:hover { transform: translateY(-4px) !important; box-shadow: 0 15px 40px rgba(0,0,0,0.4) !important; border-color: rgba(255,255,255,0.2) !important; }
-            
-            :root { --kn-grad-1: ${config.gradColor1}; --kn-grad-2: ${config.gradColor2}; }
-            .beauty-gradient { background: linear-gradient(135deg, var(--kn-grad-1), var(--kn-grad-2)) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; color: transparent !important; font-weight: bold !important; display: inline-block; }
-            
-            body.beauty-scrollbar::-webkit-scrollbar, .modal::-webkit-scrollbar, .kn-drag-board::-webkit-scrollbar { width: 6px; height: 6px; }
-            body.beauty-scrollbar::-webkit-scrollbar-thumb, .modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 6px; }
-            body.beauty-scrollbar::-webkit-scrollbar-track { background: transparent; }
-
-            #toolbox_buttons button, #secondary_menu_buttons button { margin: 4px !important; white-space: nowrap; font-size: 13px !important; }
-            
-            .kn-glass-modal {
-                background: rgba(30, 30, 30, 0.7) !important; backdrop-filter: blur(25px) saturate(200%); -webkit-backdrop-filter: blur(25px) saturate(200%);
-                border: 1px solid rgba(255, 255, 255, 0.15) !important; border-radius: 24px !important; box-shadow: 0 30px 60px rgba(0,0,0,0.6) !important;
-                max-height: 90vh !important; overflow-y: auto !important;
+            #toolbox_buttons button, #secondary_menu_buttons button {
+                margin: 4px !important;
+                white-space: nowrap;
+                font-size: 13px !important;
             }
 
-            #KanoBeautyModal .modal { width: 50% !important; min-width: 680px; max-width: 1000px; padding: 30px 40px !important; }
-            #KanoDrawerModal .modal { width: 85% !important; max-width: 480px; padding: 25px !important; }
+            .kn-glass-modal {
+                background: rgba(30, 30, 30, 0.7) !important;
+                backdrop-filter: blur(25px) saturate(200%);
+                -webkit-backdrop-filter: blur(25px) saturate(200%);
+                border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                border-radius: 24px !important;
+                box-shadow: 0 30px 60px rgba(0,0,0,0.6) !important;
+                max-height: 90vh !important;
+                overflow-y: auto !important;
+            }
 
-            .kn-tab-header { display: flex; gap: 8px; margin-bottom: 25px; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 10px rgba(0,0,0,0.1); }
-            .kn-tab-btn { flex: 1; padding: 10px 0; text-align: center; color: #999; cursor: pointer; border-radius: 12px; font-size: 14px; font-weight: bold; transition: all 0.3s ease; }
-            .kn-tab-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
-            .kn-tab-btn.active { color: #87ceeb; background: rgba(135,206,235,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-            .kn-tab-content { display: none; animation: knFadeIn 0.3s ease; min-height: 250px; }
-            @keyframes knFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            #KanoBeautyModal .modal {
+                width: 50% !important;
+                min-width: 680px;
+                max-width: 1000px;
+                padding: 30px 40px !important;
+            }
+
+            #KanoDrawerModal .modal {
+                width: 85% !important;
+                max-width: 480px;
+                padding: 25px !important;
+            }
+
+            .kn-tab-header {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 25px;
+                background: rgba(0,0,0,0.2);
+                padding: 6px;
+                border-radius: 16px;
+                border: 1px solid rgba(255,255,255,0.05);
+                box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+            }
+
+            .kn-tab-btn {
+                flex: 1;
+                padding: 10px 0;
+                text-align: center;
+                color: #999;
+                cursor: pointer;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: bold;
+                transition: all 0.3s ease;
+            }
+
+            .kn-tab-btn:hover {
+                color: #fff;
+                background: rgba(255,255,255,0.05);
+            }
+
+            .kn-tab-btn.active {
+                color: #87ceeb;
+                background: rgba(135,206,235,0.15);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            }
+
+            .kn-tab-content {
+                display: none;
+                animation: knFadeIn 0.3s ease;
+                min-height: 250px;
+            }
+
+            @keyframes knFadeIn {
+                from { opacity: 0; transform: translateY(8px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
 
             @media (max-width: 768px) {
-                #KanoBeautyModal .modal { width: 90% !important; min-width: unset; padding: 20px !important; }
-                .kn-drag-board { grid-template-columns: 1fr !important; }
-                .kn-feature-grid { grid-template-columns: 1fr 1fr !important; }
-                .kn-tab-btn { font-size: 12px; padding: 8px 0; }
+                #KanoBeautyModal .modal {
+                    width: 90% !important;
+                    min-width: unset;
+                    padding: 20px !important;
+                }
+
+                .kn-drag-board {
+                    grid-template-columns: 1fr !important;
+                }
+
+                .kn-tab-btn {
+                    font-size: 12px;
+                    padding: 8px 0;
+                }
             }
 
-            .kn-drag-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 10px; }
-            .kn-drop-zone { background: rgba(0,0,0,0.25); border: 2px dashed rgba(255,255,255,0.1); border-radius: 18px; padding: 22px 10px 10px 10px; min-height: 180px; transition: all 0.3s; position: relative; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
-            .kn-drop-zone::before { content: attr(data-title); position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #2a2a2a; padding: 4px 16px; border-radius: 12px; font-size: 13px; color: #87ceeb; font-weight: bold; border: 1px solid rgba(255,255,255,0.15); white-space: nowrap; box-shadow: 0 6px 12px rgba(0,0,0,0.4); z-index: 2; }
-            .kn-drop-zone.drag-over { background: rgba(135, 206, 235, 0.15); border-color: rgba(135, 206, 235, 0.8); transform: translateY(-4px) scale(1.02); box-shadow: 0 10px 25px rgba(135, 206, 235, 0.2); }
-            .kn-drag-item { display: inline-block; background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); border: 1px solid rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 50px; font-size: 12px; color: #fff; cursor: grab; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: transform 0.2s, background 0.2s; }
-            .kn-drag-item:hover { background: rgba(255,255,255,0.25); }
-            .kn-drag-item:active { cursor: grabbing; transform: scale(0.92); }
-            
-            .kn-feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-            .modern-checkbox { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #eee; font-size: 14px; font-weight: 500; }
-            .modern-checkbox input[type="checkbox"] { accent-color: #018ad8; width: 18px; height: 18px; cursor: pointer; }
-            input[type="color"] { -webkit-appearance: none; border: none; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; padding: 0; background: transparent; }
-            input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-            input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; }
+            .kn-drag-board {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 18px;
+                margin-top: 10px;
+            }
+
+            .kn-drop-zone {
+                background: rgba(0,0,0,0.25);
+                border: 2px dashed rgba(255,255,255,0.1);
+                border-radius: 18px;
+                padding: 22px 10px 10px 10px;
+                min-height: 180px;
+                transition: all 0.3s;
+                position: relative;
+                display: flex;
+                flex-wrap: wrap;
+                align-content: flex-start;
+                gap: 6px;
+            }
+
+            .kn-drop-zone::before {
+                content: attr(data-title);
+                position: absolute;
+                top: -14px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #2a2a2a;
+                padding: 4px 16px;
+                border-radius: 12px;
+                font-size: 13px;
+                color: #87ceeb;
+                font-weight: bold;
+                border: 1px solid rgba(255,255,255,0.15);
+                white-space: nowrap;
+                box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+                z-index: 2;
+            }
+
+            .kn-drop-zone.drag-over {
+                background: rgba(135, 206, 235, 0.15);
+                border-color: rgba(135, 206, 235, 0.8);
+                transform: translateY(-4px) scale(1.02);
+                box-shadow: 0 10px 25px rgba(135, 206, 235, 0.2);
+            }
+
+            .kn-drag-item {
+                display: inline-block;
+                background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+                border: 1px solid rgba(255,255,255,0.2);
+                padding: 6px 14px;
+                border-radius: 50px;
+                font-size: 12px;
+                color: #fff;
+                cursor: grab;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+                transition: transform 0.2s, background 0.2s;
+            }
+
+            .kn-drag-item:hover {
+                background: rgba(255,255,255,0.25);
+            }
+
+            .kn-drag-item:active {
+                cursor: grabbing;
+                transform: scale(0.92);
+            }
         `;
         document.head.appendChild(style);
     };
@@ -120,23 +225,6 @@
     window.knShowDrawerModal = () => { const m = document.getElementById('KanoDrawerModal'); if (m) m.style.display = 'flex'; };
     window.knCloseDrawerModal = () => { const m = document.getElementById('KanoDrawerModal'); if (m) m.style.display = 'none'; };
 
-    window.knVisualChanged = () => {
-        config.enableRadius = document.getElementById('kn-radius').checked;
-        config.enableShadow = document.getElementById('kn-shadow').checked;
-        config.enableCapsule = document.getElementById('kn-capsule').checked;
-        config.enableGlass = document.getElementById('kn-glass').checked;
-        config.enableCompact = document.getElementById('kn-compact').checked;
-        config.enableGradient = document.getElementById('kn-gradient').checked;
-        config.enableHover = document.getElementById('kn-hover').checked;
-        config.enableScrollbar = document.getElementById('kn-scrollbar').checked;
-        config.gradColor1 = document.getElementById('kn-color1').value || '#87ceeb';
-        config.gradColor2 = document.getElementById('kn-color2').value || '#3b82f6';
-        
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-        document.documentElement.style.setProperty('--kn-grad-1', config.gradColor1);
-        document.documentElement.style.setProperty('--kn-grad-2', config.gradColor2);
-        renderBeauty();
-    };
 
     // GitHub 自动检查更新 API (已修复语法隔离)
     window.knCheckUpdate = async () => {
@@ -195,7 +283,7 @@
         const allBtns = [...toolbox.querySelectorAll('button'), ...secondary.querySelectorAll('button')];
         allBtns.forEach(btn => {
             const name = btn.textContent.trim();
-            if (name === "🎨 界面工坊" || name === "📦 收纳箱") return;
+            if (name === "🛠️ 收纳设置" || name === "📦 收纳箱") return;
 
             const state = config.pluginStates[name] || 0; 
             if (state === 0) { 
@@ -209,7 +297,6 @@
                 if (btn.parentElement !== toolbox) toolbox.appendChild(btn);
             }
         });
-        renderBeauty();
     };
 
     const renderDragZones = () => {
@@ -223,7 +310,7 @@
         const pluginNames = new Set();
         [toolbox, secondary].forEach(p => p.querySelectorAll('button').forEach(b => {
             const n = b.textContent.trim();
-            if(n && n !== "🎨 界面工坊" && n !== "📦 收纳箱") pluginNames.add(n);
+            if(n && n !== "🛠️ 收纳设置" && n !== "📦 收纳箱") pluginNames.add(n);
         }));
 
         if(pluginNames.size === 0) {
@@ -252,8 +339,8 @@
             <strong style="font-size:14px;">🧰 扩展工具</strong>
             <div style="display:inline-block; margin-left:8px;" id="collapse_toolbox_btn"></div>
             <div style="margin-left:auto; display:flex; gap:10px; position:relative; z-index:999;">
-                <button onclick="window.knShowDrawerModal()" class="btn beauty-capsule" style="padding: 4px 16px; font-size: 13px; background: linear-gradient(135deg, rgba(52,199,89,0.25), rgba(52,199,89,0.1)); border: 1px solid rgba(52,199,89,0.4); color: #86efac; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor:pointer;">📦 收纳箱</button>
-                <button onclick="window.knShowBeautyModal()" class="btn beauty-capsule" style="padding: 4px 16px; font-size: 13px; background: linear-gradient(135deg, rgba(135,206,235,0.25), rgba(1,138,216,0.15)); border: 1px solid rgba(135,206,235,0.4); color: #87ceeb; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor:pointer;">🎨 界面工坊</button>
+                <button onclick="window.knShowDrawerModal()" class="btn" style="padding: 4px 16px; font-size: 13px; background: linear-gradient(135deg, rgba(52,199,89,0.25), rgba(52,199,89,0.1)); border: 1px solid rgba(52,199,89,0.4); color: #86efac; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor:pointer;">📦 收纳箱</button>
+                <button onclick="window.knShowBeautyModal()" class="btn" style="padding: 4px 16px; font-size: 13px; background: linear-gradient(135deg, rgba(135,206,235,0.25), rgba(1,138,216,0.15)); border: 1px solid rgba(135,206,235,0.4); color: #87ceeb; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor:pointer;">🛠️ 收纳设置</button>
             </div>
         </div>
         <div class="collapse" id="collapse_toolbox" data-name="close" style="transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1); height:0; overflow:hidden;">
@@ -274,7 +361,7 @@
             <div style="font-size:18px; font-weight:800; color:#fff; margin-bottom: 20px; text-align:center; letter-spacing:1px;">📦 我的收纳箱</div>
             <div id="secondary_menu_buttons" style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; min-height: 80px; margin-bottom: 20px;"></div>
             <div style="text-align: center;">
-                <button onclick="window.knCloseDrawerModal()" class="beauty-capsule" style="background: rgba(255,255,255,0.1); color:#fff; border: 1px solid rgba(255,255,255,0.2); padding:8px 35px; font-size:14px; cursor:pointer;">关 闭</button>
+                <button onclick="window.knCloseDrawerModal()" class="" style="background: rgba(255,255,255,0.1); color:#fff; border: 1px solid rgba(255,255,255,0.2); padding:8px 35px; font-size:14px; cursor:pointer;">关 闭</button>
             </div>
         </div>
     `;
@@ -288,34 +375,14 @@
     beautyModal.style.display = 'none';
     beautyModal.innerHTML = `
         <div class="modal kn-glass-modal" style="display: flex; flex-direction: column;">
-            <div style="font-size:22px; font-weight:800; color:#fff; margin-bottom: 20px; text-align:center; letter-spacing:2px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">✨ 扩展与控制工坊 ✨</div>
+            <div style="font-size:22px; font-weight:800; color:#fff; margin-bottom: 20px; text-align:center; letter-spacing:2px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">✨ 扩展工具管理 ✨</div>
             
             <div class="kn-tab-header">
-                <div id="kn-tab-btn-1" class="kn-tab-btn active" onclick="window.knSwitchTab(1)">🎨 界面美化</div>
-                <div id="kn-tab-btn-2" class="kn-tab-btn" onclick="window.knSwitchTab(2)">🛠️ 收纳设置</div>
+                <div id="kn-tab-btn-2" class="kn-tab-btn active" onclick="window.knSwitchTab(2)">🛠️ 收纳设置</div>
                 <div id="kn-tab-btn-3" class="kn-tab-btn" onclick="window.knSwitchTab(3)">ℹ️ 关于插件</div>
             </div>
 
-            <div id="kn-tab-content-1" class="kn-tab-content" style="display: block;">
-                <div class="kn-feature-grid" style="background: rgba(0,0,0,0.25); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-radius" ${config.enableRadius?'checked':''} onchange="window.knVisualChanged()">🔘 圆角卡片</label>
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-shadow" ${config.enableShadow?'checked':''} onchange="window.knVisualChanged()">🌫️ 悬浮阴影</label>
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-capsule" ${config.enableCapsule?'checked':''} onchange="window.knVisualChanged()">💊 胶囊按钮</label>
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-glass" ${config.enableGlass?'checked':''} onchange="window.knVisualChanged()">🧊 玻璃拟态</label>
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-compact" ${config.enableCompact?'checked':''} onchange="window.knVisualChanged()">📏 紧凑布局</label>
-                    
-                    <div style="display:flex; align-items:center; gap:8px; grid-column: span 2;">
-                        <label class="modern-checkbox"><input type="checkbox" id="kn-gradient" ${config.enableGradient?'checked':''} onchange="window.knVisualChanged()">🌈 渐变标题</label>
-                        <input type="color" id="kn-color1" value="${config.gradColor1}" oninput="window.knVisualChanged()" title="左侧起点颜色" style="margin-left:5px;">
-                        <input type="color" id="kn-color2" value="${config.gradColor2}" oninput="window.knVisualChanged()" title="右侧终点颜色">
-                    </div>
-
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-hover" ${config.enableHover?'checked':''} onchange="window.knVisualChanged()">🌟 动态悬停</label>
-                    <label class="modern-checkbox"><input type="checkbox" id="kn-scrollbar" ${config.enableScrollbar?'checked':''} onchange="window.knVisualChanged()">📜 极简滚条</label>
-                </div>
-            </div>
-
-            <div id="kn-tab-content-2" class="kn-tab-content">
+            <div id="kn-tab-content-2" class="kn-tab-content" style="display: block;">
                 <div style="font-size: 14px; color: #aaa; display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 5px;">
                     <span style="font-weight:bold;">🛠️ 拖拽路由分配表</span>
                     <span style="font-size:12px; opacity:0.6; background: rgba(0,0,0,0.3); padding:4px 10px; border-radius:10px;">🖱️ 鼠标按住下方胶囊即可自由拖拽分配</span>
@@ -335,7 +402,7 @@
                     
                     <div style="background: rgba(0,0,0,0.25); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); text-align: left; box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);">
                         <p style="color: #ddd; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0;">
-                            专为 ZTE F50 路由器打造的终极扩展框架与控制中心。内嵌 8 项前沿 Web UI 视觉特效，以及强大的 Bartender 级底层拦截路由收纳系统。
+                            专为 ZTE F50 路由器打造的扩展工具收纳与控制中心。当前版本已去除界面美化功能，仅保留第三方插件按钮收纳、拖拽分配、隐藏管理、关于信息与检查更新能力。
                         </p>
                         <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 10px;">
                             <span style="color: #999;">开源主页:</span>
@@ -346,14 +413,14 @@
                     </div>
                     
                     <div style="margin-top: 25px; text-align: center;">
-                        <button id="kn-update-btn" onclick="window.knCheckUpdate()" class="beauty-capsule" style="background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 30px; font-size: 13px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s;">🔄 检查更新</button>
+                        <button id="kn-update-btn" onclick="window.knCheckUpdate()" class="" style="background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 30px; font-size: 13px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.3s;">🔄 检查更新</button>
                         <div id="kn-update-info" style="margin-top: 12px; font-size: 12px; min-height: 18px; color: #ccc;"></div>
                     </div>
                 </div>
             </div>
 
             <div style="text-align: right; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                <button onclick="window.knCloseBeautyModal()" class="beauty-capsule" style="background: #018ad8; color:#fff; border: none; padding:10px 45px; font-size:15px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 15px rgba(1, 138, 216, 0.4);">完 成</button>
+                <button onclick="window.knCloseBeautyModal()" class="" style="background: #018ad8; color:#fff; border: none; padding:10px 45px; font-size:15px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 15px rgba(1, 138, 216, 0.4);">完 成</button>
             </div>
         </div>
     `;
@@ -378,27 +445,6 @@
         return originalAppendChild.call(this, element);
     };
 
-    const renderBeauty = () => {
-        document.querySelectorAll('.box').forEach(el => {
-            config.enableRadius ? el.classList.add('beauty-radius') : el.classList.remove('beauty-radius');
-            config.enableShadow ? el.classList.add('beauty-shadow') : el.classList.remove('beauty-shadow');
-            config.enableGlass ? el.classList.add('beauty-glass') : el.classList.remove('beauty-glass');
-            config.enableCompact ? el.classList.add('beauty-compact') : el.classList.remove('beauty-compact');
-            config.enableHover ? el.classList.add('beauty-hover') : el.classList.remove('beauty-hover');
-        });
-        document.querySelectorAll('button').forEach(el => {
-            if(el.classList.contains('switch') || el.classList.contains('radio')) return;
-            config.enableCapsule ? el.classList.add('beauty-capsule') : el.classList.remove('beauty-capsule');
-        });
-        
-        document.querySelectorAll('.title strong, .box .title').forEach(el => {
-            if(el.children.length === 0) {
-                config.enableGradient ? el.classList.add('beauty-gradient') : el.classList.remove('beauty-gradient');
-            }
-        });
-        
-        config.enableScrollbar ? document.body.classList.add('beauty-scrollbar') : document.body.classList.remove('beauty-scrollbar');
-    };
 
     // ==========================================
     // 7. 智能防遮挡
@@ -433,10 +479,7 @@
 
     // 启动引擎
     injectCSS();
-    document.documentElement.style.setProperty('--kn-grad-1', config.gradColor1);
-    document.documentElement.style.setProperty('--kn-grad-2', config.gradColor2);
     renderBeauty();
-    new MutationObserver(renderBeauty).observe(document.body, { childList: true, subtree: true });
     initAutoClose();
 })();
 </script>
