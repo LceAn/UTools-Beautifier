@@ -107,7 +107,8 @@
 
 ```
 UTools-Beautifier/
-├── UTools-Beautifier-V1.0.1.js  # 工具箱插件（界面美化 + 插件收纳系统）
+├── UTools-Beautifier-V1.0.1.js  # 工具箱插件（插件收纳与管理）
+├── 电话与短信_V1.3.3.js         # 电话与短信插件（拨号盘 + 短信会话模式）
 ├── Web重构_V2.0.js              # 控制台全面重构（V2.0 最新版）
 ├── README.md                    # 本文件
 └── LICENSE                      # MIT License
