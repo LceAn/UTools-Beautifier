@@ -66,7 +66,7 @@
 
 #### 推荐方式：通过 UTools 插件功能导入
 
-1. 下载 `UTools-Beautifier-V1.0.0.js`
+1. 下载 `UTools-Beautifier-V1.0.1.js`
 2. 打开 UTools 页面 `http://192.168.100.1:2333/`
 3. 点击页面顶部的 **「插件功能」** 按钮
 4. 点击 **「增加插件」**
@@ -78,7 +78,7 @@
 1. 打开 UTools 页面 `http://192.168.100.1:2333/`
 2. 按 `F12` 打开开发者工具
 3. 切换到 **Console** 标签
-4. 粘贴 `UTools-Beautifier-V1.0.0.js` 的全部内容，按 **回车**
+4. 粘贴 `UTools-Beautifier-V1.0.1.js` 的全部内容，按 **回车**
 
 ### 使用指南
 
@@ -107,7 +107,7 @@
 
 ```
 UTools-Beautifier/
-├── UTools-Beautifier-V1.0.0.js  # 工具箱插件（界面美化 + 插件收纳系统）
+├── UTools-Beautifier-V1.0.1.js  # 工具箱插件（界面美化 + 插件收纳系统）
 ├── Web重构_V2.0.js              # 控制台全面重构（V2.0 最新版）
 ├── README.md                    # 本文件
 └── LICENSE                      # MIT License
