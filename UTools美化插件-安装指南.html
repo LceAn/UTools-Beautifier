@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UTools 美化插件 - 安装指南</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #0f0c29, #1a1a2e, #16213e);
+        color: #eee;
+        min-height: 100vh;
+        padding: 40px 20px;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #888; margin-bottom: 30px; font-size: 0.9rem; }
+    .card {
+        background: rgba(255,255,255,0.05);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card h2 { font-size: 1.2rem; margin-bottom: 12px; color: #667eea; }
+    .card p { line-height: 1.6; margin-bottom: 10px; color: #ccc; }
+    .card ol, .card ul { padding-left: 20px; color: #ccc; }
+    .card li { margin-bottom: 8px; line-height: 1.5; }
+    .bookmark-link {
+        display: inline-block;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1rem;
+        margin: 10px 0;
+        transition: transform 0.2s;
+    }
+    .bookmark-link:hover { transform: scale(1.05); }
+    .drag-hint {
+        background: rgba(102,126,234,0.1);
+        border: 2px dashed #667eea;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin: 15px 0;
+        color: #667eea;
+    }
+    code {
+        background: rgba(0,0,0,0.3);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #764ba2;
+    }
+    pre {
+        background: rgba(0,0,0,0.3);
+        padding: 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 10px 0;
+    }
+    pre code { background: none; padding: 0; color: #ccc; }
+    .success { color: #4ade80; }
+    .warning { color: #fbbf24; }
+    .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 50%;
+        color: white;
+        font-weight: bold;
+        font-size: 0.85rem;
+        margin-right: 8px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>🎨 UTools 页面美化插件</h1>
+    <p class="subtitle">适用于 ZTE F50 UFI-TOOLS v4.0.0</p>
+
+    <div class="card">
+        <h2>✨ 功能列表</h2>
+        <ul>
+            <li>🔘 圆角卡片 — 自定义圆角大小 (4-24px)</li>
+            <li>🌫️ 阴影效果 — 可调阴影强度，悬停动画</li>
+            <li>💊 胶囊按钮 — 所有按钮变为胶囊形状</li>
+            <li>📐 紧凑布局 — 缩小间距，更紧凑</li>
+            <li>🎯 标题渐变 — 渐变文字效果</li>
+            <li>🌈 渐变背景 — 深色渐变背景</li>
+            <li>🔍 输入框美化 — 聚焦高亮效果</li>
+            <li>🚫 隐藏插件按钮 — 清理界面</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>📦 方法一：书签脚本（推荐）</h2>
+        <p>将下面的按钮拖到浏览器书签栏，每次访问 UTools 时点击即可。</p>
+        <div class="drag-hint">
+            👇 拖拽这个按钮到书签栏 👇<br>
+            <a class="bookmark-link" id="bookmarkBtn" href="javascript:(function(){var s=document.createElement('script');s.src='http://192.168.100.1:2333/beautifier.js';document.head.appendChild(s);})()">🎨 注入美化</a>
+        </div>
+        <p class="warning">⚠️ 由于浏览器安全限制，书签脚本可能无法直接加载外部脚本。如果不行，请用方法二。</p>
+    </div>
+
+    <div class="card">
+        <h2>📦 方法二：控制台注入（最简单）</h2>
+        <p><span class="step-num">1</span>打开 UTools: <code>http://192.168.100.1:2333/</code></p>
+        <p><span class="step-num">2</span>按 <code>F12</code> 打开开发者工具</p>
+        <p><span class="step-num">3</span>切换到 <code>Console</code> 标签</p>
+        <p><span class="step-num">4</span>复制粘贴下面的代码，按回车：</p>
+        <pre><code>fetch('http://192.168.100.1:2333/beautifier.js')
+.then(r=>r.text()).then(t=>{eval(t)}).catch(e=>console.error(e))</code></pre>
+    </div>
+
+    <div class="card">
+        <h2>📦 方法三：Tampermonkey 用户脚本</h2>
+        <p>安装 <a href="https://www.tampermonkey.net" style="color:#667eea;">Tampermonkey</a> 浏览器扩展，然后添加新脚本，粘贴 <code>beautifier-userscript.js</code> 的内容。</p>
+    </div>
+
+    <div class="card">
+        <h2>📦 方法四：服务器端持久化（终极方案）</h2>
+        <p>如果你有 ZTE F50 的 SSH/ADB 访问权限，可以将插件文件上传到设备的插件目录，实现每次自动加载。</p>
+        <p>插件文件：<code>page-beautifier-plugin.js</code>（已生成）</p>
+        <p>上传到设备后，UTools 会自动扫描并注入 <code>//&lt;script&gt;</code> 格式的插件。</p>
+    </div>
+
+    <div class="card">
+        <h2>✅ 已验证</h2>
+        <p class="success">✓ 插件代码已编写完成</p>
+        <p class="success">✓ 按钮注入成功（🎨 美化）</p>
+        <p class="success">✓ 弹窗设置面板正常工作</p>
+        <p class="success">✓ CSS 美化实时生效</p>
+        <p class="success">✓ 所有开关功能正常</p>
+    </div>
+</div>
+</body>
+</html>
