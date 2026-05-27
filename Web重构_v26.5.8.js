@@ -2,7 +2,9 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.3.7-mobile-network-popover-portal-fix';
+  var VERSION = '26.5.8-appearance-ux-structure-fix';
+  var GITHUB_REPO = 'LceAn/UTools-Beautifier';
+  var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var CONFIG_KEY = 'kano_webos_config_v26_clean';
 
   var HEADER_ID = 'kn-app-header';
@@ -69,6 +71,7 @@
     enableReadableText: true,
     enableSoftDivider: true,
     enableBackground: false,
+    backgroundMode: 'preset',
     backgroundPreset: 'bing',
     backgroundImage: '',
     backgroundDim: 24,
@@ -82,7 +85,7 @@
     animationLevel: 1
   };
 
-  var state = { container: null, config: null, toolboxConfig: null, observer: null, toolboxObserver: null, timer: null, raf: 0, drag: null, toolboxDragName: '', nativeLoginBtn: null, nativeCommandPwdBtn: null, nativePasswordBtn: null, nativeDevicePropsBtn: null, nativeWifiInfoBtn: null, nativeWifiSettingsBtn: null, nativeAccessDevicesBtn: null, headerRefreshAt: 0, headerNetworkBusy: false, headerResizeHandler: null };
+  var state = { container: null, config: null, toolboxConfig: null, observer: null, toolboxObserver: null, timer: null, raf: 0, drag: null, toolboxDragName: '', nativeLoginBtn: null, nativeCommandPwdBtn: null, nativePasswordBtn: null, nativeDevicePropsBtn: null, nativeWifiInfoBtn: null, nativeWifiSettingsBtn: null, nativeAccessDevicesBtn: null, nativePluginFeatureBtn: null, headerRefreshAt: 0, headerNetworkBusy: false, headerResizeHandler: null };
 
   try { if (window.KanoWebOS && typeof window.KanoWebOS.destroy === 'function') window.KanoWebOS.destroy(); } catch (e) {}
   cleanupOldUI();
@@ -107,10 +110,13 @@
       el.classList.remove('kn-plugin-entry-hidden');
       el.classList.remove('kn-toolbox-captured');
     });
-    Array.prototype.slice.call(document.querySelectorAll('.kn-native-login-source,.kn-native-command-source,.kn-native-password-source')).forEach(function (el) {
+    Array.prototype.slice.call(document.querySelectorAll('.kn-native-login-source,.kn-native-command-source,.kn-native-password-source,.kn-native-wifi-settings-source,.kn-native-access-devices-source,.kn-native-plugin-source')).forEach(function (el) {
       el.classList.remove('kn-native-login-source');
       el.classList.remove('kn-native-command-source');
       el.classList.remove('kn-native-password-source');
+      el.classList.remove('kn-native-wifi-settings-source');
+      el.classList.remove('kn-native-access-devices-source');
+      el.classList.remove('kn-native-plugin-source');
       el.style.display = '';
     });
     document.documentElement.classList.remove('kn-theme-dark', 'kn-theme-light');
@@ -118,6 +124,7 @@
 
   function clone(obj) { return JSON.parse(JSON.stringify(obj || {})); }
   function clean(text) { return String(text || '').replace(/\s+/g, ' ').trim(); }
+  function knEsc(text) { return String(text == null ? '' : text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
   function mapLegacyGroup(group) { return String(group) === 'functionsPage' ? 'tools' : group; }
   function isValidGroup(group) { return GROUP_ORDER.indexOf(String(group)) !== -1; }
   function num(value, fallback, min, max) {
@@ -176,6 +183,9 @@
     });
 
     if (['dark', 'light', 'auto'].indexOf(appearance.themeMode) === -1) appearance.themeMode = 'dark';
+    if (['preset', 'custom'].indexOf(appearance.backgroundMode) === -1) {
+      appearance.backgroundMode = appearance.backgroundImage ? 'custom' : 'preset';
+    }
     if (!BACKGROUND_PRESETS[appearance.backgroundPreset]) appearance.backgroundPreset = 'bing';
     appearance.backgroundDim = num(appearance.backgroundDim, 24, 0, 85);
     appearance.backgroundBlur = num(appearance.backgroundBlur, 0, 0, 30);
@@ -210,7 +220,7 @@
     style.id = STYLE_ID;
     style.textContent = '' +
       ':root{--kn-accent:#4e92ff;--kn-radius:22px}' +
-      '#' + HEADER_ID + '{width:min(1320px,calc(100% - 40px));box-sizing:border-box;display:grid;grid-template-columns:minmax(240px,300px) minmax(320px,1fr) minmax(520px,620px);align-items:center;gap:18px;margin:12px auto 24px;padding:12px 16px;position:sticky;top:12px;z-index:8888;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:rgba(22,26,32,.82);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);box-shadow:0 16px 40px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}' +
+      '#'+ HEADER_ID + '{width:min(1320px,calc(100% - 40px));box-sizing:border-box;display:grid;grid-template-columns:minmax(240px,300px) minmax(320px,1fr) minmax(520px,620px);align-items:center;gap:18px;margin:12px auto 24px;padding:12px 16px;position:sticky;top:12px;z-index:8888;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:rgba(22,26,32,.82);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);box-shadow:0 16px 40px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}' +
       '#' + HEADER_ID + '.compact{padding-top:8px;padding-bottom:8px}' +
       '#kn-title-placeholder{display:flex;align-items:center;min-width:0}' +
       '#kn-header-left{display:flex;align-items:center;gap:12px;min-width:0}' +
@@ -229,7 +239,7 @@
       '#' + DIALOG_ID + '::backdrop{background:rgba(0,0,0,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}' +
       '.kn-dialog-content{width:970px;max-width:96vw;height:min(820px,88vh);display:flex;flex-direction:column;overflow:hidden;padding:0;border-radius:26px;color:#fff;background:linear-gradient(180deg,rgba(28,30,36,.98),rgba(18,20,25,.98));border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.72)}' +
       '.kn-dialog-header{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:26px 30px 20px;border-bottom:1px solid rgba(255,255,255,.08);background:radial-gradient(circle at top left,rgba(72,150,255,.16),transparent 35%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}.kn-dialog-title{font-size:22px;font-weight:900;margin-bottom:8px}.kn-dialog-subtitle{font-size:12px;line-height:1.7;color:rgba(255,255,255,.58);max-width:740px}.kn-dialog-body{flex:1 1 auto;overflow:auto;padding:24px 30px 16px;background:rgba(0,0,0,.06)}.kn-dialog-footer{flex:0 0 auto;display:flex;justify-content:space-between;gap:10px;padding:16px 30px 24px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;background:rgba(0,0,0,.08)}.kn-footer-left,.kn-footer-right{display:flex;gap:8px;flex-wrap:wrap}' +
-      '.kn-settings-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:7px;border-radius:20px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);margin-bottom:18px}.kn-settings-tab{min-height:42px;border:none;border-radius:15px;background:transparent;color:rgba(255,255,255,.58);font-weight:850;cursor:pointer}.kn-settings-tab.active{color:#fff;background:rgba(72,150,255,.20);box-shadow:0 8px 20px rgba(72,150,255,.16),inset 0 1px 0 rgba(255,255,255,.08)}.kn-settings-panel{display:none}.kn-settings-panel.active{display:block}' +
+      '.kn-settings-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:7px;border-radius:20px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);margin-bottom:18px}.kn-settings-tab{min-height:42px;border:none;border-radius:15px;background:transparent;color:rgba(255,255,255,.58);font-weight:850;cursor:pointer}.kn-settings-tab.active{color:#fff;background:rgba(72,150,255,.20);box-shadow:0 8px 20px rgba(72,150,255,.16),inset 0 1px 0 rgba(255,255,255,.08)}.kn-settings-panel{display:none}.kn-settings-panel.active{display:block}' +
       '.kn-group-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-group-zone{min-height:150px;padding:14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34));display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px}.kn-zone-head{width:100%;display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.07)}.kn-zone-name{font-size:14px;font-weight:900}.kn-zone-desc{font-size:11px;color:rgba(255,255,255,.43)}.kn-group-zone.drag-over{border-color:rgba(82,160,255,.85);background:rgba(82,160,255,.13)}' +
       '.kn-item{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;color:rgba(255,255,255,.90);font-size:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);cursor:grab}.kn-item.panel{border-color:rgba(120,180,255,.24);background:rgba(40,132,255,.11)}.kn-item.missing{opacity:.45}.kn-badge{font-size:10px;color:rgba(255,255,255,.50);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:1px 5px;background:rgba(0,0,0,.16)}.kn-hidden-zone{border-color:rgba(255,120,120,.24);background:rgba(255,80,80,.055)}.kn-empty-tip{width:100%;color:rgba(255,255,255,.30);font-size:12px;padding:8px 0}.kn-note{font-size:12px;color:rgba(255,255,255,.58);line-height:1.75;margin:14px 0 0;padding:12px 14px;border-radius:14px;background:rgba(72,150,255,.07);border:1px solid rgba(120,180,255,.14)}' +
       '.kn-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-form-card{position:relative;overflow:hidden;padding:18px;border-radius:22px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34))}.kn-form-card.full{grid-column:1/-1}.kn-form-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:900;margin-bottom:14px}.kn-form-title:before{content:"";width:7px;height:18px;border-radius:999px;background:linear-gradient(180deg,var(--kn-grad-1,#87ceeb),var(--kn-grad-2,#3b82f6));display:inline-block}.kn-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}.kn-check{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.82);cursor:pointer;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}.kn-check input{width:17px;height:17px;accent-color:#4e92ff}.kn-input-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:center;margin:12px 0}.kn-input-row label{font-size:12px;color:rgba(255,255,255,.55)}.kn-input-row input[type="text"],.kn-input-row input[type="number"],.kn-input-row select{min-height:40px;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:#fff;border-radius:14px;padding:9px 11px;outline:none}.kn-input-row input[type="color"]{width:42px;height:32px;border:none;background:transparent}.kn-input-row input[type="range"]{width:100%}' +
@@ -715,7 +725,8 @@
 
   function getBackgroundValue(a) {
     var preset = BACKGROUND_PRESETS[a.backgroundPreset] || BACKGROUND_PRESETS.none;
-    return a.backgroundImage || preset.url || '';
+    if (a.backgroundMode === 'custom') return String(a.backgroundImage || '').trim();
+    return preset.url || '';
   }
 
   function injectAppearanceCSS() {
@@ -756,7 +767,7 @@
       '#kn-brand-title{color:#172033!important}#kn-brand-subtitle{color:rgba(23,32,51,.52)!important}#kn-brand-mark{color:#1f5fbf!important;background:rgba(60,130,255,.12)!important;border-color:rgba(60,130,255,.18)!important}' +
       '.kn-meta-chip{color:rgba(23,32,51,.76)!important;background:rgba(255,255,255,.54)!important;border-color:rgba(34,50,80,.10)!important}.kn-meta-chip.primary{color:#1f5fbf!important;background:rgba(60,130,255,.12)!important;border-color:rgba(60,130,255,.20)!important}.kn-meta-chip.muted{color:rgba(23,32,51,.48)!important}' +
       '#kn-main-nav{background:rgba(255,255,255,.42)!important;border-color:rgba(255,255,255,.48)!important}.kn-nav-btn{color:rgba(23,32,51,.62)!important;background:transparent!important}.kn-nav-btn:hover{color:#172033!important;background:rgba(255,255,255,.55)!important}.kn-nav-btn.active{color:#172033!important;background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.54))!important;border-color:rgba(60,130,255,.18)!important;box-shadow:0 8px 18px rgba(34,50,80,.10),inset 0 1px 0 rgba(255,255,255,.60)!important}.kn-action-btn.primary,.kn-panel-btn.primary{color:#172033!important;background:rgba(255,255,255,.62)!important;border-color:rgba(60,130,255,.22)!important}#kn-header-net-pill,.kn-login-pill{color:rgba(23,32,51,.82)!important;background:rgba(255,255,255,.52)!important;border-color:rgba(34,50,80,.10)!important}#kn-header-net-pop{background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(246,249,252,.94))!important;border-color:rgba(34,50,80,.10)!important;box-shadow:0 24px 60px rgba(34,50,80,.20)!important}.kn-net-pop-title{color:#172033!important;border-bottom-color:rgba(34,50,80,.08)!important}.kn-net-pop-grid b{color:rgba(23,32,51,.46)!important}.kn-net-pop-grid span{color:rgba(23,32,51,.82)!important}.kn-login-pill.is-login{background:rgba(34,197,94,.12)!important;border-color:rgba(34,197,94,.22)!important;color:#17663a!important}.kn-login-menu{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(246,249,252,.96))!important;border-color:rgba(34,50,80,.10)!important;box-shadow:0 24px 60px rgba(34,50,80,.20)!important}.kn-login-menu-item{color:rgba(23,32,51,.82)!important}.kn-login-menu-item:hover{background:rgba(34,50,80,.06)!important;color:#172033!important}.kn-login-menu-sep{background:rgba(34,50,80,.08)!important}' +
-      '#' + DIALOG_ID + ' .kn-dialog-content{background:linear-gradient(180deg,rgba(255,255,255,.90),rgba(245,248,252,.88))!important;color:#172033!important;border-color:rgba(255,255,255,.62)!important}.kn-dialog-title,.kn-zone-name,.kn-form-title,.kn-about-title,.kn-about-card-title{color:#172033!important}.kn-dialog-subtitle,.kn-zone-desc,.kn-note,.kn-input-row label,.kn-about-desc,.kn-about-small,.kn-about-list{color:rgba(23,32,51,.58)!important}.kn-group-zone,.kn-form-card,.kn-about-card,.kn-about-hero{background:rgba(255,255,255,.34)!important;border-color:rgba(34,50,80,.08)!important}.kn-settings-tabs{background:rgba(34,50,80,.06)!important;border-color:rgba(34,50,80,.08)!important}.kn-settings-tab{color:rgba(23,32,51,.58)!important}.kn-settings-tab.active{color:#172033!important;background:rgba(60,130,255,.13)!important}.kn-item{color:#172033!important;background:rgba(255,255,255,.52)!important;border-color:rgba(34,50,80,.10)!important}.kn-item.panel{background:rgba(60,130,255,.10)!important;border-color:rgba(60,130,255,.18)!important}.kn-badge{color:rgba(23,32,51,.52)!important;background:rgba(34,50,80,.05)!important;border-color:rgba(34,50,80,.10)!important}.kn-about-logo{color:#1f5fbf!important;background:rgba(60,130,255,.12)!important;border-color:rgba(60,130,255,.18)!important}.kn-about-link-box{background:rgba(60,130,255,.08)!important;border-color:rgba(60,130,255,.14)!important}.kn-about-link-box a{color:#1f5fbf!important}.kn-about-kv b{color:rgba(23,32,51,.50)!important}.kn-about-kv span{color:rgba(23,32,51,.82)!important}';
+      '#' + DIALOG_ID + ' .kn-dialog-content{background:linear-gradient(180deg,rgba(255,255,255,.90),rgba(245,248,252,.88))!important;color:#172033!important;border-color:rgba(255,255,255,.62)!important}.kn-dialog-title,.kn-zone-name,.kn-form-title,.kn-about-title,.kn-about-card-title,.kn-plugin-title,.kn-plugin-card-title{color:#172033!important}.kn-dialog-subtitle,.kn-zone-desc,.kn-note,.kn-input-row label,.kn-about-desc,.kn-about-small,.kn-about-list,.kn-plugin-desc,.kn-plugin-small{color:rgba(23,32,51,.58)!important}.kn-group-zone,.kn-form-card,.kn-about-card,.kn-about-hero,.kn-plugin-card,.kn-plugin-hero{background:rgba(255,255,255,.34)!important;border-color:rgba(34,50,80,.08)!important}.kn-settings-tabs{background:rgba(34,50,80,.06)!important;border-color:rgba(34,50,80,.08)!important}.kn-settings-tab{color:rgba(23,32,51,.58)!important}.kn-settings-tab.active{color:#172033!important;background:rgba(60,130,255,.13)!important}.kn-item{color:#172033!important;background:rgba(255,255,255,.52)!important;border-color:rgba(34,50,80,.10)!important}.kn-item.panel{background:rgba(60,130,255,.10)!important;border-color:rgba(60,130,255,.18)!important}.kn-badge{color:rgba(23,32,51,.52)!important;background:rgba(34,50,80,.05)!important;border-color:rgba(34,50,80,.10)!important}.kn-about-logo{color:#1f5fbf!important;background:rgba(60,130,255,.12)!important;border-color:rgba(60,130,255,.18)!important}.kn-about-link-box{background:rgba(60,130,255,.08)!important;border-color:rgba(60,130,255,.14)!important}.kn-about-link-box a{color:#1f5fbf!important}.kn-about-kv b{color:rgba(23,32,51,.50)!important}.kn-about-kv span{color:rgba(23,32,51,.82)!important}';
 
     var darkCss = 'body{background:#2f3945!important;color:#fff!important}#BG_OVERLAY,.bg,.container{background:transparent!important;}';
 
@@ -968,6 +979,7 @@
       '重启': true, '重启设备': true, '重启网络': true, '恢复出厂': true,
       '切换SIM': true, 'SIM切换': true, '语言': true, '中文': true, 'English': true,
       '5G/4G/3G': true, '网络模式': true, 'USB上网': true, 'USB 上网': true,
+      '插件功能': true, '插件管理': true, '插件商店': true, '添加插件': true, '导入插件': true, '导出插件': true, '上传文件': true, '上传文件管理': true,
       '刷新': true, '读取': true, '发送': true, '保存': true, '确认': true, '取消': true, '关闭': true, '完成': true
     };
   }
@@ -988,7 +1000,7 @@
       typeof btn.className === 'string' ? btn.className : ''
     ].join(' '));
     // 原生 header 已收纳入口、系统确认类按钮、以及明显原生 action，不进入扩展工具箱。
-    if (/登录|登出|口令|密码|WiFi设置|WIFI设置|Wi-Fi设置|无线设置|WLAN设置|接入设备|设备属性|设备信息|AT指令|短信收发|网络模式|切换SIM|USB上网|恢复出厂|重启设备/.test(combo)) return true;
+    if (/登录|登出|口令|密码|WiFi设置|WIFI设置|Wi-Fi设置|无线设置|WLAN设置|接入设备|设备属性|设备信息|AT指令|短信收发|插件功能|插件管理|插件商店|添加插件|导入插件|导出插件|上传文件|网络模式|切换SIM|USB上网|恢复出厂|重启设备/.test(combo)) return true;
     return false;
   }
 
@@ -1315,6 +1327,1037 @@
     }
   }
 
+
+  function normalizeVersionTag(value) {
+    return String(value || '').trim().replace(/^v/i, '').replace(/^[^0-9]*/, '').trim();
+  }
+
+  function compareVersionTags(a, b) {
+    var aa = normalizeVersionTag(a).split(/[^0-9A-Za-z]+/).filter(Boolean);
+    var bb = normalizeVersionTag(b).split(/[^0-9A-Za-z]+/).filter(Boolean);
+    var len = Math.max(aa.length, bb.length);
+    for (var i = 0; i < len; i += 1) {
+      var x = aa[i] || '0';
+      var y = bb[i] || '0';
+      var nx = Number(x);
+      var ny = Number(y);
+      if (!Number.isNaN(nx) && !Number.isNaN(ny)) {
+        if (nx > ny) return 1;
+        if (nx < ny) return -1;
+      } else {
+        var cmp = String(x).localeCompare(String(y));
+        if (cmp !== 0) return cmp > 0 ? 1 : -1;
+      }
+    }
+    return 0;
+  }
+
+  function setGithubVersionUI(stateText, latestText, noteText, stateClass) {
+    var latest = document.getElementById('kn-about-latest-version');
+    var state = document.getElementById('kn-about-version-state');
+    var note = document.getElementById('kn-about-update-note');
+    if (latest && latestText != null) latest.textContent = latestText;
+    if (state) {
+      state.textContent = stateText || '';
+      state.className = stateClass ? 'kn-version-state ' + stateClass : 'kn-version-state';
+    }
+    if (note && noteText != null) note.innerHTML = noteText;
+  }
+
+  async function fetchGithubLatestVersion() {
+    var releaseUrl = 'https://api.github.com/repos/' + GITHUB_REPO + '/releases/latest?t=' + Date.now();
+    var releaseRes = await fetch(releaseUrl, { headers: { Accept: 'application/vnd.github+json' } });
+    if (releaseRes.ok) {
+      var releaseData = await releaseRes.json();
+      if (releaseData && releaseData.tag_name) {
+        return { tag: releaseData.tag_name, url: releaseData.html_url || GITHUB_REPO_URL + '/releases/latest', source: 'Release' };
+      }
+    }
+
+    var tagsUrl = 'https://api.github.com/repos/' + GITHUB_REPO + '/tags?per_page=1&t=' + Date.now();
+    var tagsRes = await fetch(tagsUrl, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!tagsRes.ok) throw new Error('GitHub Releases / Tags 均读取失败');
+    var tags = await tagsRes.json();
+    if (Array.isArray(tags) && tags[0] && tags[0].name) {
+      return { tag: tags[0].name, url: GITHUB_REPO_URL + '/tags', source: 'Tag' };
+    }
+    throw new Error('仓库没有可用的 Release 或 Tag');
+  }
+
+  async function checkGithubVersion() {
+    var btn = document.querySelector('[data-action="checkGithubVersion"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '正在检查…';
+    }
+    setGithubVersionUI('正在连接 GitHub', '读取中…', '正在请求 GitHub 最新 Release；如果没有 Release，会回退检查 Tags。', 'checking');
+
+    try {
+      var info = await fetchGithubLatestVersion();
+      var cmp = compareVersionTags(info.tag, VERSION);
+      var link = '<a href="' + escapeHTML(info.url) + '" target="_blank" rel="noopener noreferrer">查看 ' + escapeHTML(info.source) + '</a>';
+      if (cmp > 0) {
+        setGithubVersionUI('发现新版本', info.tag, '当前版本：' + escapeHTML(VERSION) + '。GitHub 最新版本：' + escapeHTML(info.tag) + '。' + link, 'new');
+      } else if (cmp === 0) {
+        setGithubVersionUI('当前已是最新版本', info.tag, '当前版本与 GitHub 最新 ' + escapeHTML(info.source) + ' 一致。' + link, 'ok');
+      } else {
+        setGithubVersionUI('当前版本高于仓库版本', info.tag, '本地版本：' + escapeHTML(VERSION) + '。仓库最新：' + escapeHTML(info.tag) + '。可能是本地开发版或仓库尚未发布新版。' + link, 'warn');
+      }
+    } catch (err) {
+      setGithubVersionUI('检查失败', '读取失败', '无法读取 GitHub 版本：' + escapeHTML(err && err.message ? err.message : String(err)) + '。请确认设备网络或仓库 Release / Tag 配置。', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '检查 GitHub 版本';
+      }
+    }
+  }
+
+  function openNativePluginFeature() {
+    closeSettingsDialog();
+    setTimeout(function () { triggerHeaderMenuAction('pluginFeature'); }, 120);
+  }
+
+  function findNativePluginSubButton(labels) {
+    var list = Array.prototype.slice.call(document.querySelectorAll('button, input[type="button"], input[type="submit"], [role="button"], .btn'));
+    var candidates = [];
+    list.forEach(function (el) {
+      if (!el || !(el instanceof HTMLElement)) return;
+      if (el.closest && el.closest('#' + HEADER_ID + ',#' + DIALOG_ID)) return;
+      if (el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+      var text = clean(el.innerText || el.textContent || el.value || el.getAttribute('title') || el.getAttribute('aria-label') || '');
+      var onclick = String(el.getAttribute('onclick') || '').toLowerCase();
+      var hay = text + ' ' + onclick;
+      var score = 0;
+      labels.forEach(function (label) {
+        if (!label) return;
+        if (text === label) score += 120;
+        else if (text.indexOf(label) !== -1) score += 70;
+        else if (hay.indexOf(label) !== -1) score += 35;
+      });
+      if (onclick.indexOf('plugin') !== -1) score += 18;
+      if (isElementVisibleEnough(el)) score += 12;
+      if (text.length > 48) score -= 30;
+      if (score > 0) candidates.push({ el: el, score: score });
+    });
+    candidates.sort(function (a, b) { return b.score - a.score; });
+    return candidates[0] ? candidates[0].el : null;
+  }
+
+  function triggerNativePluginSubAction(type) {
+    var map = {
+      manage: { labels: ['插件功能', '插件管理', '插件列表'], fallback: '插件功能' },
+      add: { labels: ['添加插件', '导入插件', '新增插件', '导入'], fallback: '添加插件' },
+      store: { labels: ['插件商店', '插件市场', '商店'], fallback: '插件商店' },
+      export: { labels: ['导出插件', '插件导出', '导出'], fallback: '导出插件' },
+      importExport: { labels: ['导入与导出', '导入导出', '导入', '导出'], fallback: '导入/导出' },
+      files: { labels: ['上传文件管理', '上传文件', '文件管理'], fallback: '上传文件管理' }
+    };
+    var meta = map[type] || map.manage;
+    openNativePluginFeature();
+    setTimeout(function () {
+      var btn = findNativePluginSubButton(meta.labels);
+      var rootBtn = findNativeActionButton('pluginFeature');
+      if (btn && !(rootBtn && rootBtn.isSameNode && rootBtn.isSameNode(btn))) {
+        try { btn.click(); } catch (e) {}
+      } else if (typeof createToast === 'function') {
+        createToast('已打开插件功能；未找到「' + meta.fallback + '」的独立入口', 'pink');
+      } else {
+        console.warn('[KanoWebOS] 已打开插件功能；未找到独立入口:', meta.fallback);
+      }
+    }, 520);
+  }
+
+
+  var knPluginManager = { loaded: false, dirty: false, rawText: '', extras: '', plugins: [], activeId: '', search: '', renameMode: false };
+
+  function knPluginToast(msg, type) {
+    if (typeof createToast === 'function') createToast(msg, type || 'pink');
+    else console.log('[KanoPluginManager]', msg);
+  }
+
+  function knPluginGetBaseURL() {
+    try { if (typeof KANO_baseURL !== 'undefined' && KANO_baseURL) return KANO_baseURL; } catch (e) {}
+    return '/api';
+  }
+
+  function knPluginGetHeaders() {
+    try { if (typeof common_headers !== 'undefined' && common_headers) return Object.assign({}, common_headers); } catch (e) {}
+    var headers = {};
+    try {
+      var token = localStorage.getItem('kano_sms_token') || localStorage.getItem('KANO_TOKEN') || '';
+      if (token) headers.authorization = token;
+    } catch (e) {}
+    return headers;
+  }
+
+  async function knPluginGetCustomHead() {
+    if (typeof getCustomHead === 'function') {
+      var t = await getCustomHead();
+      return t || '';
+    }
+    var res = await fetch(knPluginGetBaseURL() + '/get_custom_head?t=' + Date.now(), { headers: knPluginGetHeaders() });
+    var data = await res.json();
+    return data && data.text ? data.text : '';
+  }
+
+  async function knPluginSetCustomHead(text) {
+    if (typeof setCustomHead === 'function') return await setCustomHead(text || '');
+    var res = await fetch(knPluginGetBaseURL() + '/set_custom_head', {
+      method: 'POST',
+      headers: knPluginGetHeaders(),
+      body: JSON.stringify({ text: text || '' })
+    });
+    return await res.json();
+  }
+
+  function knPluginMakeId(name, index) {
+    return 'knp_' + index + '_' + String(name || '').replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, '_').slice(0, 40);
+  }
+
+  function knPluginIsDisabled(content) {
+    var s = String(content || '').trim();
+
+    // 只把“整段插件被原生禁用标记包裹”的情况判定为禁用。
+    // 旧逻辑只要源码里出现 [kano_disabled] 字符串就判禁用，
+    // 会误伤包含插件管理器自身源码的插件，导致原生启用后这里仍显示禁用。
+    if (/^<!--\s*\[kano_disabled\][\s\S]*\[kano_disabled\]\s*-->$/i.test(s)) return true;
+    if (/^\[kano_disabled\][\s\S]*\[kano_disabled\]$/i.test(s)) return true;
+
+    return false;
+  }
+
+  function knPluginStripDisabled(content) {
+    var s = String(content || '').trim();
+    s = s.replace(/^\s*<!--\s*\[kano_disabled\]\s*/i, '');
+    s = s.replace(/\s*\[kano_disabled\]\s*-->\s*$/i, '');
+    s = s.replace(/^\s*\[kano_disabled\]\s*/i, '');
+    s = s.replace(/\s*\[kano_disabled\]\s*$/i, '');
+    return s.trim();
+  }
+
+  function knPluginApplyEnabled(content, enabled) {
+    var cleanContent = knPluginStripDisabled(content);
+    if (enabled) return cleanContent;
+    return '<!-- [kano_disabled]\n' + cleanContent + '\n[kano_disabled] -->';
+  }
+
+  function knPluginParse(text) {
+    var source = String(text || '');
+    var regex = /<!--\s*\[KANO_PLUGIN_START\]\s*(.*?)\s*-->([\s\S]*?)<!--\s*\[KANO_PLUGIN_END\]\s*\1\s*-->/g;
+    var plugins = [];
+    var extras = [];
+    var last = 0;
+    var match;
+    while ((match = regex.exec(source)) !== null) {
+      if (match.index > last) {
+        var extra = source.slice(last, match.index).trim();
+        if (extra) extras.push(extra);
+      }
+      var name = String(match[1] || '').replace(/-->/g, '').trim() || ('未命名插件 ' + (plugins.length + 1));
+      var content = String(match[2] || '').trim();
+      plugins.push({
+        id: knPluginMakeId(name, plugins.length),
+        name: name,
+        content: knPluginStripDisabled(content),
+        enabled: !knPluginIsDisabled(content),
+        originalName: name
+      });
+      last = regex.lastIndex;
+    }
+    if (last < source.length) {
+      var tail = source.slice(last).trim();
+      if (tail) extras.push(tail);
+    }
+    return { plugins: plugins, extras: extras.join('\n\n') };
+  }
+
+  function knPluginSerialize() {
+    var blocks = [];
+    if (knPluginManager.extras && knPluginManager.extras.trim()) blocks.push(knPluginManager.extras.trim());
+    knPluginManager.plugins.forEach(function (p) {
+      var safeName = String(p.name || '未命名插件').replace(/-->/g, '').trim();
+      var body = knPluginApplyEnabled(p.content || '', !!p.enabled);
+      blocks.push('<!-- [KANO_PLUGIN_START] ' + safeName + ' -->\n' + body + '\n<!-- [KANO_PLUGIN_END] ' + safeName + ' -->');
+    });
+    return blocks.join('\n\n\n');
+  }
+
+  function knPluginShortStatus(text) {
+    var raw = String(text || '').trim();
+    if (!raw) return '';
+    if (/^读取完成/.test(raw)) return raw.replace(/读取完成：\s*/, '已读取：');
+    if (/^正在/.test(raw)) return raw.replace(/插件列表/, '插件');
+    if (/^(已启用并保存|已停用并保存)/.test(raw)) return raw.indexOf('已启用') === 0 ? '已启用并保存' : '已停用并保存';
+    if (/^已重命名并保存/.test(raw)) return '已重命名并保存';
+    if (/^已删除并保存/.test(raw)) return '已删除并保存';
+    if (/^已导入插件并保存/.test(raw)) return '已导入并保存';
+    if (/^排序已保存/.test(raw)) return '排序已保存';
+    if (/^插件配置已保存/.test(raw)) return '配置已保存';
+    if (raw.length > 22) return raw.slice(0, 22) + '…';
+    return raw;
+  }
+
+  function knPluginSetStatus(text, mode) {
+    var el = document.getElementById('kn-plugin-status');
+    if (!el) return;
+    var raw = String(text || '').trim();
+    el.textContent = knPluginShortStatus(raw);
+    el.title = raw;
+    el.className = 'kn-plugin-status ' + (mode || '');
+  }
+
+  function knPluginGetActive() {
+    return knPluginManager.plugins.find(function (p) { return p.id === knPluginManager.activeId; }) || null;
+  }
+
+  function knPluginFilteredList() {
+    var kw = String(knPluginManager.search || '').trim().toLowerCase();
+    if (!kw) return knPluginManager.plugins;
+    return knPluginManager.plugins.filter(function (p) {
+      return String(p.name || '').toLowerCase().indexOf(kw) !== -1 || String(p.content || '').toLowerCase().indexOf(kw) !== -1;
+    });
+  }
+
+  function knPluginRenderList() {
+    var list = document.getElementById('kn-plugin-list');
+    var count = document.getElementById('kn-plugin-count');
+    if (!list) return;
+    var enabledCount = knPluginManager.plugins.filter(function (p) { return p.enabled; }).length;
+    if (count) count.textContent = knPluginManager.plugins.length + ' 个插件 · ' + enabledCount + ' 个启用';
+    var arr = knPluginFilteredList();
+    if (!arr.length) {
+      list.innerHTML = '<div class="kn-plugin-empty">暂无插件，或没有匹配搜索条件。</div>';
+      return;
+    }
+    list.innerHTML = arr.map(function (p) {
+      var idx = knPluginManager.plugins.indexOf(p);
+      var size = new Blob([p.content || '']).size;
+      return '<div class="kn-plugin-row ' + (p.enabled ? 'enabled' : 'disabled') + ' ' + (p.id === knPluginManager.activeId ? 'active' : '') + '" data-plugin-id="' + knEsc(p.id) + '" title="' + knEsc(p.name || '') + '">' +
+        '<div class="kn-plugin-row-main" data-plugin-action="select" data-plugin-id="' + knEsc(p.id) + '">' +
+          '<div class="kn-plugin-row-title"><span>' + knEsc(p.name) + '</span></div>' +
+          '<div class="kn-plugin-row-meta">#' + (idx + 1) + ' · ' + size + ' B</div>' +
+        '</div>' +
+        '<div class="kn-plugin-row-tools">' +
+          '<button type="button" class="kn-plugin-toggle ' + (p.enabled ? 'on' : 'off') + '" data-plugin-action="toggle" data-plugin-id="' + knEsc(p.id) + '" aria-label="' + (p.enabled ? '停用插件' : '启用插件') + '"><span></span></button>' +
+          '<button type="button" class="kn-plugin-mini" data-plugin-action="up" data-plugin-id="' + knEsc(p.id) + '" title="上移">↑</button>' +
+          '<button type="button" class="kn-plugin-mini" data-plugin-action="down" data-plugin-id="' + knEsc(p.id) + '" title="下移">↓</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+
+
+  function knPluginActionIcon(name) {
+    var icons = {
+      save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12.2L21 6.8V21H5V3zm2 2v14h12V7.7L16.3 5H15v5H8V5H7zm3 0v3h3V5h-3zm-1 10h8v2H9v-2z"/></svg>',
+      copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V3h13v13h-4v5H3V7h5zm2 0h7v7h2V5h-9v2zm-5 2v10h10V9H5z"/></svg>',
+      trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h5v2H3V5h5l1-2zm-3 6h12l-1 12H7L6 9zm3 2 .5 8h1.7l-.3-8H9zm4 0-.3 8h1.7l.5-8H13z"/></svg>',
+      warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 22 20H2L12 2zm0 4.2L5.4 18h13.2L12 6.2zM11 10h2v4h-2v-4zm0 5h2v2h-2v-2z"/></svg>',
+      edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17.25V20h2.75L17.8 8.95l-2.75-2.75L4 17.25zM19.7 7.05c.4-.4.4-1.02 0-1.42l-1.33-1.33a1 1 0 0 0-1.42 0l-1.04 1.04 2.75 2.75 1.04-1.04z"/></svg>'
+    };
+    return '<span class="kn-action-ico">' + (icons[name] || '') + '</span>';
+  }
+
+  function knPluginRenderEditor() {
+    var item = knPluginGetActive();
+    var nameInput = document.getElementById('kn-plugin-editor-name');
+    var codeInput = document.getElementById('kn-plugin-editor-code');
+    var stateEl = document.getElementById('kn-plugin-editor-state');
+    var titleNameEl = document.getElementById('kn-plugin-editor-title-name');
+    var nameField = nameInput && nameInput.closest ? nameInput.closest('.kn-plugin-name-field') : null;
+    if (!nameInput || !codeInput) return;
+    var delBtn = document.querySelector('[data-plugin-action="deleteSelected"]');
+    if (delBtn && (!knPluginManager.deleteConfirmUntil || knPluginManager.deleteConfirmUntil < Date.now())) {
+      delBtn.innerHTML = knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span>'; 
+      delBtn.title = '删除插件';
+      delBtn.classList.remove('confirming');
+    }
+    if (!item) {
+      if (nameField) nameField.classList.remove('renaming');
+      knPluginManager.renameMode = false;
+      nameInput.value = '';
+      codeInput.value = '';
+      nameInput.disabled = true;
+      codeInput.disabled = true;
+      if (stateEl) stateEl.textContent = '';
+      if (titleNameEl) titleNameEl.textContent = '未选择插件';
+      knPluginSyncCodeEditor();
+      return;
+    }
+    nameInput.disabled = false;
+    codeInput.disabled = false;
+    nameInput.value = item.name || '';
+    codeInput.value = item.content || '';
+    if (stateEl) stateEl.textContent = '';
+    if (titleNameEl) titleNameEl.textContent = item.name || '未命名插件';
+    if (nameField) nameField.classList.toggle('renaming', !!knPluginManager.renameMode);
+    knPluginSyncCodeEditor();
+  }
+
+  function knPluginHighlightLine(line) {
+    var out = '';
+    var i = 0;
+    var len = line.length;
+    var keywords = /^(async|await|break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|function|if|import|in|instanceof|let|new|return|switch|throw|try|typeof|var|void|while|with|yield|true|false|null|undefined)\b/;
+    while (i < len) {
+      var ch = line[i];
+      var rest = line.slice(i);
+      if (rest.indexOf('//') === 0) {
+        out += '<span class="kn-code-token-comment">' + knEsc(rest) + '</span>';
+        break;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') {
+        var quote = ch;
+        var j = i + 1;
+        while (j < len) {
+          if (line[j] === '\\') { j += 2; continue; }
+          if (line[j] === quote) { j += 1; break; }
+          j += 1;
+        }
+        out += '<span class="kn-code-token-string">' + knEsc(line.slice(i, j)) + '</span>';
+        i = j;
+        continue;
+      }
+      var km = rest.match(keywords);
+      if (km) {
+        out += '<span class="kn-code-token-keyword">' + knEsc(km[0]) + '</span>';
+        i += km[0].length;
+        continue;
+      }
+      var nm = rest.match(/^\b\d+(?:\.\d+)?\b/);
+      if (nm) {
+        out += '<span class="kn-code-token-number">' + knEsc(nm[0]) + '</span>';
+        i += nm[0].length;
+        continue;
+      }
+      var fm = rest.match(/^[A-Za-z_$][\w$]*(?=\s*\()/);
+      if (fm) {
+        out += '<span class="kn-code-token-fn">' + knEsc(fm[0]) + '</span>';
+        i += fm[0].length;
+        continue;
+      }
+      out += knEsc(ch);
+      i += 1;
+    }
+    return out || ' ';
+  }
+
+  function knPluginHighlightCode(code) {
+    return String(code || '').split('\n').map(knPluginHighlightLine).join('\n');
+  }
+
+  var knPluginEditorRaf = 0;
+  var knPluginEditorHighlightTimer = 0;
+  var knPluginEditorLastLineCount = 0;
+  var knPluginEditorLastHighlighted = '';
+
+  function knPluginSyncEditorScrollOnly() {
+    var codeInput = document.getElementById('kn-plugin-editor-code');
+    var lines = document.getElementById('kn-plugin-editor-lines');
+    var highlight = document.getElementById('kn-plugin-editor-highlight');
+    if (!codeInput) return;
+    if (lines) lines.scrollTop = codeInput.scrollTop || 0;
+    if (highlight) {
+      highlight.scrollTop = codeInput.scrollTop || 0;
+      highlight.scrollLeft = codeInput.scrollLeft || 0;
+    }
+  }
+
+  function knPluginRenderEditorHighlight(force) {
+    var codeInput = document.getElementById('kn-plugin-editor-code');
+    var lines = document.getElementById('kn-plugin-editor-lines');
+    var highlight = document.getElementById('kn-plugin-editor-highlight');
+    if (!codeInput) return;
+
+    var value = codeInput.value || '';
+    var lineCount = Math.max(1, value.split('\n').length);
+
+    if (lines && (force || lineCount !== knPluginEditorLastLineCount)) {
+      var nums = [];
+      for (var i = 1; i <= lineCount; i += 1) nums.push(i);
+      lines.textContent = nums.join('\n');
+      knPluginEditorLastLineCount = lineCount;
+    }
+
+    if (highlight && (force || value !== knPluginEditorLastHighlighted)) {
+      if (value.length > 120000 || lineCount > 4200) {
+        highlight.textContent = value + (value.endsWith('\n') ? '\n ' : '');
+      } else {
+        highlight.innerHTML = knPluginHighlightCode(value) + (value.endsWith('\n') ? '\n ' : '');
+      }
+      knPluginEditorLastHighlighted = value;
+    }
+
+    knPluginSyncEditorScrollOnly();
+  }
+
+  function knPluginScheduleHighlight(force) {
+    if (knPluginEditorHighlightTimer) window.clearTimeout(knPluginEditorHighlightTimer);
+    knPluginEditorHighlightTimer = window.setTimeout(function () {
+      knPluginRenderEditorHighlight(!!force);
+    }, force ? 0 : 160);
+  }
+
+  function knPluginSyncCodeEditor() {
+    if (knPluginEditorRaf) return;
+    knPluginEditorRaf = window.requestAnimationFrame(function () {
+      knPluginEditorRaf = 0;
+      knPluginRenderEditorHighlight(false);
+    });
+  }
+
+  function knPluginApplyEditor(silent) {
+    var item = knPluginGetActive();
+    if (!item) {
+      if (!silent) knPluginToast('请先选择一个插件', 'red');
+      return false;
+    }
+    var nameInput = document.getElementById('kn-plugin-editor-name');
+    var codeInput = document.getElementById('kn-plugin-editor-code');
+    var valid = knPluginValidateName(nameInput ? nameInput.value : item.name, item.id);
+    if (!valid.ok) {
+      if (!silent) knPluginToast(valid.message, 'red');
+      return false;
+    }
+    item.name = valid.name;
+    item.content = codeInput ? codeInput.value : item.content;
+    knPluginManager.renameMode = false;
+    var nameField = nameInput && nameInput.closest ? nameInput.closest('.kn-plugin-name-field') : null;
+    if (nameField) nameField.classList.remove('renaming');
+    knPluginManager.dirty = true;
+    if (!silent) knPluginSetStatus('当前插件已更新到待保存配置。', 'warn');
+    knPluginRenderList();
+    knPluginSyncCodeEditor();
+    return true;
+  }
+
+  async function knPluginCommit(message, shouldReload) {
+    knPluginSetStatus('正在保存插件配置…', 'checking');
+    try {
+      var result = await knPluginSetCustomHead(knPluginSerialize());
+      if (!result || result.result !== 'success') {
+        throw new Error(result && result.error ? result.error : '保存接口返回失败');
+      }
+      knPluginManager.dirty = false;
+      knPluginSetStatus(message || '插件配置已保存。刷新页面后完整生效。', 'ok');
+      knPluginToast('插件配置已保存', 'green');
+      knPluginRenderAll();
+      if (shouldReload) setTimeout(function () { location.reload(); }, 900);
+      return true;
+    } catch (e) {
+      console.error('[KanoWebOS] 保存插件配置失败:', e);
+      knPluginSetStatus('保存失败：' + (e && e.message ? e.message : String(e)), 'error');
+      knPluginToast('保存插件失败', 'red');
+      return false;
+    }
+  }
+
+  async function knPluginSaveCurrent() {
+    if (!knPluginApplyEditor(true)) return;
+    var item = knPluginGetActive();
+    await knPluginCommit('插件已保存：' + (item ? item.name : '') + '。刷新页面后完整生效。', false);
+  }
+
+  function knPluginBeginRename() {
+    var item = knPluginGetActive();
+    if (!item) {
+      knPluginToast('请先选择一个插件', 'red');
+      return;
+    }
+    var nameInput = document.getElementById('kn-plugin-editor-name');
+    var field = nameInput && nameInput.closest ? nameInput.closest('.kn-plugin-name-field') : null;
+    if (!nameInput) return;
+    knPluginManager.renameMode = true;
+    if (field) field.classList.add('renaming');
+    nameInput.disabled = false;
+    nameInput.focus();
+    nameInput.select();
+    knPluginSetStatus('正在重命名：修改名称后点击保存图标。', 'checking');
+  }
+
+  function knPluginRenderAll() {
+    knPluginRenderList();
+    knPluginRenderEditor();
+  }
+
+  async function knPluginRefresh() {
+    knPluginSetStatus('正在读取插件配置…', 'checking');
+    try {
+      var text = await knPluginGetCustomHead();
+      var parsed = knPluginParse(text);
+      knPluginManager.rawText = text;
+      knPluginManager.plugins = parsed.plugins;
+      knPluginManager.extras = parsed.extras;
+      knPluginManager.loaded = true;
+      knPluginManager.dirty = false;
+      knPluginManager.activeId = knPluginManager.plugins[0] ? knPluginManager.plugins[0].id : '';
+      knPluginSetStatus('读取完成：' + knPluginManager.plugins.length + ' 个插件。', 'ok');
+      knPluginRenderAll();
+    } catch (e) {
+      console.error('[KanoWebOS] 读取插件失败:', e);
+      knPluginSetStatus('读取失败：' + (e && e.message ? e.message : String(e)), 'error');
+      knPluginRenderAll();
+    }
+  }
+
+  function knPluginValidateName(name, currentId) {
+    var finalName = String(name || '').replace(/-->/g, '').trim();
+    if (!finalName) return { ok: false, message: '插件名称不能为空' };
+    var dup = knPluginManager.plugins.find(function (p) { return p.id !== currentId && p.name === finalName; });
+    if (dup) return { ok: false, message: '插件名称已存在：' + finalName };
+    return { ok: true, name: finalName };
+  }
+
+  function knPluginRename(id) {
+    var item = knPluginManager.plugins.find(function (p) { return p.id === id; });
+    if (!item) return;
+    var next = prompt('输入新的插件名称', item.name || '');
+    if (next == null) return;
+    var valid = knPluginValidateName(next, item.id);
+    if (!valid.ok) return knPluginToast(valid.message, 'red');
+    item.name = valid.name;
+    knPluginManager.activeId = item.id;
+    knPluginManager.dirty = true;
+    knPluginRenderAll();
+    knPluginCommit('已重命名并保存：' + item.name + '。刷新页面后完整生效。', false);
+  }
+
+  function knPluginToggle(id) {
+    var item = knPluginManager.plugins.find(function (p) { return p.id === id; });
+    if (!item) return;
+    item.enabled = !item.enabled;
+    knPluginManager.activeId = item.id;
+    knPluginManager.dirty = true;
+    knPluginRenderAll();
+    knPluginCommit((item.enabled ? '已启用并保存：' : '已停用并保存：') + item.name + '。刷新页面后完整生效。', false);
+  }
+
+  function knPluginMove(id, dir) {
+    var idx = knPluginManager.plugins.findIndex(function (p) { return p.id === id; });
+    if (idx < 0) return;
+    var next = idx + dir;
+    if (next < 0 || next >= knPluginManager.plugins.length) return;
+    var tmp = knPluginManager.plugins[idx];
+    knPluginManager.plugins[idx] = knPluginManager.plugins[next];
+    knPluginManager.plugins[next] = tmp;
+    knPluginManager.activeId = id;
+    knPluginManager.dirty = true;
+    knPluginRenderAll();
+    knPluginCommit('排序已保存。刷新页面后完整生效。', false);
+  }
+
+  function knPluginDelete(id) {
+    var item = knPluginManager.plugins.find(function (p) { return p.id === id; });
+    if (!item) return;
+    var btn = document.querySelector('[data-plugin-action="deleteSelected"]');
+    var now = Date.now();
+    if (knPluginManager.deleteConfirmId !== id || !knPluginManager.deleteConfirmUntil || knPluginManager.deleteConfirmUntil < now) {
+      knPluginManager.deleteConfirmId = id;
+      knPluginManager.deleteConfirmUntil = now + 5000;
+      if (btn) {
+        btn.innerHTML = knPluginActionIcon('warn') + '<span class="kn-action-text">确认删除</span>'; 
+        btn.title = '再次点击确认删除';
+        btn.classList.add('confirming');
+      }
+      knPluginSetStatus('危险操作：5 秒内再次点击“再次点击确认删除”才会删除「' + item.name + '」。', 'error');
+      setTimeout(function () {
+        if (knPluginManager.deleteConfirmId === id && Date.now() > knPluginManager.deleteConfirmUntil) {
+          knPluginManager.deleteConfirmId = '';
+          if (btn) {
+            btn.innerHTML = knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span>'; 
+            btn.title = '删除插件';
+            btn.classList.remove('confirming');
+          }
+        }
+      }, 5200);
+      return;
+    }
+    if (!confirm('最终确认删除插件「' + item.name + '」？此操作会从待保存配置中移除该插件。')) return;
+    knPluginManager.deleteConfirmId = '';
+    knPluginManager.deleteConfirmUntil = 0;
+    knPluginManager.plugins = knPluginManager.plugins.filter(function (p) { return p.id !== id; });
+    knPluginManager.activeId = knPluginManager.plugins[0] ? knPluginManager.plugins[0].id : '';
+    knPluginManager.dirty = true;
+    knPluginRenderAll();
+    knPluginCommit('已删除并保存：' + item.name + '。刷新页面后完整生效。', false);
+  }
+
+  async function knPluginSave() {
+    if (knPluginGetActive() && !knPluginApplyEditor(true)) return;
+    await knPluginCommit('插件配置已保存，正在刷新页面以重新加载插件…', true);
+  }
+
+  function knPluginExport() {
+    var text = knPluginSerialize();
+    var b = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    var date = new Date().toLocaleString('zh-cn').replace(/[\s/:]/g, '_');
+    if (typeof saveAs === 'function') saveAs(b, 'UFI-TOOLS_Plugins_' + date + '.txt');
+    else {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = 'UFI-TOOLS_Plugins_' + date + '.txt';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    }
+  }
+
+  function knPluginImportText(str, fileName) {
+    var parsed = knPluginParse(str || '');
+    if (parsed.plugins.length) {
+      parsed.plugins.forEach(function (p) {
+        var base = p.name;
+        var name = base;
+        var i = 2;
+        while (knPluginManager.plugins.some(function (x) { return x.name === name; })) name = base + ' (' + (i++) + ')';
+        p.name = name;
+        p.id = knPluginMakeId(name, knPluginManager.plugins.length + Math.floor(Math.random() * 10000));
+        knPluginManager.plugins.push(p);
+      });
+    } else {
+      var name = String(fileName || '未命名插件').replace(/-->/g, '').trim();
+      var baseName = name || '未命名插件';
+      var n = baseName;
+      var j = 2;
+      while (knPluginManager.plugins.some(function (x) { return x.name === n; })) n = baseName + ' (' + (j++) + ')';
+      knPluginManager.plugins.push({ id: knPluginMakeId(n, knPluginManager.plugins.length), name: n, content: String(str || '').trim(), enabled: true, originalName: n });
+    }
+    knPluginManager.activeId = knPluginManager.plugins[knPluginManager.plugins.length - 1].id;
+    knPluginManager.dirty = true;
+    knPluginRenderAll();
+    knPluginCommit('已导入插件并保存。刷新页面后完整生效。', false);
+  }
+
+  function knPluginBindManager(dialog) {
+    if (!dialog) return;
+    var file = dialog.querySelector('#kn-plugin-import-file');
+    if (file) {
+      file.onchange = function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        if (f.size > 1145 * 1024) return knPluginToast('插件文件不能超过 1145KB', 'red');
+        var reader = new FileReader();
+        reader.onload = function (ev) { knPluginImportText(ev.target.result, f.name); file.value = ''; };
+        reader.readAsText(f);
+      };
+    }
+    var search = dialog.querySelector('#kn-plugin-search');
+    var searchToggle = dialog.querySelector('#kn-plugin-search-toggle');
+    var listHead = dialog.querySelector('.kn-plugin-list-head');
+    if (searchToggle && listHead) {
+      searchToggle.onclick = function () {
+        listHead.classList.toggle('search-open');
+        if (listHead.classList.contains('search-open') && search) {
+          setTimeout(function () { search.focus(); }, 30);
+        }
+      };
+    }
+    if (search) search.oninput = function () { knPluginManager.search = search.value || ''; knPluginRenderList(); };
+    var codeInput = dialog.querySelector('#kn-plugin-editor-code');
+    if (codeInput) {
+      codeInput.addEventListener('input', function () { knPluginScheduleHighlight(false); });
+      codeInput.addEventListener('scroll', function () {
+        if (knPluginEditorRaf) return;
+        knPluginEditorRaf = window.requestAnimationFrame(function () {
+          knPluginEditorRaf = 0;
+          knPluginSyncEditorScrollOnly();
+        });
+      }, { passive: true });
+    }
+    var list = dialog.querySelector('#kn-plugin-list');
+    if (list) {
+      list.onclick = function (e) {
+        var btn = e.target.closest && e.target.closest('[data-plugin-action]');
+        if (!btn) return;
+        var action = btn.getAttribute('data-plugin-action');
+        var id = btn.getAttribute('data-plugin-id');
+        if (action === 'select') { knPluginManager.activeId = id; knPluginManager.renameMode = false; knPluginRenderAll(); return; }
+        if (action === 'toggle') return knPluginToggle(id);
+        if (action === 'up') return knPluginMove(id, -1);
+        if (action === 'down') return knPluginMove(id, 1);
+        if (action === 'rename') return knPluginRename(id);
+      };
+    }
+    Array.prototype.slice.call(dialog.querySelectorAll('[data-plugin-action]')).forEach(function (btn) {
+      var action = btn.getAttribute('data-plugin-action');
+      if (action === 'refresh') btn.onclick = knPluginRefresh;
+      if (action === 'import') btn.onclick = function () { var f = document.getElementById('kn-plugin-import-file'); if (f) f.click(); };
+      if (action === 'export') btn.onclick = knPluginExport;
+      if (action === 'save') btn.onclick = knPluginSave;
+      if (action === 'beginRename') btn.onclick = knPluginBeginRename;
+      if (action === 'applyEditor') btn.onclick = knPluginSaveCurrent;
+      if (action === 'copyCode') btn.onclick = function () {
+        var code = document.getElementById('kn-plugin-editor-code');
+        if (code && navigator.clipboard) navigator.clipboard.writeText(code.value || '').then(function () { knPluginToast('源码已复制', 'green'); });
+      };
+      if (action === 'deleteSelected') btn.onclick = function () { if (knPluginManager.activeId) knPluginDelete(knPluginManager.activeId); };
+    });
+  }
+
+  function injectModernPluginManagerCSS() {
+    if (document.getElementById('kano-webos-plugin-manager-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kano-webos-plugin-manager-style';
+    style.textContent = '' +
+      '#' + DIALOG_ID + ' #kn-settings-panel-plugins{height:100%;min-height:0;overflow:hidden}' +
+      '#' + DIALOG_ID + ' .kn-plugin-manager-shell{height:100%;min-height:0;display:flex;flex-direction:column;gap:10px;overflow:hidden}' +
+      '#' + DIALOG_ID + ' .kn-plugin-topbar{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:14px 16px;border:1px solid rgba(232,234,237,.10);border-radius:24px;background:linear-gradient(135deg,rgba(138,180,248,.12),rgba(22,25,32,.96));box-shadow:0 10px 26px rgba(0,0,0,.16)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-block{min-width:0}.kn-plugin-kicker{display:inline-flex;align-items:center;height:22px;padding:0 9px;margin-bottom:6px;border-radius:999px;background:rgba(138,180,248,.10);border:1px solid rgba(138,180,248,.18);color:#a8c7fa;font-size:11px;font-weight:750;letter-spacing:.02em}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title{font-size:21px;font-weight:800;color:#f1f3f4;margin-bottom:3px;letter-spacing:-.03em}' +
+      '#' + DIALOG_ID + ' .kn-plugin-desc{font-size:12px;line-height:1.45;color:#bdc1c6;max-width:690px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap;min-width:0;padding:5px;border:1px solid rgba(232,234,237,.10);border-radius:18px;background:rgba(17,19,24,.48)}#' + DIALOG_ID + ' .kn-plugin-tool-btn{position:relative;width:42px;height:38px;border-radius:14px;border:1px solid rgba(232,234,237,.10);background:rgba(255,255,255,.035);color:#d3e3fd;display:inline-flex;align-items:center;justify-content:center;gap:0;cursor:pointer;font-size:15px;font-weight:850;transition:background .16s,border-color .16s,transform .16s}#' + DIALOG_ID + ' .kn-plugin-tool-btn:hover{background:rgba(138,180,248,.14);border-color:rgba(138,180,248,.32);transform:translateY(-1px)}#' + DIALOG_ID + ' .kn-plugin-tool-btn .kn-tool-ico{line-height:1;font-size:17px}#' + DIALOG_ID + ' .kn-plugin-tool-btn .kn-tool-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-plugin-utilitybar{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}' +
+      '#' + DIALOG_ID + ' .kn-plugin-risk.top{min-height:40px;display:flex;align-items:center;padding:9px 13px;border-radius:18px;background:rgba(251,188,4,.08);border:1px solid rgba(251,188,4,.16);color:#fdd663;font-size:12px;line-height:1.5}' +
+      '#' + DIALOG_ID + ' .kn-plugin-native-row{min-height:40px;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(232,234,237,.10);border-radius:18px;background:#171a20;color:#bdc1c6;font-size:12px;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-plugin-native-row>span{font-weight:750;color:#e8eaed;margin-right:2px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-status{flex:0 0 auto;padding:8px 12px;border-radius:16px;background:rgba(138,180,248,.08);border:1px solid rgba(138,180,248,.14);color:#d3e3fd;font-size:12px}.kn-plugin-status.ok{background:rgba(52,168,83,.10);border-color:rgba(52,168,83,.18);color:#81c995}.kn-plugin-status.warn{background:rgba(251,188,4,.10);border-color:rgba(251,188,4,.18);color:#fdd663}.kn-plugin-status.error{background:rgba(234,67,53,.10);border-color:rgba(234,67,53,.18);color:#f28b82}.kn-plugin-status.checking{background:rgba(138,180,248,.10);border-color:rgba(138,180,248,.20)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-layout{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:360px minmax(0,1fr);gap:0;overflow:hidden;border:1px solid rgba(232,234,237,.10);border-radius:26px;background:#181b22;box-shadow:0 16px 38px rgba(0,0,0,.16)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-card,#' + DIALOG_ID + ' .kn-plugin-editor-card{min-height:0;background:transparent;border:0;border-radius:0;overflow:hidden;display:flex;flex-direction:column}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-card{border-right:1px solid rgba(232,234,237,.08);background:rgba(17,19,24,.34)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-head{flex:0 0 auto;padding:14px;border-bottom:1px solid rgba(232,234,237,.08);background:rgba(17,19,24,.48)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-head>div{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;color:#f1f3f4}#' + DIALOG_ID + ' .kn-plugin-list-head strong{font-size:15px;font-weight:800}#' + DIALOG_ID + ' .kn-plugin-list-head span{font-size:12px;color:#9aa0a6}' +
+      '#' + DIALOG_ID + ' #kn-plugin-search,#' + DIALOG_ID + ' #kn-plugin-editor-name{width:100%;height:42px;border-radius:16px;border:1px solid rgba(232,234,237,.12);background:#111318;color:#e8eaed;padding:0 13px;outline:none}' +
+      '#' + DIALOG_ID + ' #kn-plugin-search:focus,#' + DIALOG_ID + ' #kn-plugin-editor-name:focus{border-color:rgba(138,180,248,.55);box-shadow:0 0 0 3px rgba(138,180,248,.12)}' +
+
+      '#' + DIALOG_ID + ' .kn-plugin-list-title-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin-bottom:0!important;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-plugin-search-toggle{width:34px;height:34px;border-radius:999px;border:1px solid rgba(232,234,237,.12);background:rgba(255,255,255,.04);color:#d3e3fd;font-size:16px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}' +
+      '#' + DIALOG_ID + ' .kn-plugin-search-toggle:hover{background:rgba(138,180,248,.12);border-color:rgba(138,180,248,.32);transform:translateY(-1px)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-head #kn-plugin-search{display:none;margin-top:10px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-head.search-open #kn-plugin-search{display:block}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-name-line{display:flex!important;align-items:center;gap:7px;min-width:0;margin-top:4px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-title-name{display:block!important;color:#d3e3fd!important;font-size:12px!important;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-edit{width:26px;height:26px;min-width:26px;border-radius:999px;border:1px solid rgba(138,180,248,.20);background:rgba(138,180,248,.08);color:#d3e3fd;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-edit:hover{background:rgba(138,180,248,.16);border-color:rgba(138,180,248,.42);transform:translateY(-1px)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-edit .kn-action-ico{width:14px;height:14px;display:inline-flex}.kn-plugin-title-edit svg{width:14px;height:14px;fill:currentColor}' +
+      '#' + DIALOG_ID + ' .kn-plugin-field.renaming{border-radius:16px;background:rgba(138,180,248,.08);box-shadow:0 0 0 3px rgba(138,180,248,.10);transition:background .16s,box-shadow .16s}' +
+      '#' + DIALOG_ID + ' .kn-plugin-name-field{display:none!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-name-field.renaming{display:grid!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action{width:42px;height:38px;min-width:42px;padding:0;border-radius:999px;border:1px solid rgba(232,234,237,.12);background:rgba(255,255,255,.045);color:#e8eaed;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action:hover{background:rgba(138,180,248,.12);border-color:rgba(138,180,248,.32);transform:translateY(-1px)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action.primary{background:rgba(138,180,248,.18);border-color:rgba(138,180,248,.36);color:#d3e3fd}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action.danger{background:rgba(234,67,53,.10);border-color:rgba(242,139,130,.32);color:#f28b82}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action.danger.confirming{background:rgba(234,67,53,.24);border-color:rgba(242,139,130,.62);color:#ffd7d2}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action .kn-action-ico{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;line-height:1}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action .kn-action-ico svg{width:17px;height:17px;display:block;fill:currentColor}' +
+      '#' + DIALOG_ID + ' .kn-plugin-icon-action .kn-action-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list{flex:1 1 auto;min-height:0;overflow:auto;padding:10px;overscroll-behavior:contain}.kn-plugin-empty{padding:34px 14px;border:1px dashed rgba(232,234,237,.12);border-radius:18px;text-align:center;color:#9aa0a6;font-size:12px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;padding:12px;margin-bottom:8px;border-radius:20px;border:1px solid rgba(232,234,237,.08);background:#202124;transition:background .16s,border-color .16s,transform .16s}.kn-plugin-row:hover{background:#24272e;border-color:rgba(138,180,248,.28)}.kn-plugin-row.active{border-color:rgba(138,180,248,.52);background:linear-gradient(135deg,rgba(138,180,248,.20),rgba(36,39,46,.92))}.kn-plugin-row-main{min-width:0;cursor:pointer}.kn-plugin-row-title{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#f1f3f4;font-size:13px;font-weight:760}.kn-plugin-row-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kn-plugin-row-title em{font-style:normal;font-size:11px;padding:3px 8px;border-radius:999px;flex:0 0 auto}.kn-plugin-row-title em.on{background:rgba(52,168,83,.14);color:#81c995}.kn-plugin-row-title em.off{background:rgba(234,67,53,.13);color:#f28b82}.kn-plugin-row-meta{margin-top:6px;color:#9aa0a6;font-size:11px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row-tools{display:flex;align-items:center;gap:6px}.kn-plugin-toggle{position:relative;width:44px;height:26px;border:1px solid rgba(232,234,237,.13);border-radius:999px;background:#3c4043;cursor:pointer;padding:0;transition:background .16s,border-color .16s}.kn-plugin-toggle span{position:absolute;top:4px;left:4px;width:16px;height:16px;border-radius:50%;background:#bdc1c6;transition:left .16s,background .16s}.kn-plugin-toggle.on{background:rgba(52,168,83,.30);border-color:rgba(129,201,149,.46)}.kn-plugin-toggle.on span{left:22px;background:#81c995}.kn-plugin-toggle.off{background:rgba(234,67,53,.12);border-color:rgba(242,139,130,.30)}.kn-plugin-toggle.off span{background:#f28b82}.kn-plugin-mini{width:28px;height:28px;padding:0;border:1px solid rgba(232,234,237,.10);border-radius:999px;background:rgba(255,255,255,.04);color:#e8eaed;font-size:12px;cursor:pointer}.kn-plugin-mini:hover{background:rgba(138,180,248,.12);border-color:rgba(138,180,248,.34)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-card{background:rgba(17,19,24,.22)}#' + DIALOG_ID + ' .kn-plugin-editor-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-bottom:1px solid rgba(232,234,237,.08);color:#f1f3f4;background:rgba(17,19,24,.36)}.kn-plugin-editor-head strong{display:block;font-size:16px;font-weight:850;margin-bottom:2px}.kn-plugin-editor-head span{color:#9aa0a6;font-size:12px}.kn-plugin-editor-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:0 0 auto}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-form{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;padding:14px 16px;overflow:hidden}.kn-plugin-field{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:center}.kn-plugin-field label,.kn-plugin-code-head label{color:#bdc1c6;font-size:12px;font-weight:700}.kn-plugin-editor-readonly{min-height:42px;display:flex;align-items:center;border-radius:16px;border:1px solid rgba(232,234,237,.10);background:#111318;color:#bdc1c6;padding:0 12px;font-size:12px}.kn-plugin-editor-readonly.on{color:#81c995;border-color:rgba(129,201,149,.22);background:rgba(52,168,83,.08)}.kn-plugin-editor-readonly.off{color:#f28b82;border-color:rgba(242,139,130,.22);background:rgba(234,67,53,.08)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-code-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:2px}.kn-plugin-code-head span{font-size:11px;color:#7f8794}' +
+      '#' + DIALOG_ID + ' .kn-code-editor-wrap{flex:1 1 auto;min-height:260px;display:grid;grid-template-columns:52px minmax(0,1fr);border-radius:20px;border:1px solid rgba(232,234,237,.10);background:#111318;overflow:hidden}' +
+      '#' + DIALOG_ID + ' .kn-code-lines{padding:14px 10px;background:#171a20;border-right:1px solid rgba(232,234,237,.08);color:#6f7684;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.65;white-space:pre;overflow:hidden;user-select:none}' +
+      '#' + DIALOG_ID + ' .kn-code-layer{position:relative;min-height:0;height:100%;overflow:hidden}' +
+      '#' + DIALOG_ID + ' .kn-code-highlight{position:absolute;inset:0;margin:0;padding:14px;overflow:auto;pointer-events:none;color:#e8eaed;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.65;white-space:pre;tab-size:2}' +
+      '#' + DIALOG_ID + ' .kn-code-highlight::-webkit-scrollbar{display:none}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-form textarea{width:100%;height:100%;min-height:0;border:0;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#e8eaed;padding:14px;outline:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.65;resize:none;white-space:pre;tab-size:2;overflow:auto;overscroll-behavior:contain}.kn-plugin-editor-form textarea::selection{background:rgba(138,180,248,.28)}' +
+      '#' + DIALOG_ID + ' .kn-code-token-comment{color:#6a9955}.kn-code-token-string{color:#ce9178}.kn-code-token-keyword{color:#c586c0}.kn-code-token-number{color:#b5cea8}.kn-code-token-fn{color:#dcdcaa}' +
+      '#' + DIALOG_ID + ' .kn-google-btn.danger{color:#f28b82;border-color:rgba(242,139,130,.34);background:rgba(234,67,53,.10)}.kn-google-btn.danger.confirming{background:rgba(234,67,53,.24);border-color:rgba(242,139,130,.62);color:#ffd7d2}' +
+      '@media(max-width:1120px){#' + DIALOG_ID + ' .kn-plugin-utilitybar{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-native-row{white-space:normal}}' +
+      '@media(max-width:980px){#' + DIALOG_ID + ' .kn-visual-list{grid-template-columns:repeat(2,minmax(0,1fr))}#' + DIALOG_ID + ' .kn-inline-config{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-color-control{grid-template-columns:52px minmax(0,1fr)}}' +
+      '@media(max-width:860px){#' + DIALOG_ID + ' .kn-plugin-topbar{grid-template-columns:1fr;padding:14px}#' + DIALOG_ID + ' .kn-plugin-actions{justify-content:flex-start;width:max-content;max-width:100%}#' + DIALOG_ID + ' .kn-plugin-layout{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-list-card{border-right:0;border-bottom:1px solid rgba(232,234,237,.08)}#' + DIALOG_ID + ' .kn-plugin-list{max-height:260px}#' + DIALOG_ID + ' .kn-plugin-editor-head{display:block}.kn-plugin-editor-actions{justify-content:flex-start;margin-top:10px}#' + DIALOG_ID + ' .kn-plugin-field{grid-template-columns:1fr;gap:6px}#' + DIALOG_ID + ' .kn-code-editor-wrap{height:320px;min-height:320px}}' +
+      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-plugin-actions .kn-plugin-tool-btn{width:38px;height:36px}#' + DIALOG_ID + ' .kn-plugin-native-row .kn-google-btn{min-width:0;flex:1 1 auto}#' + DIALOG_ID + ' .kn-plugin-editor-actions .kn-plugin-icon-action{width:40px;min-width:40px;flex:0 0 40px}#' + DIALOG_ID + ' .kn-code-editor-wrap{grid-template-columns:42px minmax(0,1fr)}}';
+    style.textContent += '' +
+      '#' + DIALOG_ID + ' .kn-plugin-manager-shell{gap:8px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-topbar{min-height:54px;padding:10px 14px;border-radius:20px;grid-template-columns:minmax(0,1fr) auto;background:linear-gradient(135deg,rgba(138,180,248,.08),rgba(22,25,32,.94));box-shadow:0 8px 18px rgba(0,0,0,.10)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-kicker{display:none}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title{font-size:18px;margin:0;line-height:1.15;letter-spacing:-.02em}' +
+      '#' + DIALOG_ID + ' .kn-plugin-desc{margin-top:4px;font-size:11px;line-height:1.28;max-width:620px;color:rgba(232,234,237,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#' + DIALOG_ID + ' .kn-plugin-actions{padding:3px;border-radius:16px;gap:4px;background:rgba(17,19,24,.38)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-tool-btn{width:34px;height:32px;border-radius:12px;font-size:13px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-tool-btn .kn-tool-ico{font-size:14px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-utilitybar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-height:34px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-risk.top{min-height:32px;padding:6px 10px;border-radius:14px;font-size:11px;line-height:1.25;background:rgba(251,188,4,.055);border-color:rgba(251,188,4,.13);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#' + DIALOG_ID + ' .kn-plugin-native-row{min-height:32px;padding:4px 6px;border-radius:14px;gap:5px;background:rgba(17,19,24,.42);font-size:11px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-native-row>span{display:none}' +
+      '#' + DIALOG_ID + ' .kn-plugin-native-row .kn-google-btn{min-height:26px;height:26px;padding:0 10px;border-radius:999px;font-size:11px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-status{min-height:28px;padding:6px 10px;border-radius:13px;font-size:11px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '#' + DIALOG_ID + ' .kn-plugin-layout{border-radius:22px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-list-head{padding:12px 14px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head{padding:12px 14px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-form{padding:12px 14px;gap:10px}' +
+      '@media(max-width:980px){#' + DIALOG_ID + ' .kn-plugin-topbar{grid-template-columns:minmax(0,1fr) auto}#' + DIALOG_ID + ' .kn-plugin-desc{max-width:420px}#' + DIALOG_ID + ' .kn-plugin-utilitybar{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-native-row{justify-content:flex-start;overflow:auto;white-space:nowrap}}' +
+      '@media(max-width:680px){#' + DIALOG_ID + ' .kn-plugin-topbar{grid-template-columns:1fr;gap:8px}#' + DIALOG_ID + ' .kn-plugin-actions{justify-content:flex-start;width:max-content}#' + DIALOG_ID + ' .kn-plugin-desc{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}#' + DIALOG_ID + ' .kn-plugin-risk.top{white-space:normal}#' + DIALOG_ID + ' .kn-plugin-native-row .kn-google-btn{flex:0 0 auto}}';
+    style.textContent += '' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head{min-height:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:center!important;padding:10px 12px!important;border-radius:18px!important;background:linear-gradient(135deg,rgba(138,180,248,.07),rgba(22,25,32,.88))!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-line{display:flex;align-items:center;gap:10px;min-width:0;margin-bottom:3px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title{font-size:17px!important;line-height:1.1!important;margin:0!important;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-desc{font-size:11px!important;line-height:1.25!important;margin:0!important;max-width:680px!important;color:rgba(232,234,237,.62)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-risk.top{display:inline-flex!important;min-height:0!important;margin-top:5px!important;padding:3px 8px!important;border-radius:999px!important;font-size:10.5px!important;line-height:1.2!important;max-width:100%!important;background:rgba(251,188,4,.055)!important;border-color:rgba(251,188,4,.12)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-status{display:inline-flex!important;align-items:center!important;min-height:24px!important;height:24px!important;padding:0 8px!important;border-radius:999px!important;font-size:10.5px!important;line-height:1!important;white-space:nowrap!important;max-width:210px!important;overflow:hidden!important;text-overflow:ellipsis!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-head-right{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row{min-height:30px!important;height:30px!important;padding:3px!important;border-radius:999px!important;background:rgba(17,19,24,.38)!important;display:flex!important;align-items:center!important;gap:4px!important;overflow:hidden!important;white-space:nowrap!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-google-btn{min-height:24px!important;height:24px!important;padding:0 9px!important;border-radius:999px!important;font-size:11px!important;flex:0 0 auto!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-actions{height:30px!important;padding:3px!important;border-radius:999px!important;background:rgba(17,19,24,.38)!important;gap:3px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-tool-btn{width:26px!important;height:24px!important;border-radius:999px!important;font-size:12px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-tool-btn .kn-tool-ico{font-size:12px!important}' +
+      '@media(max-width:1060px){#' + DIALOG_ID + ' .kn-plugin-merged-head{grid-template-columns:1fr!important}#' + DIALOG_ID + ' .kn-plugin-head-right{justify-content:flex-start;overflow:auto;white-space:nowrap;padding-bottom:1px}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-desc{white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}}' +
+      '@media(max-width:620px){#' + DIALOG_ID + ' .kn-plugin-title-line{align-items:flex-start;flex-direction:column;gap:5px}#' + DIALOG_ID + ' .kn-plugin-head-right{display:grid;grid-template-columns:1fr auto;width:100%}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row{overflow:auto}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-google-btn{padding:0 8px}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-risk.top{white-space:normal!important;border-radius:12px!important}}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head{min-height:50px!important;padding:8px 10px!important;border-radius:18px!important;grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;background:linear-gradient(135deg,rgba(138,180,248,.055),rgba(17,19,24,.92))!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;grid-template-areas:"title desc" "risk risk"!important;column-gap:10px!important;row-gap:2px!important;align-items:center!important;min-width:0!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-line{grid-area:title!important;display:flex!important;align-items:center!important;gap:8px!important;min-width:0!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title{font-size:16px!important;line-height:1!important;white-space:nowrap!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-status{height:22px!important;min-height:22px!important;max-width:145px!important;padding:0 8px!important;font-size:10.5px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-desc{grid-area:desc!important;margin:0!important;font-size:11px!important;line-height:1.25!important;max-width:none!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:rgba(232,234,237,.58)!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-risk.top{grid-area:risk!important;display:block!important;margin:1px 0 0!important;padding:0!important;border:0!important;background:transparent!important;color:#fdd663!important;font-size:10.5px!important;line-height:1.2!important;max-width:100%!important;opacity:.9!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-head-right{display:inline-flex!important;align-items:center!important;gap:0!important;padding:4px!important;border:1px solid rgba(232,234,237,.10)!important;border-radius:999px!important;background:rgba(17,19,24,.52)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;white-space:nowrap!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row,#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-actions{display:inline-flex!important;align-items:center!important;gap:2px!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;min-height:0!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row{padding-right:4px!important;margin-right:4px!important;border-right:1px solid rgba(232,234,237,.10)!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-google-btn{height:28px!important;min-height:28px!important;padding:0 10px!important;border-radius:999px!important;font-size:11px!important;background:transparent!important;border-color:transparent!important;color:rgba(232,234,237,.78)!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-google-btn:hover{background:rgba(138,180,248,.12)!important;border-color:rgba(138,180,248,.18)!important;color:#d3e3fd!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-tool-btn{width:30px!important;height:28px!important;border-radius:999px!important;background:transparent!important;border-color:transparent!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-tool-btn:hover{background:rgba(138,180,248,.12)!important;border-color:rgba(138,180,248,.18)!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-layout{margin-top:0!important}' +
+      '#' + DIALOG_ID + ' .kn-code-editor-wrap{contain:layout paint!important;will-change:contents!important}' +
+      '#' + DIALOG_ID + ' .kn-code-layer,#' + DIALOG_ID + ' .kn-code-lines{overscroll-behavior:contain!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-form textarea{font-variant-ligatures:none!important;overscroll-behavior:contain!important;will-change:scroll-position!important}' +
+      '@media(max-width:760px){#' + DIALOG_ID + ' .kn-plugin-merged-head{grid-template-columns:1fr!important}#' + DIALOG_ID + ' .kn-plugin-head-right{width:100%!important;justify-content:space-between!important;overflow:auto!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{grid-template-columns:1fr!important;grid-template-areas:"title" "desc" "risk"!important}#' + DIALOG_ID + ' .kn-plugin-desc{white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important}}' +
+      '#'  + DIALOG_ID + ' .kn-plugin-row.enabled{box-shadow:inset 3px 0 0 rgba(129,201,149,.72)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row.disabled{opacity:.72;box-shadow:inset 3px 0 0 rgba(242,139,130,.55)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row.enabled .kn-plugin-row-title span::after{content:"已启用";display:inline-flex;margin-left:8px;padding:2px 7px;border-radius:999px;background:rgba(52,168,83,.16);color:#81c995;font-size:10.5px;font-weight:800;vertical-align:middle}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row.disabled .kn-plugin-row-title span::after{content:"已停用";display:inline-flex;margin-left:8px;padding:2px 7px;border-radius:999px;background:rgba(234,67,53,.13);color:#f28b82;font-size:10.5px;font-weight:800;vertical-align:middle}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-form{grid-template-rows:auto auto minmax(0,1fr)!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-native-group-label{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;background:rgba(138,180,248,.10);color:#a8c7fa;font-size:9px;font-weight:850;letter-spacing:.02em;flex:0 0 auto}' ;
+    style.textContent += '' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head{height:48px!important;min-height:48px!important;padding:6px 10px!important;overflow:hidden!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{grid-template-columns:auto minmax(0,1fr)!important;grid-template-areas:"title desc"!important;row-gap:0!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title-line{height:30px!important;min-width:0!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title{font-size:15px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-status{max-width:150px!important;height:22px!important;min-height:22px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-desc{font-size:10.5px!important;max-width:none!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-risk.top{display:none!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-head-right{height:34px!important;max-width:390px!important;overflow:hidden!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-google-btn{height:26px!important;min-height:26px!important;padding:0 8px!important;font-size:10.5px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-native-row .kn-native-group-label{height:18px!important;padding:0 6px!important;font-size:8.5px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-actions{height:26px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-tool-btn{width:24px!important;height:22px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row{padding:11px 10px 11px 14px!important;border-left:3px solid transparent!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row.enabled{border-left-color:#81c995!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row.disabled{border-left-color:#f28b82!important;opacity:.76!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row-title span::after{content:""!important;display:none!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row-title span{display:block!important;max-width:100%!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row-tools{gap:5px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head #kn-plugin-editor-state{display:none!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head{min-height:54px!important;padding:10px 14px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-form{padding-top:10px!important}' +
+      '@media(max-width:760px){#' + DIALOG_ID + ' .kn-plugin-merged-head{height:auto!important;min-height:0!important;grid-template-columns:1fr!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{grid-template-columns:1fr!important;grid-template-areas:"title" "desc"!important}#' + DIALOG_ID + ' .kn-plugin-head-right{max-width:100%!important;width:100%!important;overflow:auto!important}}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head .kn-plugin-editor-name-line{display:flex!important;align-items:center!important;gap:7px!important;min-width:0!important;margin-top:4px!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head .kn-plugin-editor-title-name{display:block!important;color:#d3e3fd!important;font-size:12px!important;max-width:380px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head .kn-plugin-title-edit{display:inline-flex!important}' +
+      '#' + DIALOG_ID + ' .kn-plugin-editor-head #kn-plugin-editor-state{display:none!important}';
+    document.head.appendChild(style);
+  }
+
+  function injectGoogleSettingsCSS() {
+    if (document.getElementById('kano-webos-google-settings-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kano-webos-google-settings-style';
+    style.textContent = '' +
+      '#' + DIALOG_ID + '{padding:0;border:0;background:transparent;max-width:none;max-height:none;color:#e8eaed}' +
+      '#' + DIALOG_ID + '::backdrop{background:rgba(10,12,16,.52);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}' +
+      '#' + DIALOG_ID + ' .kn-dialog-content{width:min(1080px,calc(100vw - 40px));height:min(820px,calc(100vh - 44px));border-radius:28px;background:#111318!important;border:1px solid rgba(255,255,255,.10);box-shadow:0 28px 90px rgba(0,0,0,.54);color:#e8eaed;overflow:hidden}' +
+      '#' + DIALOG_ID + ' .kn-dialog-header{padding:24px 28px 18px;background:#111318;border-bottom:1px solid rgba(232,234,237,.10);align-items:center}' +
+      '#' + DIALOG_ID + ' .kn-dialog-title{font-size:24px;font-weight:650;letter-spacing:-.02em;color:#f1f3f4;margin:0 0 6px}' +
+      '#' + DIALOG_ID + ' .kn-dialog-subtitle{font-size:13px;line-height:1.6;color:#bdc1c6;max-width:760px}' +
+      '#' + DIALOG_ID + ' .kn-dialog-body{display:grid;grid-template-columns:214px minmax(0,1fr);gap:22px;padding:22px 28px;background:#111318;overflow:auto}' +
+      '#' + DIALOG_ID + ' .kn-dialog-footer{padding:16px 28px 22px;background:#111318;border-top:1px solid rgba(232,234,237,.10)}' +
+      '#' + DIALOG_ID + ' .kn-settings-tabs{grid-column:1;display:flex;flex-direction:column;gap:4px;align-self:start;position:sticky;top:0;margin:0;padding:8px;border:0;border-radius:22px;background:#171a20;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-settings-tab{position:relative;min-height:44px;padding:0 16px;border-radius:999px;text-align:left;color:#bdc1c6;background:transparent;font-size:13px;font-weight:600;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-settings-tab:hover{background:#202124;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-settings-tab.active{background:#263850;color:#d3e3fd;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-settings-panel{grid-column:2;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}' +
+      '#' + DIALOG_ID + ' #kn-settings-panel-layout{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}' +
+      '#' + DIALOG_ID + ' #kn-settings-board{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}' +
+      '#' + DIALOG_ID + ' .kn-group-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}' +
+      '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card,#' + DIALOG_ID + ' .kn-plugin-card,#' + DIALOG_ID + ' .kn-plugin-hero{border:1px solid rgba(232,234,237,.10);background:#1b1d23;border-radius:24px;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-plugin-hero{display:flex;gap:16px;align-items:flex-start;padding:20px;margin-bottom:14px;background:linear-gradient(135deg,rgba(138,180,248,.14),rgba(27,29,35,1))}' +
+      '#' + DIALOG_ID + ' .kn-plugin-logo{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(138,180,248,.14);border:1px solid rgba(138,180,248,.22);font-size:24px;flex:0 0 auto}' +
+      '#' + DIALOG_ID + ' .kn-plugin-title{font-size:20px;font-weight:650;color:#f1f3f4;margin-bottom:6px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-desc{font-size:13px;line-height:1.7;color:#bdc1c6}' +
+      '#' + DIALOG_ID + ' .kn-plugin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-card{padding:18px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-card.full{grid-column:1/-1}' +
+      '#' + DIALOG_ID + ' .kn-plugin-card-title{font-size:15px;font-weight:650;color:#f1f3f4;margin-bottom:8px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-small{font-size:12px;line-height:1.7;color:#bdc1c6;margin-bottom:14px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-actions{display:flex;flex-wrap:wrap;gap:10px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-risk{padding:12px 14px;border-radius:18px;background:rgba(251,188,4,.08);border:1px solid rgba(251,188,4,.16);color:#fdd663;font-size:12px;line-height:1.7}' +
+      '#' + DIALOG_ID + ' .kn-group-zone{padding:16px;min-height:156px}' +
+      '#' + DIALOG_ID + ' .kn-zone-name,#' + DIALOG_ID + ' .kn-form-title,#' + DIALOG_ID + ' .kn-about-card-title{color:#f1f3f4;font-weight:650;letter-spacing:0}' +
+      '#' + DIALOG_ID + ' .kn-zone-desc,#' + DIALOG_ID + ' .kn-note,#' + DIALOG_ID + ' .kn-about-small,#' + DIALOG_ID + ' .kn-about-list{color:#bdc1c6}' +
+      '#' + DIALOG_ID + ' .kn-item{background:#202124;border-color:rgba(232,234,237,.13);color:#e8eaed;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-item:hover{background:#2a2d34;border-color:#8ab4f8}' +
+      '#' + DIALOG_ID + ' .kn-input-row input[type="text"],#' + DIALOG_ID + ' .kn-input-row input[type="number"],#' + DIALOG_ID + ' .kn-input-row select{background:#111318;border:1px solid rgba(232,234,237,.16);border-radius:16px;color:#e8eaed}' +
+      '#' + DIALOG_ID + ' .kn-input-row input:focus,#' + DIALOG_ID + ' .kn-input-row select:focus{border-color:#8ab4f8;box-shadow:0 0 0 3px rgba(138,180,248,.14)}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn,#' + DIALOG_ID + ' .kn-google-btn{min-height:38px;padding:0 16px;border-radius:999px;border:1px solid rgba(232,234,237,.14);background:#202124;color:#e8eaed;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn:hover,#' + DIALOG_ID + ' .kn-google-btn:hover{background:#2a2d34;border-color:rgba(138,180,248,.45)}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn.primary,#' + DIALOG_ID + ' .kn-google-btn.primary{background:#8ab4f8;border-color:#8ab4f8;color:#07111f}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn:disabled,#' + DIALOG_ID + ' .kn-google-btn:disabled{opacity:.55;cursor:wait}' +
+      '#' + DIALOG_ID + ' .kn-bg-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}' +
+      '#' + DIALOG_ID + ' .kn-bg-toolbar .kn-check{margin:0!important;background:#202124;border-color:rgba(232,234,237,.12)}' +
+      '#' + DIALOG_ID + ' .kn-bg-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 14px}' +
+      '#' + DIALOG_ID + ' .kn-bg-mode-option{position:relative;display:flex;align-items:flex-start;gap:10px;padding:14px;border-radius:18px;border:1px solid rgba(232,234,237,.12);background:#171a20;color:#e8eaed;cursor:pointer;transition:background .16s,border-color .16s,opacity .16s}' +
+      '#' + DIALOG_ID + ' .kn-bg-mode-option:hover{background:#202124;border-color:rgba(138,180,248,.36)}' +
+      '#' + DIALOG_ID + ' .kn-bg-mode-option input{margin-top:2px;accent-color:#8ab4f8}' +
+      '#' + DIALOG_ID + ' .kn-bg-mode-option strong{display:block;font-size:13px;font-weight:650;margin-bottom:4px;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-bg-mode-option span{display:block;font-size:12px;line-height:1.45;color:#9aa0a6}' +
+      '#' + DIALOG_ID + ' .kn-bg-dependent.is-disabled{opacity:.45;filter:grayscale(.35)}' +
+      '#' + DIALOG_ID + ' .kn-bg-dependent.is-disabled input,#' + DIALOG_ID + ' .kn-bg-dependent.is-disabled select,#' + DIALOG_ID + ' .kn-bg-dependent.is-disabled button{cursor:not-allowed!important}' +
+      '#' + DIALOG_ID + ' .kn-field-help{margin:-4px 0 12px 120px;font-size:11px;line-height:1.55;color:#9aa0a6}' +
+      '#' + DIALOG_ID + ' .kn-input-with-action{display:grid;grid-template-columns:minmax(0,1fr) 38px;gap:8px;align-items:center}' +
+      '#' + DIALOG_ID + ' .kn-icon-clear{width:38px;height:38px;min-height:38px;border-radius:50%;padding:0;border:1px solid rgba(232,234,237,.14);background:#202124;color:#bdc1c6;font-size:18px;line-height:1;cursor:pointer}' +
+      '#' + DIALOG_ID + ' .kn-icon-clear:hover{background:#2a2d34;color:#f1f3f4;border-color:rgba(138,180,248,.45)}' +
+      '#' + DIALOG_ID + ' .kn-bg-card{display:flex;flex-direction:column;min-height:172px}' +
+      '#' + DIALOG_ID + ' .kn-bg-card .kn-form-title:before{width:4px;height:14px;opacity:.55}' +
+      '#' + DIALOG_ID + ' .kn-slider-row{display:grid;grid-template-columns:90px minmax(0,1fr) 58px;gap:10px;align-items:center;margin:14px 0}' +
+      '#' + DIALOG_ID + ' .kn-slider-row label{font-size:12px;color:#bdc1c6}' +
+      '#' + DIALOG_ID + ' .kn-slider-row input[type=range]{width:100%;accent-color:#8ab4f8}' +
+      '#' + DIALOG_ID + ' .kn-slider-value{justify-self:end;min-width:54px;padding:4px 8px;border-radius:999px;background:#111318;border:1px solid rgba(232,234,237,.10);color:#e8eaed;font-size:11px;font-variant-numeric:tabular-nums;text-align:center}' +
+      '#' + DIALOG_ID + ' .kn-appearance-grid{gap:12px!important}' +
+      '#' + DIALOG_ID + ' .kn-appearance-card{padding:16px!important;background:#171a20!important;border-color:rgba(232,234,237,.08)!important}' +
+      '#' + DIALOG_ID + ' .kn-form-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}' +
+      '#' + DIALOG_ID + ' .kn-form-title-row .kn-form-title{margin-bottom:0!important}' +
+      '#' + DIALOG_ID + ' .kn-form-title.compact:before{width:4px!important;height:13px!important;opacity:.55!important}' +
+      '#' + DIALOG_ID + ' .kn-color-control{display:grid;grid-template-columns:52px minmax(120px,220px);gap:10px;align-items:center}' +
+      '#' + DIALOG_ID + ' .kn-color-control input[type=color]{width:52px!important;height:38px!important;padding:0!important;border-radius:14px!important;border:1px solid rgba(232,234,237,.16)!important;background:#111318!important;cursor:pointer}' +
+      '#' + DIALOG_ID + ' .kn-color-hex{min-height:38px!important;text-transform:uppercase;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}' +
+      '#' + DIALOG_ID + ' .kn-inline-actions{display:flex;align-items:center;gap:8px}' +
+      '#' + DIALOG_ID + ' .kn-text-action{min-height:30px;padding:0 10px;border-radius:999px;border:1px solid rgba(138,180,248,.20);background:rgba(138,180,248,.08);color:#d3e3fd;font-size:12px;font-weight:650;cursor:pointer}' +
+      '#' + DIALOG_ID + ' .kn-text-action:hover{background:rgba(138,180,248,.16)}' +
+      '#' + DIALOG_ID + ' .kn-visual-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 18px}' +
+      '#' + DIALOG_ID + ' .kn-visual-list .kn-check{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0!important;padding:8px 0!important;border:0!important;background:transparent!important;border-radius:0!important;color:#e8eaed!important}' +
+      '#' + DIALOG_ID + ' .kn-visual-list .kn-check span{font-size:13px;color:#e8eaed;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-visual-list .kn-check input{width:18px!important;height:18px!important;flex:0 0 auto}' +
+      '#' + DIALOG_ID + ' .kn-inline-config{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;align-items:center}' +
+      '#' + DIALOG_ID + ' .kn-field-help.local{margin:4px 0 0!important;font-size:11px;color:#9aa0a6}' +
+      '#' + DIALOG_ID + ' .kn-collapse-card.is-off .kn-inline-config{opacity:.45;filter:grayscale(.25)}' +
+      '#' + DIALOG_ID + ' .kn-bg-card-row{align-items:stretch}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn.small-text{min-height:34px;font-size:12px}' +
+      '#' + DIALOG_ID + ' input:disabled,#' + DIALOG_ID + ' select:disabled,#' + DIALOG_ID + ' button:disabled{opacity:.55}' +
+      '#' + DIALOG_ID + ' .kn-about-hero{padding:22px;border-radius:28px;background:linear-gradient(135deg,#1f2d42,#17212f);border:1px solid rgba(138,180,248,.18);box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-about-logo{width:62px;height:62px;border-radius:20px;background:#8ab4f8;color:#07111f;font-size:28px;font-weight:800;border:0;font-family:Google Sans,Roboto,Arial,sans-serif}' +
+      '#' + DIALOG_ID + ' .kn-about-title{font-size:22px;font-weight:650;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-about-desc{color:#d7dde6}' +
+      '#' + DIALOG_ID + ' .kn-about-tags span{background:#263850;color:#d3e3fd;border:0}' +
+      '#' + DIALOG_ID + ' .kn-about-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}' +
+      '#' + DIALOG_ID + ' .kn-about-kv{border-bottom:1px solid rgba(232,234,237,.08);padding:9px 0}' +
+      '#' + DIALOG_ID + ' .kn-about-kv b{color:#9aa0a6}' +
+      '#' + DIALOG_ID + ' .kn-about-kv span{color:#e8eaed}' +
+      '#' + DIALOG_ID + ' .kn-about-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}' +
+      '#' + DIALOG_ID + ' .kn-about-update-note{margin-top:12px;padding:12px 14px;border-radius:18px;background:#151a22;border:1px solid rgba(232,234,237,.10);color:#bdc1c6;font-size:12px;line-height:1.6}' +
+      '#' + DIALOG_ID + ' .kn-about-update-note a{color:#8ab4f8;text-decoration:none;font-weight:650}' +
+      '#' + DIALOG_ID + ' .kn-settings-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(232,234,237,.08)}' +
+      '#' + DIALOG_ID + ' .kn-settings-actions .kn-panel-btn{flex:0 0 auto}' +
+      '#' + DIALOG_ID + ' .kn-dialog-footer{justify-content:flex-end!important}' +
+      '#' + DIALOG_ID + ' .kn-footer-right.only{margin-left:auto}' +
+      '#' + DIALOG_ID + ' .kn-version-state.ok{color:#81c995}#' + DIALOG_ID + ' .kn-version-state.new{color:#8ab4f8}#' + DIALOG_ID + ' .kn-version-state.warn{color:#fdd663}#' + DIALOG_ID + ' .kn-version-state.error{color:#f28b82}#' + DIALOG_ID + ' .kn-version-state.checking{color:#bdc1c6}' +
+      '@media(max-width:980px){#' + DIALOG_ID + ' .kn-visual-list{grid-template-columns:repeat(2,minmax(0,1fr))}#' + DIALOG_ID + ' .kn-inline-config{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-color-control{grid-template-columns:52px minmax(0,1fr)}}' +
+      '@media(max-width:860px){#' + DIALOG_ID + ' .kn-dialog-content{width:calc(100vw - 20px);height:calc(100vh - 20px);border-radius:24px}#' + DIALOG_ID + ' .kn-dialog-header{padding:20px}#' + DIALOG_ID + ' .kn-dialog-body{display:block;padding:16px 20px}#' + DIALOG_ID + ' .kn-settings-tabs{position:relative;display:grid;grid-template-columns:repeat(5,max-content);overflow-x:auto;margin-bottom:16px;border-radius:999px}#' + DIALOG_ID + ' .kn-settings-tab{text-align:center;white-space:nowrap}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-plugin-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-dialog-footer{padding:14px 20px 18px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-bg-mode-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-slider-row{grid-template-columns:74px minmax(0,1fr) 54px}}' +
+      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-dialog-header{align-items:flex-start;gap:12px}#' + DIALOG_ID + ' .kn-dialog-title{font-size:22px}#' + DIALOG_ID + ' .kn-about-hero{align-items:flex-start;flex-direction:column}#' + DIALOG_ID + ' .kn-footer-left,#' + DIALOG_ID + ' .kn-footer-right{width:100%}#' + DIALOG_ID + ' .kn-panel-btn{flex:1 1 auto}}';
+    document.head.appendChild(style);
+  }
+
   function buildDialog() {
     var presetOptions = Object.keys(BACKGROUND_PRESETS).map(function (key) {
       return '<option value="' + key + '">' + BACKGROUND_PRESETS[key].label + '</option>';
@@ -1322,16 +2365,48 @@
 
     var dialog = document.createElement('dialog');
     dialog.id = DIALOG_ID;
-    dialog.innerHTML = '<div class="kn-dialog-content"><div class="kn-dialog-header"><div><div class="kn-dialog-title">界面设置</div><div class="kn-dialog-subtitle">安全布局：不移动第三方插件 div，不创建插件 Hub。这里集成导航分组、主题模式、界面美化和首页背景图设置。</div></div><button type="button" class="kn-panel-btn" data-action="close">关闭</button></div><div class="kn-dialog-body"><div class="kn-settings-tabs"><button class="kn-settings-tab active" data-tab="layout" type="button">导航分组</button><button class="kn-settings-tab" data-tab="appearance" type="button">界面美化</button><button class="kn-settings-tab" data-tab="background" type="button">首页背景</button><button class="kn-settings-tab" data-tab="about" type="button">关于</button></div><div id="kn-settings-panel-layout" class="kn-settings-panel active"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.74);font-weight:800"><span>导航分组与模块管理</span><span style="font-size:11px;color:rgba(255,255,255,.46);font-weight:500">点击项目循环移动；电脑端可拖拽</span></div><div id="kn-settings-board" class="kn-group-board"></div><div class="kn-note">当前版本采用原地显隐：第三方 div 面板不再被移动到其他容器，避免破坏原插件结构。</div></div><div id="kn-settings-panel-appearance" class="kn-settings-panel"><div class="kn-form-grid"><div class="kn-form-card full"><div class="kn-form-title">主题模式</div><div class="kn-input-row"><label>模式</label><select data-appearance="themeMode"><option value="dark">夜间模式</option><option value="light">日间模式</option><option value="auto">跟随系统</option></select></div><div class="kn-input-row"><label>强调色</label><input type="color" data-appearance="accentColor"></div><div class="kn-input-row"><label>字体缩放</label><input type="range" min="88" max="116" data-appearance="fontScale"></div><div class="kn-input-row"><label>动画强度</label><input type="range" min="0" max="2" data-appearance="animationLevel"></div></div><div class="kn-form-card full"><div class="kn-form-title">视觉效果</div><div class="kn-check-grid"><label class="kn-check"><input type="checkbox" data-appearance="enableRadius">圆角卡片</label><label class="kn-check"><input type="checkbox" data-appearance="enableShadow">悬浮阴影</label><label class="kn-check"><input type="checkbox" data-appearance="enableCapsule">胶囊按钮</label><label class="kn-check"><input type="checkbox" data-appearance="enableGlass">玻璃拟态</label><label class="kn-check"><input type="checkbox" data-appearance="enableCompact">紧凑布局</label><label class="kn-check"><input type="checkbox" data-appearance="enableHover">动态悬停</label><label class="kn-check"><input type="checkbox" data-appearance="enableScrollbar">极简滚条</label><label class="kn-check"><input type="checkbox" data-appearance="enableGradient">渐变标题</label><label class="kn-check"><input type="checkbox" data-appearance="enableSoftDivider">柔和分割线</label><label class="kn-check"><input type="checkbox" data-appearance="enableReadableText">文字增强</label></div></div><div class="kn-form-card"><div class="kn-form-title">标题渐变色</div><div class="kn-input-row"><label>起点颜色</label><input type="color" data-appearance="gradColor1"></div><div class="kn-input-row"><label>终点颜色</label><input type="color" data-appearance="gradColor2"></div></div><div class="kn-form-card"><div class="kn-form-title">顶栏质感</div><div class="kn-input-row"><label>顶栏模糊</label><input type="range" min="8" max="40" data-appearance="headerBlur"></div><div class="kn-input-row"><label>顶栏透明度</label><input type="range" min="35" max="98" data-appearance="headerOpacity"></div></div></div></div><div id="kn-settings-panel-background" class="kn-settings-panel"><div class="kn-form-grid"><div class="kn-form-card full"><div class="kn-form-title">首页背景图</div><label class="kn-check" style="margin-bottom:12px"><input type="checkbox" data-appearance="enableBackground">启用背景图</label><div class="kn-input-row"><label>预装背景</label><select data-appearance="backgroundPreset">' + presetOptions + '</select></div><div class="kn-input-row"><label>自定义 URL</label><input type="text" data-appearance="backgroundImage" placeholder="https://.../background.jpg"></div><div class="kn-note">预装背景可直接选择；自定义 URL 仍然可用。自定义 URL 不为空时优先使用自定义背景。</div></div><div class="kn-form-card"><div class="kn-form-title">背景遮罩</div><div class="kn-input-row"><label>暗度</label><input type="range" min="0" max="85" data-appearance="backgroundDim"></div><div class="kn-input-row"><label>模糊</label><input type="range" min="0" max="30" data-appearance="backgroundBlur"></div></div><div class="kn-form-card"><div class="kn-form-title">背景质感</div><div class="kn-input-row"><label>饱和度</label><input type="range" min="50" max="180" data-appearance="backgroundSaturate"></div><button type="button" class="kn-panel-btn" data-action="clearBackground">清空自定义背景</button></div></div></div><div id="kn-settings-panel-about" class="kn-settings-panel"><div class="kn-about-hero"><div class="kn-about-logo">▦</div><div><div class="kn-about-title">UFI WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS / F50 的桌面化增强控制台。核心原则：不移动第三方插件 div，不破坏原插件结构，只做安全的导航分组、原地显隐和界面增强。</div><div class="kn-about-tags"><span>Safe Layout</span><span>F50</span><span>UFI-TOOLS v4.x</span><span>2026 UI</span></div></div></div><div class="kn-about-grid"><div class="kn-about-card"><div class="kn-about-card-title">版本信息</div><div class="kn-about-kv"><b>当前版本</b><span>' + VERSION + '</span></div><div class="kn-about-kv"><b>适配环境</b><span>UFI-TOOLS v4.x / F50</span></div><div class="kn-about-kv"><b>布局策略</b><span>安全原地显隐</span></div></div><div class="kn-about-card"><div class="kn-about-card-title">开源参考</div><div class="kn-about-link-box"><span>UTools Beautifier</span><a href="https://github.com/LceAn/UTools-Beautifier" target="_blank" rel="noopener noreferrer">https://github.com/LceAn/UTools-Beautifier</a></div><div class="kn-about-small">本控制台整合了界面美化、插件面板分组和背景主题能力，可继续按你的项目风格扩展。</div></div><div class="kn-about-card"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 插件面板分组 · 日/夜间模式 · 预设背景 · 自定义背景 · 玻璃拟态 · 圆角阴影 · 胶囊按钮 · 渐变标题 · 紧凑布局</div></div><div class="kn-about-card"><div class="kn-about-card-title">自定义介绍模板</div><div class="kn-about-list">项目名称：UFI WebOS 控制台<br>作者：LceAn<br>定位：面向 F50 / UFI-TOOLS 的高级桌面化管理界面<br>愿景：让插件管理、网络管理和设备状态展示更清晰、更现代、更安全。</div></div></div></div></div><div class="kn-dialog-footer"><div class="kn-footer-left"><button type="button" class="kn-panel-btn" data-action="compact">切换紧凑顶栏</button><button type="button" class="kn-panel-btn" data-action="copy">导出配置</button><button type="button" class="kn-panel-btn" data-action="resetAppearance">恢复默认美化</button><button type="button" class="kn-panel-btn" data-action="reset">恢复默认分组</button></div><div class="kn-footer-right"><button type="button" class="kn-panel-btn primary" data-action="done">完成</button></div></div></div>';
+    dialog.innerHTML = '<div class="kn-dialog-content"><div class="kn-dialog-header"><div><div class="kn-dialog-title">界面设置</div><div class="kn-dialog-subtitle">安全布局：不移动第三方插件 div，不创建插件 Hub。这里集成导航分组、主题模式、界面美化、首页背景图和现代插件管理。</div></div><button type="button" class="kn-panel-btn" data-action="close">关闭</button></div><div class="kn-dialog-body"><div class="kn-settings-tabs"><button class="kn-settings-tab active" data-tab="layout" type="button">导航分组</button><button class="kn-settings-tab" data-tab="appearance" type="button">界面美化</button><button class="kn-settings-tab" data-tab="background" type="button">首页背景</button><button class="kn-settings-tab" data-tab="plugins" type="button">插件功能</button><button class="kn-settings-tab" data-tab="about" type="button">关于</button></div><div id="kn-settings-panel-layout" class="kn-settings-panel active"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.74);font-weight:800"><span>导航分组与模块管理</span><span style="font-size:11px;color:rgba(255,255,255,.46);font-weight:500">点击项目循环移动；电脑端可拖拽</span></div><div id="kn-settings-board" class="kn-group-board"></div><div class="kn-note">当前版本采用原地显隐：第三方 div 面板不再被移动到其他容器，避免破坏原插件结构。</div><div class="kn-settings-actions"><button type="button" class="kn-panel-btn" data-action="reset">恢复默认分组</button></div></div><div id="kn-settings-panel-appearance" class="kn-settings-panel"><div class="kn-form-grid kn-appearance-grid"><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">主题与基础</div><div class="kn-input-row"><label>模式</label><select data-appearance="themeMode"><option value="dark">夜间模式</option><option value="light">日间模式</option><option value="auto">跟随系统</option></select></div><div class="kn-input-row"><label>强调色</label><div class="kn-color-control"><input type="color" data-appearance="accentColor" aria-label="选择强调色"><input type="text" class="kn-color-hex" data-appearance="accentColor" maxlength="9" placeholder="#4E92FF"></div></div><div class="kn-field-help">支持 HEX 颜色值，例如 #3B82F6；可直接复制或手动输入。</div><div class="kn-slider-row"><label>字体缩放</label><input type="range" min="88" max="116" data-appearance="fontScale"><span class="kn-slider-value" data-value-for="fontScale">--</span></div><div class="kn-slider-row"><label>动画强度</label><input type="range" min="0" max="2" data-appearance="animationLevel"><span class="kn-slider-value" data-value-for="animationLevel">--</span></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title-row"><div class="kn-form-title">视觉效果</div><div class="kn-inline-actions"><button type="button" class="kn-text-action" data-action="appearanceAllOn">全选</button><button type="button" class="kn-text-action" data-action="appearanceDefault">重置默认</button></div></div><div class="kn-visual-list"><label class="kn-check"><span>圆角卡片</span><input type="checkbox" data-appearance="enableRadius"></label><label class="kn-check"><span>悬浮阴影</span><input type="checkbox" data-appearance="enableShadow"></label><label class="kn-check"><span>胶囊按钮</span><input type="checkbox" data-appearance="enableCapsule"></label><label class="kn-check"><span>玻璃拟态</span><input type="checkbox" data-appearance="enableGlass"></label><label class="kn-check"><span>紧凑布局</span><input type="checkbox" data-appearance="enableCompact"></label><label class="kn-check"><span>动态悬停</span><input type="checkbox" data-appearance="enableHover"></label><label class="kn-check"><span>极简滚条</span><input type="checkbox" data-appearance="enableScrollbar"></label><label class="kn-check"><span>渐变标题</span><input type="checkbox" data-appearance="enableGradient"></label><label class="kn-check"><span>柔和分割线</span><input type="checkbox" data-appearance="enableSoftDivider"></label><label class="kn-check"><span>文字增强</span><input type="checkbox" data-appearance="enableReadableText"></label></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">渐变标题</div><div class="kn-field-help local">开启“渐变标题”后，这里配置标题的起止颜色。</div></div></div><div class="kn-inline-config" data-effect-config="enableGradient"><div class="kn-input-row"><label>起点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor1"><input type="text" class="kn-color-hex" data-appearance="gradColor1" maxlength="9"></div></div><div class="kn-input-row"><label>终点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor2"><input type="text" class="kn-color-hex" data-appearance="gradColor2" maxlength="9"></div></div></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">顶栏质感</div><div class="kn-field-help local">控制顶部栏模糊、透明度与紧凑状态。</div></div><button type="button" class="kn-panel-btn small-text" data-action="compact">切换紧凑顶栏</button></div><div class="kn-inline-config"><div class="kn-slider-row"><label>顶栏模糊</label><input type="range" min="8" max="40" data-appearance="headerBlur"><span class="kn-slider-value" data-value-for="headerBlur">--</span></div><div class="kn-slider-row"><label>顶栏透明度</label><input type="range" min="35" max="98" data-appearance="headerOpacity"><span class="kn-slider-value" data-value-for="headerOpacity">--</span></div></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">美化配置</div><div class="kn-field-help" style="margin:0 0 12px">这里只重置界面美化相关配置，不影响导航分组和插件面板归类。</div><div class="kn-settings-actions" style="margin-top:0;padding-top:0;border-top:0"><button type="button" class="kn-panel-btn" data-action="resetAppearance">恢复默认美化</button></div></div></div></div><div id="kn-settings-panel-background" class="kn-settings-panel"><div class="kn-form-grid kn-bg-card-row"><div class="kn-form-card full"><div class="kn-bg-toolbar"><div class="kn-form-title">首页背景图</div><label class="kn-check"><input type="checkbox" data-appearance="enableBackground">启用背景图</label></div><div class="kn-bg-mode-grid kn-bg-dependent" data-bg-scope="source"><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="preset" data-appearance="backgroundMode"><span><strong>使用预装背景</strong><span>从内置背景中选择，适合快速切换。</span></span></label><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="custom" data-appearance="backgroundMode"><span><strong>使用自定义 URL</strong><span>使用图片链接作为首页背景。</span></span></label></div><div class="kn-input-row kn-bg-dependent" data-bg-scope="preset"><label>预装背景</label><select data-appearance="backgroundPreset">' + presetOptions + '</select></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="preset">选择预装项后立即生效；“无背景”会保留背景系统但不显示图片。</div><div class="kn-input-row kn-bg-dependent" data-bg-scope="custom"><label>自定义 URL</label><div class="kn-input-with-action"><input type="text" data-appearance="backgroundImage" placeholder="粘贴 https://.../background.jpg"><button type="button" class="kn-icon-clear" data-action="clearBackgroundUrl" title="清空自定义 URL">×</button></div></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="custom">仅在选择“使用自定义 URL”时生效。建议使用 1920×1080 或更高分辨率图片。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景遮罩</div><div class="kn-slider-row"><label>暗度</label><input type="range" min="0" max="85" data-appearance="backgroundDim"><span class="kn-slider-value" data-value-for="backgroundDim">--</span></div><div class="kn-slider-row"><label>模糊</label><input type="range" min="0" max="30" data-appearance="backgroundBlur"><span class="kn-slider-value" data-value-for="backgroundBlur">--</span></div><div class="kn-field-help" style="margin:4px 0 0">暗度控制背景遮罩透明度；模糊用于降低图片细节干扰。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景质感</div><div class="kn-slider-row"><label>饱和度</label><input type="range" min="50" max="180" data-appearance="backgroundSaturate"><span class="kn-slider-value" data-value-for="backgroundSaturate">--</span></div><div class="kn-field-help" style="margin:4px 0 14px">饱和度用于控制背景颜色浓度，不影响页面组件本身。</div><button type="button" class="kn-panel-btn small-text" data-action="resetBackgroundSettings" style="margin-top:auto;align-self:flex-start">重置背景设置</button></div></div></div><div id="kn-settings-panel-plugins" class="kn-settings-panel"><div class="kn-plugin-manager-shell"><div class="kn-plugin-topbar kn-plugin-merged-head"><div class="kn-plugin-title-block"><div class="kn-plugin-title-line"><span class="kn-plugin-title">插件管理</span><span id="kn-plugin-status" class="kn-plugin-status">尚未读取插件列表。</span></div><div class="kn-plugin-desc">左侧选择与启停，右侧编辑名称和源码。保存后写入 custom head，刷新后完整生效。</div><div class="kn-plugin-risk top">改动会写入 UFI-TOOLS custom head；修改前建议先导出备份。</div></div><div class="kn-plugin-head-right"><div class="kn-plugin-native-row"><span class="kn-native-group-label">原生</span><button type="button" class="kn-google-btn" data-action="openNativePluginFeature">插件管理</button><button type="button" class="kn-google-btn" data-action="openNativePluginStore">插件商店</button><button type="button" class="kn-google-btn" data-action="openNativePluginFiles">上传文件</button></div><div class="kn-plugin-actions" aria-label="插件全局操作"><button type="button" class="kn-plugin-tool-btn" data-plugin-action="refresh" title="重新读取插件列表"><span class="kn-tool-ico">↻</span><span class="kn-tool-text">读取</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="import" title="导入插件文件"><span class="kn-tool-ico">＋</span><span class="kn-tool-text">导入</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="export" title="导出当前插件备份"><span class="kn-tool-ico">⇩</span><span class="kn-tool-text">备份</span></button></div></div></div><input type="file" id="kn-plugin-import-file" accept=".txt,.js,.html,.htm" style="display:none"><div class="kn-plugin-layout"><aside class="kn-plugin-list-card"><div class="kn-plugin-list-head"><div class="kn-plugin-list-title-row"><div><strong>插件列表</strong><span id="kn-plugin-count">0 个插件</span></div><button type="button" id="kn-plugin-search-toggle" class="kn-plugin-search-toggle" title="搜索插件" aria-label="搜索插件">⌕</button></div><input id="kn-plugin-search" type="text" placeholder="搜索插件名称 / 源码"></div><div id="kn-plugin-list" class="kn-plugin-list"><div class="kn-plugin-empty">点击“重新读取”读取当前插件。</div></div></aside><section class="kn-plugin-editor-card"><div class="kn-plugin-editor-head"><div><strong>插件详情</strong><span id="kn-plugin-editor-state">未选择插件</span><div class="kn-plugin-editor-name-line"><span id="kn-plugin-editor-title-name" class="kn-plugin-editor-title-name">未选择插件</span><button type="button" class="kn-plugin-title-edit" data-plugin-action="beginRename" title="重命名插件" aria-label="重命名插件">' + knPluginActionIcon('edit') + '</button></div></div><div class="kn-plugin-editor-actions"><button type="button" class="kn-plugin-icon-action primary" data-plugin-action="applyEditor" title="保存插件" aria-label="保存插件">' + knPluginActionIcon('save') + '<span class="kn-action-text">保存插件</span></button><button type="button" class="kn-plugin-icon-action" data-plugin-action="copyCode" title="复制源码" aria-label="复制源码">' + knPluginActionIcon('copy') + '<span class="kn-action-text">复制源码</span></button><button type="button" class="kn-plugin-icon-action danger" data-plugin-action="deleteSelected" title="删除插件" aria-label="删除插件">' + knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span></button></div></div><div class="kn-plugin-editor-form"><div class="kn-plugin-field kn-plugin-name-field"><label>插件名称</label><input id="kn-plugin-editor-name" type="text" placeholder="选择插件后可重命名"></div><div class="kn-plugin-code-head"><label>源码内容</label><span>内置行号与基础高亮</span></div><div class="kn-code-editor-wrap"><div id="kn-plugin-editor-lines" class="kn-code-lines">1</div><div class="kn-code-layer"><pre id="kn-plugin-editor-highlight" class="kn-code-highlight" aria-hidden="true"></pre><textarea id="kn-plugin-editor-code" spellcheck="false" placeholder="选择插件后显示源码"></textarea></div></div></div></section></div></div></div><div id="kn-settings-panel-about" class="kn-settings-panel"><div class="kn-about-hero"><div class="kn-about-logo">G</div><div><div class="kn-about-title">UFI WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS / UFI / CPE 设备的桌面化增强控制台。核心原则：不移动第三方插件 div，不破坏原插件结构，只做安全的导航分组、原地显隐和界面增强。</div><div class="kn-about-tags"><span>Material UI</span><span>Safe Layout</span><span>UFI-TOOLS v4.x</span><span>2026 UI</span></div></div></div><div class="kn-about-grid"><div class="kn-about-card"><div class="kn-about-card-title">版本信息</div><div class="kn-about-kv"><b>当前版本</b><span id="kn-about-current-version">' + VERSION + '</span></div><div class="kn-about-kv"><b>GitHub 仓库</b><span>' + GITHUB_REPO + '</span></div><div class="kn-about-kv"><b>最新版本</b><span id="kn-about-latest-version">未检查</span></div><div class="kn-about-kv"><b>版本状态</b><span id="kn-about-version-state">点击下方按钮检查</span></div><div class="kn-about-actions"><button type="button" class="kn-google-btn primary" data-action="checkGithubVersion">检查 GitHub 版本</button><a class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">打开仓库</a><button type="button" class="kn-google-btn" data-action="copy">导出配置</button></div><div id="kn-about-update-note" class="kn-about-update-note">将请求 GitHub Releases 最新版本；如果仓库没有 Release，会自动尝试 Tags。</div></div><div class="kn-about-card"><div class="kn-about-card-title">适配与策略</div><div class="kn-about-kv"><b>适配环境</b><span>UFI-TOOLS v4.x / 通用 UFI 设备</span></div><div class="kn-about-kv"><b>布局策略</b><span>安全原地显隐</span></div><div class="kn-about-kv"><b>插件原则</b><span>不迁移第三方 div</span></div><div class="kn-about-small">设置页采用 Google Material 风格重构：更明确的信息层级、更轻的卡片、更克制的蓝色强调和更好的小屏适配。</div></div><div class="kn-about-card"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 现代插件管理 · 原生插件备用入口 · 插件面板分组 · 日/夜间模式 · 预设背景 · 自定义背景 · 玻璃拟态 · 圆角阴影 · 胶囊按钮 · 渐变标题 · 紧凑布局 · 扩展工具箱</div></div><div class="kn-about-card"><div class="kn-about-card-title">项目信息</div><div class="kn-about-list">项目名称：UFI WebOS 控制台<br>作者：LceAn<br>定位：面向 UFI-TOOLS 的高级桌面化管理界面<br>愿景：让插件管理、网络管理和设备状态展示更清晰、更现代、更安全。</div></div></div></div></div><div class="kn-dialog-footer"><div class="kn-footer-right only"><button type="button" class="kn-panel-btn primary" data-action="done">完成</button></div></div></div>';
 
     dialog.addEventListener('click', function (e) { if (e.target === dialog) closeSettingsDialog(); });
     dialog.querySelector('[data-action="close"]').onclick = closeSettingsDialog;
     dialog.querySelector('[data-action="done"]').onclick = closeSettingsDialog;
-    dialog.querySelector('[data-action="compact"]').onclick = function () { state.config.compactHeader = !state.config.compactHeader; saveConfig(); updateNavButtons(); };
-    dialog.querySelector('[data-action="copy"]').onclick = exportConfig;
-    dialog.querySelector('[data-action="reset"]').onclick = resetLayout;
-    dialog.querySelector('[data-action="resetAppearance"]').onclick = resetAppearance;
-    dialog.querySelector('[data-action="clearBackground"]').onclick = function () { state.config.appearance.backgroundImage = ''; saveConfig(); bindAppearanceControls(); applyAppearance(); };
+    var compactBtn = dialog.querySelector('[data-action="compact"]'); if (compactBtn) compactBtn.onclick = function () { state.config.compactHeader = !state.config.compactHeader; saveConfig(); updateNavButtons(); };
+    var copyBtn = dialog.querySelector('[data-action="copy"]'); if (copyBtn) copyBtn.onclick = exportConfig;
+    var resetBtn = dialog.querySelector('[data-action="reset"]'); if (resetBtn) resetBtn.onclick = resetLayout;
+    var resetAppearanceBtn = dialog.querySelector('[data-action="resetAppearance"]'); if (resetAppearanceBtn) resetAppearanceBtn.onclick = resetAppearance;
+    var appearanceAllOnBtn = dialog.querySelector('[data-action="appearanceAllOn"]');
+    if (appearanceAllOnBtn) appearanceAllOnBtn.onclick = function () { ['enableRadius','enableShadow','enableCapsule','enableGlass','enableCompact','enableGradient','enableHover','enableScrollbar','enableReadableText','enableSoftDivider'].forEach(function (key) { state.config.appearance[key] = true; }); saveConfig(); bindAppearanceControls(); applyAppearance(); };
+    var appearanceDefaultBtn = dialog.querySelector('[data-action="appearanceDefault"]');
+    if (appearanceDefaultBtn) appearanceDefaultBtn.onclick = function () { Object.keys(DEFAULT_APPEARANCE).forEach(function (key) { if (key.indexOf('enable') === 0 || key === 'gradColor1' || key === 'gradColor2' || key === 'headerBlur' || key === 'headerOpacity' || key === 'accentColor' || key === 'fontScale' || key === 'animationLevel' || key === 'themeMode') state.config.appearance[key] = DEFAULT_APPEARANCE[key]; }); saveConfig(); bindAppearanceControls(); applyAppearance(); };
+    var checkGithubBtn = dialog.querySelector('[data-action="checkGithubVersion"]');
+    if (checkGithubBtn) checkGithubBtn.onclick = checkGithubVersion;
+    var nativePluginBtn = dialog.querySelector('[data-action="openNativePluginFeature"]');
+    if (nativePluginBtn) nativePluginBtn.onclick = openNativePluginFeature;
+    var nativePluginAddBtn = dialog.querySelector('[data-action="openNativePluginAdd"]');
+    if (nativePluginAddBtn) nativePluginAddBtn.onclick = function () { triggerNativePluginSubAction('add'); };
+    var nativePluginStoreBtn = dialog.querySelector('[data-action="openNativePluginStore"]');
+    if (nativePluginStoreBtn) nativePluginStoreBtn.onclick = function () { triggerNativePluginSubAction('store'); };
+    var nativePluginExportBtn = dialog.querySelector('[data-action="openNativePluginExport"]');
+    if (nativePluginExportBtn) nativePluginExportBtn.onclick = function () { triggerNativePluginSubAction('importExport'); };
+    var nativePluginFilesBtn = dialog.querySelector('[data-action="openNativePluginFiles"]');
+    if (nativePluginFilesBtn) nativePluginFilesBtn.onclick = function () { triggerNativePluginSubAction('files'); };
+    knPluginBindManager(dialog);
+    setTimeout(function () { if (!knPluginManager.loaded) knPluginRefresh(); }, 60);
+    var clearBgUrlBtn = dialog.querySelector('[data-action="clearBackgroundUrl"]');
+    if (clearBgUrlBtn) clearBgUrlBtn.onclick = function () { state.config.appearance.backgroundImage = ''; state.config.appearance.backgroundMode = 'custom'; saveConfig(); bindAppearanceControls(); applyAppearance(); };
+    var resetBgBtn = dialog.querySelector('[data-action="resetBackgroundSettings"]');
+    if (resetBgBtn) resetBgBtn.onclick = function () {
+      state.config.appearance.enableBackground = false;
+      state.config.appearance.backgroundMode = 'preset';
+      state.config.appearance.backgroundPreset = DEFAULT_APPEARANCE.backgroundPreset;
+      state.config.appearance.backgroundImage = '';
+      state.config.appearance.backgroundDim = DEFAULT_APPEARANCE.backgroundDim;
+      state.config.appearance.backgroundBlur = DEFAULT_APPEARANCE.backgroundBlur;
+      state.config.appearance.backgroundSaturate = DEFAULT_APPEARANCE.backgroundSaturate;
+      saveConfig();
+      bindAppearanceControls();
+      applyAppearance();
+    };
     Array.prototype.slice.call(dialog.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
       btn.onclick = function () { switchSettingsTab(btn.getAttribute('data-tab')); };
     });
@@ -1339,6 +2414,7 @@
   }
 
   function switchSettingsTab(tab) {
+    if (tab === 'plugins' && !knPluginManager.loaded) setTimeout(knPluginRefresh, 30);
     Array.prototype.slice.call(document.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
     });
@@ -1347,22 +2423,115 @@
     });
   }
 
+  function formatAppearanceValue(key, value) {
+    if (key === 'backgroundDim') return String(value) + '%';
+    if (key === 'backgroundBlur') return String(value) + 'px';
+    if (key === 'backgroundSaturate') return String(value) + '%';
+    if (key === 'headerBlur') return String(value) + 'px';
+    if (key === 'headerOpacity') return String(value) + '%';
+    if (key === 'fontScale') return (Number(value) / 100).toFixed(2).replace(/0$/, '').replace(/\.$/, '') + 'x';
+    if (key === 'animationLevel') return ['0%', '80%', '120%'][Number(value)] || String(value);
+    return String(value);
+  }
+
+  function normalizeHexColor(value, fallback) {
+    var raw = String(value || '').trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toUpperCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(raw)) return ('#' + raw.charAt(1) + raw.charAt(1) + raw.charAt(2) + raw.charAt(2) + raw.charAt(3) + raw.charAt(3)).toUpperCase();
+    return fallback || '#4E92FF';
+  }
+
+  function syncAppearancePeerControls(key, source) {
+    if (!state.config || !state.config.appearance) return;
+    var val = state.config.appearance[key];
+    Array.prototype.slice.call(document.querySelectorAll('[data-appearance="' + key + '"]')).forEach(function (el) {
+      if (el === source) return;
+      if (el.type === 'checkbox') el.checked = !!val;
+      else if (el.type === 'radio') el.checked = String(val) === String(el.value);
+      else el.value = val;
+    });
+  }
+
+  function updateAppearanceSectionsUI() {
+    if (!state.config || !state.config.appearance) return;
+    var a = state.config.appearance;
+    Array.prototype.slice.call(document.querySelectorAll('[data-effect-config]')).forEach(function (el) {
+      var key = el.getAttribute('data-effect-config');
+      var enabled = !!a[key];
+      var card = el.closest ? el.closest('.kn-collapse-card') : null;
+      if (card) card.classList.toggle('is-off', !enabled);
+      Array.prototype.slice.call(el.querySelectorAll('input,select,button')).forEach(function (input) { input.disabled = !enabled; });
+    });
+  }
+
+  function updateAppearanceValueLabels() {
+    if (!state.config || !state.config.appearance) return;
+    var a = state.config.appearance;
+    Array.prototype.slice.call(document.querySelectorAll('[data-value-for]')).forEach(function (el) {
+      var key = el.getAttribute('data-value-for');
+      if (!Object.prototype.hasOwnProperty.call(a, key)) return;
+      el.textContent = formatAppearanceValue(key, a[key]);
+    });
+    updateAppearanceSectionsUI();
+  }
+
+  function updateBackgroundControlsUI() {
+    if (!state.config || !state.config.appearance) return;
+    var a = state.config.appearance;
+    var enabled = !!a.enableBackground;
+    var mode = a.backgroundMode === 'custom' ? 'custom' : 'preset';
+
+    Array.prototype.slice.call(document.querySelectorAll('[data-bg-scope]')).forEach(function (el) {
+      var scope = el.getAttribute('data-bg-scope');
+      var active = enabled;
+      if (scope === 'preset') active = enabled && mode === 'preset';
+      if (scope === 'custom') active = enabled && mode === 'custom';
+      el.classList.toggle('is-disabled', !active);
+      Array.prototype.slice.call(el.querySelectorAll('input,select,button')).forEach(function (child) {
+        if (child.getAttribute('data-appearance') === 'backgroundMode') child.disabled = !enabled;
+        else child.disabled = !active;
+      });
+    });
+
+    Array.prototype.slice.call(document.querySelectorAll('.kn-bg-mode-option')).forEach(function (label) {
+      var radio = label.querySelector('input[type="radio"]');
+      var selected = radio && radio.checked;
+      label.classList.toggle('active', !!selected);
+    });
+
+    updateAppearanceValueLabels();
+  }
+
   function bindAppearanceControls() {
     if (!state.config || !state.config.appearance) return;
     var a = state.config.appearance;
     Array.prototype.slice.call(document.querySelectorAll('[data-appearance]')).forEach(function (input) {
       var key = input.getAttribute('data-appearance');
       if (!Object.prototype.hasOwnProperty.call(a, key)) return;
+
       if (input.type === 'checkbox') input.checked = !!a[key];
+      else if (input.type === 'radio') input.checked = String(a[key]) === String(input.value);
       else input.value = a[key];
+
       input.oninput = input.onchange = function () {
         if (input.type === 'checkbox') a[key] = input.checked;
-        else if (input.type === 'range' || input.type === 'number') a[key] = Number(input.value);
-        else a[key] = input.value;
+        else if (input.type === 'radio') {
+          if (!input.checked) return;
+          a[key] = input.value;
+        } else if (input.type === 'range' || input.type === 'number') {
+          a[key] = Number(input.value);
+        } else {
+          a[key] = input.value;
+          if (input.classList && input.classList.contains('kn-color-hex')) a[key] = normalizeHexColor(input.value, a[key]);
+        }
+        syncAppearancePeerControls(key, input);
         saveConfig();
+        updateBackgroundControlsUI();
+        updateAppearanceValueLabels();
         applyAppearance();
       };
     });
+    updateBackgroundControlsUI();
   }
 
   function applyAppearance() {
@@ -1637,6 +2806,29 @@
             o.indexOf('client') !== -1 && (o.indexOf('list') !== -1 || o.indexOf('device') !== -1) ||
             o.indexOf('station') !== -1 && (o.indexOf('list') !== -1 || o.indexOf('device') !== -1) ||
             o.indexOf('wifi') !== -1 && (o.indexOf('client') !== -1 || o.indexOf('device') !== -1);
+        }
+      };
+    }
+    if (action === 'pluginFeature') {
+      return {
+        cacheKey: 'nativePluginFeatureBtn',
+        label: '插件功能',
+        missing: '没有找到原平台的「插件功能」入口',
+        panelKeywords: ['插件功能', '插件管理', '插件列表', '添加插件', '插件商店', '启用', '停用', '导入', '导出', '清空全部', '上传文件'],
+        match: function (text, onclick, title) {
+          var combo = clean(text + ' ' + title);
+          var tc = combo.replace(/\s+/g, '').toLowerCase();
+          var o = onclick.toLowerCase();
+          return combo.indexOf('插件功能') !== -1 ||
+            combo.indexOf('插件管理') !== -1 ||
+            combo.indexOf('插件商店') !== -1 ||
+            combo.indexOf('插件列表') !== -1 ||
+            combo.indexOf('添加插件') !== -1 ||
+            combo.indexOf('导入插件') !== -1 ||
+            tc.indexOf('plugin') !== -1 ||
+            o.indexOf('plugin') !== -1 ||
+            o.indexOf('addon') !== -1 ||
+            o.indexOf('extension') !== -1;
         }
       };
     }
@@ -2106,7 +3298,8 @@
       { action: 'command', className: 'kn-native-command-source' },
       { action: 'password', className: 'kn-native-password-source' },
       { action: 'wifiSettings', className: 'kn-native-wifi-settings-source' },
-      { action: 'accessDevices', className: 'kn-native-access-devices-source' }
+      { action: 'accessDevices', className: 'kn-native-access-devices-source' },
+      { action: 'pluginFeature', className: 'kn-native-plugin-source' }
     ];
 
     actions.forEach(function (item) {
@@ -2251,6 +3444,8 @@
     injectHeaderMobileLayoutFinalCSS();
     injectHeaderMobileNetworkCapsuleFixCSS();
     injectHeaderNetworkPopoverPortalCSS();
+    injectGoogleSettingsCSS();
+    injectModernPluginManagerCSS();
     injectAppearanceCSS();
     buildHeader(container);
     buildToolbox(container);
