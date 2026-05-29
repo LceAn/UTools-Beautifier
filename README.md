@@ -6,6 +6,11 @@
 [![UFI-TOOLS](https://img.shields.io/badge/UFI--TOOLS-v4.0.0-orange)](#)
 
 ---
+## 效果
+<img width="1244" height="1134" alt="image" src="https://github.com/user-attachments/assets/6f04bf82-1dac-4d17-b265-4170df5a1904" />
+
+
+---
 
 ## 📦 插件列表
 
