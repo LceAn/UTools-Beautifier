@@ -2,13 +2,16 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.10.4-home-dashboard-v13-maintenance-compact-polish';
+  var VERSION = '26.11.8-webos-welcome-issue-fix';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
+  var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var PHONE_SMS_PLUGIN_URL = GITHUB_REPO_URL;
   var OPERATOR_INFO_PLUGIN_URL = GITHUB_REPO_URL;
   var EXTERNAL_KANO_PHONE_SMS = (window.KanoPhoneSMS && typeof window.KanoPhoneSMS.open === 'function') ? window.KanoPhoneSMS : null;
   var CONFIG_KEY = 'kano_webos_config_v26_clean';
+  var WEBOS_CONFIG_KEY = 'kano_webos_runtime_config_v1';
+  var WEBOS_WELCOME_KEY = 'kano_webos_welcome_hidden_v1';
 
   var HEADER_ID = 'kn-app-header';
   var STYLE_ID = 'kano-webos-style';
@@ -142,6 +145,169 @@
     if (typeof min === 'number' && n < min) n = min;
     if (typeof max === 'number' && n > max) n = max;
     return n;
+  }
+
+
+  var DEFAULT_WEBOS_CONFIG = {
+    nativeButtonMigration: true,
+    homeHeavyCards: true,
+    homeDetails: true,
+    homeExitIp: true,
+    homePhoneSmsCard: true,
+    homeOperatorCard: true,
+    homeMaintenance: true,
+    homeAutoRefresh: true,
+    toolboxCapture: true,
+    phoneSmsBuiltin: true,
+    operatorInfoCard: true,
+    welcomeEnabled: true,
+    compatibilityMode: false
+  };
+
+  function readWebOSConfig() {
+    var cfg = clone(DEFAULT_WEBOS_CONFIG);
+    try {
+      var raw = localStorage.getItem(WEBOS_CONFIG_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw) || {};
+        Object.keys(cfg).forEach(function (key) {
+          if (Object.prototype.hasOwnProperty.call(parsed, key)) cfg[key] = parsed[key] !== false;
+        });
+      }
+    } catch (e) {}
+    return cfg;
+  }
+
+  function saveWebOSConfig(cfg) {
+    try { localStorage.setItem(WEBOS_CONFIG_KEY, JSON.stringify(cfg || readWebOSConfig())); } catch (e) {}
+  }
+
+  function isWebOSFeatureEnabled(key) {
+    var cfg = readWebOSConfig();
+    return cfg[key] !== false;
+  }
+
+  function setWebOSFeature(key, value) {
+    var cfg = readWebOSConfig();
+    cfg[key] = value !== false;
+    saveWebOSConfig(cfg);
+    applyWebOSFeatureFlags();
+    syncWebOSSettingsControls();
+  }
+
+  function setWebOSCompatibilityMode(enable) {
+    var cfg = readWebOSConfig();
+    cfg.compatibilityMode = !!enable;
+    if (enable) {
+      cfg.nativeButtonMigration = false;
+      cfg.homeHeavyCards = false;
+      cfg.homeExitIp = false;
+      cfg.homePhoneSmsCard = false;
+      cfg.homeOperatorCard = false;
+      cfg.homeMaintenance = false;
+      cfg.homeAutoRefresh = false;
+      cfg.toolboxCapture = false;
+    } else {
+      Object.keys(DEFAULT_WEBOS_CONFIG).forEach(function (key) { cfg[key] = DEFAULT_WEBOS_CONFIG[key]; });
+    }
+    saveWebOSConfig(cfg);
+    applyWebOSFeatureFlags();
+    syncWebOSSettingsControls();
+  }
+
+  function getWebOSDeviceIdentityText() {
+    var text = '';
+    try { text += ' ' + clean(document.body && document.body.innerText || ''); } catch (e) {}
+    try { text += ' ' + clean(document.title || ''); } catch (e) {}
+    return text;
+  }
+
+  function detectWebOSDeviceInfo() {
+    var text = getWebOSDeviceIdentityText();
+    var model = '';
+    var m = text.match(/\bF50(?:\s|\b|[-_])/i) || text.match(/(?:设备型号|型号|Model)\s*[:：]?\s*([A-Za-z0-9_-]{2,30})/i);
+    if (m) model = clean(m[1] || m[0]).replace(/[：:]+$/, '');
+    var isF50 = /\bF50\b/i.test(text) || /\bF50\b/i.test(model);
+    return { model: model || (isF50 ? 'F50' : '未知设备'), isF50: isF50 };
+  }
+
+  function applyWebOSFeatureFlags() {
+    var cfg = readWebOSConfig();
+    var root = document.documentElement;
+    if (root) {
+      root.classList.toggle('kn-webos-native-off', cfg.nativeButtonMigration === false);
+      root.classList.toggle('kn-webos-heavy-off', cfg.homeHeavyCards === false);
+      root.classList.toggle('kn-webos-details-off', cfg.homeDetails === false);
+      root.classList.toggle('kn-webos-exitip-off', cfg.homeExitIp === false);
+      root.classList.toggle('kn-webos-phonesms-off', cfg.homePhoneSmsCard === false);
+      root.classList.toggle('kn-webos-operator-off', cfg.homeOperatorCard === false || cfg.operatorInfoCard === false);
+      root.classList.toggle('kn-webos-maint-off', cfg.homeMaintenance === false);
+    }
+    if (cfg.nativeButtonMigration === false) restoreHomeFunctionListButtons();
+    syncHomeRefreshControls();
+  }
+
+  function restoreHomeFunctionListButtons() {
+    Array.prototype.slice.call(document.querySelectorAll('.kn-home-function-hidden')).forEach(function (el) {
+      el.classList.remove('kn-home-function-hidden');
+      try { el.removeAttribute('data-kn-home-function-hidden'); } catch (e) {}
+      try { el.style.display = ''; el.style.visibility = ''; el.style.opacity = ''; } catch (e) {}
+    });
+  }
+
+  function syncWebOSSettingsControls() {
+    var cfg = readWebOSConfig();
+    Array.prototype.slice.call(document.querySelectorAll('[data-webos-feature]')).forEach(function (input) {
+      var key = input.getAttribute('data-webos-feature');
+      if (input.type === 'checkbox') input.checked = cfg[key] !== false;
+    });
+    var compat = document.querySelector('[data-webos-action="compatMode"]');
+    if (compat) compat.textContent = cfg.compatibilityMode ? '退出兼容模式' : '一键关闭增强功能';
+  }
+
+  function ensureWebOSRuntimeCSS() {
+    if (document.getElementById('kano-webos-runtime-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kano-webos-runtime-style';
+    style.textContent = '' +
+      '.kn-webos-heavy-off #kn-home-dashboard .kn-home-dashboard-fusion,.kn-webos-heavy-off #kn-home-dashboard .kn-home-resource-card{display:none!important}' +
+      '.kn-webos-details-off #kn-home-dashboard .kn-home-details-wrap{display:none!important}' +
+      '.kn-webos-exitip-off #kn-home-exit-ip-card{display:none!important}' +
+      '.kn-webos-phonesms-off #kn-home-phone-sms-card{display:none!important}' +
+      '.kn-webos-operator-off #kn-home-operator-card{display:none!important}' +
+      '.kn-webos-maint-off #kn-home-maint-card{display:none!important}' +
+      '.kn-webos-welcome-mask{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}' +
+      '.kn-webos-welcome{width:min(720px,calc(100vw - 32px));border-radius:28px;border:1px solid rgba(255,255,255,.13);background:radial-gradient(circle at 12% 0%,rgba(120,180,255,.18),transparent 36%),linear-gradient(180deg,rgba(24,29,40,.98),rgba(9,13,20,.98));box-shadow:0 30px 90px rgba(0,0,0,.58);color:#fff;overflow:hidden}' +
+      '.kn-webos-welcome-head{display:flex;justify-content:space-between;gap:16px;padding:24px 26px 18px;border-bottom:1px solid rgba(255,255,255,.08)}.kn-webos-welcome-kicker{font-size:11px;font-weight:900;color:#8fc2ff;letter-spacing:.08em;margin-bottom:8px}.kn-webos-welcome-title{font-size:23px;font-weight:950}.kn-webos-welcome-sub{margin-top:8px;font-size:13px;color:rgba(255,255,255,.62);line-height:1.7}.kn-webos-device-pill{height:34px;display:inline-flex;align-items:center;padding:0 12px;border-radius:999px;background:rgba(57,210,121,.13);border:1px solid rgba(134,239,172,.24);color:#e4ffed;font-size:12px;font-weight:900;white-space:nowrap}.kn-webos-device-pill.warn{background:rgba(247,201,72,.13);border-color:rgba(247,201,72,.30);color:#fff4d0}' +
+      '.kn-webos-welcome-body{padding:20px 26px 24px}.kn-webos-welcome-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}.kn-webos-welcome-card{padding:13px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}.kn-webos-welcome-card b{display:block;font-size:12px;margin-bottom:6px}.kn-webos-welcome-card span{font-size:11px;color:rgba(255,255,255,.55);line-height:1.55}.kn-webos-welcome-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}.kn-webos-welcome-check{display:flex;gap:8px;align-items:center;font-size:12px;color:rgba(255,255,255,.70)}.kn-webos-welcome-btns{display:flex;gap:8px;flex-wrap:wrap}.kn-webos-btn{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#fff;font-weight:850;cursor:pointer}.kn-webos-btn.primary{background:rgba(78,146,255,.22);border-color:rgba(120,180,255,.34)}.kn-webos-btn.warn{background:rgba(247,201,72,.13);border-color:rgba(247,201,72,.28);color:#fff4d0}' +
+      '.kn-webos-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kn-webos-setting-card{padding:16px;border-radius:20px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075)}.kn-webos-setting-card.full{grid-column:1/-1}.kn-webos-setting-title{font-size:14px;font-weight:950;margin-bottom:8px;color:rgba(255,255,255,.88)}.kn-webos-setting-desc{font-size:12px;line-height:1.65;color:rgba(255,255,255,.55);margin-bottom:12px}.kn-webos-switch-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kn-webos-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);font-size:12px;color:rgba(255,255,255,.78);font-weight:800}.kn-webos-switch input{width:18px;height:18px;accent-color:#4e92ff}@media(max-width:760px){.kn-webos-welcome-grid,.kn-webos-settings-grid,.kn-webos-switch-list{grid-template-columns:1fr}}';
+    document.head.appendChild(style);
+  }
+
+  function showWebOSWelcomeIfNeeded(force) {
+    ensureWebOSRuntimeCSS();
+    if (document.querySelector('.kn-webos-welcome-mask')) return;
+    var cfg = readWebOSConfig();
+    if (!force && cfg.welcomeEnabled === false) return;
+    try { if (!force && localStorage.getItem(WEBOS_WELCOME_KEY) === '1') return; } catch (e) {}
+    var info = detectWebOSDeviceInfo();
+    var mask = document.createElement('div');
+    mask.className = 'kn-webos-welcome-mask';
+    mask.innerHTML = '<div class="kn-webos-welcome"><div class="kn-webos-welcome-head"><div><div class="kn-webos-welcome-kicker">WEBOS FIRST RUN</div><div class="kn-webos-welcome-title">欢迎使用 F50 适配版控制台</div><div class="kn-webos-welcome-sub">当前界面针对 F50/UFI-TOOLS 做了首页仪表盘、原生按钮收纳、插件管理、运营商信息与设备出口 IP 等增强。非 F50 设备可能存在字段不兼容。</div></div><div class="kn-webos-device-pill ' + (info.isF50 ? '' : 'warn') + '">' + (info.isF50 ? '已识别 F50' : '未确认 F50') + '</div></div><div class="kn-webos-welcome-body"><div class="kn-webos-welcome-grid"><div class="kn-webos-welcome-card"><b>设备识别</b><span>检测结果：' + knEsc(info.model) + '</span></div><div class="kn-webos-welcome-card"><b>兼容策略</b><span>如果不是 F50，可在 WebOS 设置里一键关闭重度增强。</span></div><div class="kn-webos-welcome-card"><b>安全原则</b><span>原生功能保留，可随时还原前端功能列表按钮。</span></div></div>' + (info.isF50 ? '' : '<div class="kn-note" style="margin-top:10px">检测结果不是明确 F50。建议先进入 WebOS 设置，使用“一键关闭增强功能”减少大量状态读取和首页增强卡片。</div>') + '<div class="kn-webos-welcome-actions"><label class="kn-webos-welcome-check"><input type="checkbox" id="kn-webos-welcome-hide" checked> 下次不再展示</label><div class="kn-webos-welcome-btns"><button type="button" class="kn-webos-btn" data-webos-welcome="settings">打开 WebOS 设置</button>' + (info.isF50 ? '' : '<button type="button" class="kn-webos-btn warn" data-webos-welcome="compat">一键关闭增强</button>') + '<button type="button" class="kn-webos-btn primary" data-webos-welcome="enter">进入控制台</button></div></div></div></div>';
+    function closeWelcome() {
+      var hide = mask.querySelector('#kn-webos-welcome-hide');
+      if (!hide || hide.checked) { try { localStorage.setItem(WEBOS_WELCOME_KEY, '1'); } catch (e) {} }
+      mask.remove();
+    }
+    mask.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('[data-webos-welcome]') : null;
+      if (!btn) return;
+      var action = btn.getAttribute('data-webos-welcome');
+      if (action === 'compat') setWebOSCompatibilityMode(true);
+      closeWelcome();
+      if (action === 'settings') setTimeout(function () { openSettingsDialog(); switchSettingsTab('webos'); }, 60);
+    });
+    document.body.appendChild(mask);
   }
 
   function getTheme() {
@@ -434,6 +600,7 @@
       '@media(max-width:1180px){#' + HEADER_ID + '{grid-template-columns:minmax(220px,260px) minmax(350px,auto) max-content!important;width:min(1160px,calc(100% - 28px))!important}#kn-main-nav{grid-template-columns:repeat(6,minmax(56px,64px))!important}.kn-nav-btn{padding:0 8px!important}.kn-wifi-pill{min-width:122px!important;flex-basis:122px!important;max-width:126px!important}.kn-wifi-status-text{display:none!important}}' +
       '@media(max-width:980px){#' + HEADER_ID + '{grid-template-columns:1fr!important;width:calc(100% - 18px)!important}#kn-header-actions{width:100%!important;max-width:none!important;display:grid!important;grid-template-columns:minmax(0,1fr) 92px 42px 42px!important;justify-content:stretch!important}#kn-header-net-pill{width:100%!important;max-width:none!important;min-width:0!important}.kn-wifi-pill{width:92px!important;min-width:92px!important;flex-basis:92px!important}.kn-wifi-status-text{display:none!important}}' +
       '@media(max-width:520px){#kn-header-actions{grid-template-columns:minmax(0,1fr) 54px 40px 40px!important;gap:6px!important}.kn-wifi-pill{width:54px!important;min-width:54px!important;flex-basis:54px!important;padding:0!important}.kn-wifi-main,.kn-wifi-status-text{display:none!important}#kn-header-nettype{min-width:38px!important;padding:0 8px!important}#kn-header-operator{max-width:62px!important}.kn-settings-icon-btn,.kn-login-pill{width:40px!important;min-width:40px!important}}' +
+      '.kn-login-icon{background:transparent!important;border:0!important;box-shadow:none!important}.kn-login-pill .kn-login-icon{background:transparent!important;border:0!important;box-shadow:none!important}' +
       '#kn-header-actions:not(.is-ultra-tight) #kn-header-wifi-btn.kn-wifi-pill{min-width:158px!important;flex:0 0 158px!important;max-width:168px!important;overflow:visible!important}' +
       '#kn-header-actions:not(.is-ultra-tight) #kn-header-wifi-btn .kn-wifi-status-text{display:inline-flex!important;max-width:none!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important}' +
       '@media(max-width:1180px){#kn-header-actions:not(.is-ultra-tight) #kn-header-wifi-btn.kn-wifi-pill{min-width:122px!important;flex-basis:122px!important;max-width:126px!important}#kn-header-actions:not(.is-ultra-tight) #kn-header-wifi-btn .kn-wifi-status-text{display:none!important}}';
@@ -1059,6 +1226,7 @@
   }
 
   function captureToolboxButton(btn) {
+    if (!isWebOSFeatureEnabled('toolboxCapture')) return false;
     if (!btn || !(btn instanceof HTMLElement) || btn.tagName.toUpperCase() !== 'BUTTON') return false;
     if (btn.getAttribute('data-kn-native-function-baseline') === '1') return false;
     if (shouldSkipToolboxCapture(btn)) return false;
@@ -1120,7 +1288,7 @@
     });
 
     buildToolboxModals();
-    setupToolboxCapture();
+    if (isWebOSFeatureEnabled('toolboxCapture')) setupToolboxCapture();
     applyToolboxRouting();
   }
 
@@ -1228,6 +1396,7 @@
   }
 
   function applyToolboxRouting() {
+    if (!isWebOSFeatureEnabled('toolboxCapture')) return;
     var toolbox = document.getElementById('kn-toolbox-buttons');
     var secondary = document.getElementById('kn-toolbox-secondary-buttons');
     if (!toolbox) return;
@@ -2849,9 +3018,10 @@
 
     var dialog = document.createElement('dialog');
     dialog.id = DIALOG_ID;
-    dialog.innerHTML = '<div class="kn-dialog-content"><div class="kn-dialog-header"><div><div class="kn-dialog-title">界面设置</div><div class="kn-dialog-subtitle">安全布局：不移动第三方插件 div，不创建插件 Hub。这里集成导航分组、界面美化与背景、原生功能分类、消息转发和现代插件管理。</div></div><button type="button" class="kn-panel-btn" data-action="close">关闭</button></div><div class="kn-dialog-body"><div class="kn-settings-tabs"><button class="kn-settings-tab active" data-tab="layout" type="button">导航分组</button><button class="kn-settings-tab" data-tab="appearance" type="button">界面美化</button><button class="kn-settings-tab" data-tab="forward" type="button">消息转发</button><button class="kn-settings-tab" data-tab="plugins" type="button">插件功能</button><button class="kn-settings-tab" data-tab="about" type="button">关于</button></div><div id="kn-settings-panel-layout" class="kn-settings-panel active"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.74);font-weight:800"><span>导航分组与模块管理</span><span style="font-size:11px;color:rgba(255,255,255,.46);font-weight:500">点击项目循环移动；电脑端可拖拽</span></div><div id="kn-settings-board" class="kn-group-board"></div><div class="kn-note">当前版本采用原地显隐：第三方 div 面板不再被移动到其他容器，避免破坏原插件结构。</div><div class="kn-settings-actions"><button type="button" class="kn-panel-btn" data-action="reset">恢复默认分组</button></div></div><div id="kn-settings-panel-appearance" class="kn-settings-panel"><div class="kn-form-grid kn-appearance-grid"><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">主题与基础</div><div class="kn-input-row"><label>模式</label><select data-appearance="themeMode"><option value="dark">夜间模式</option><option value="light">日间模式</option><option value="auto">跟随系统</option></select></div><div class="kn-input-row"><label>强调色</label><div class="kn-color-control"><input type="color" data-appearance="accentColor" aria-label="选择强调色"><input type="text" class="kn-color-hex" data-appearance="accentColor" maxlength="9" placeholder="#4E92FF"></div></div><div class="kn-field-help">支持 HEX 颜色值，例如 #3B82F6；可直接复制或手动输入。</div><div class="kn-slider-row"><label>字体缩放</label><input type="range" min="88" max="116" data-appearance="fontScale"><span class="kn-slider-value" data-value-for="fontScale">--</span></div><div class="kn-slider-row"><label>动画强度</label><input type="range" min="0" max="2" data-appearance="animationLevel"><span class="kn-slider-value" data-value-for="animationLevel">--</span></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title-row"><div class="kn-form-title">视觉效果</div><div class="kn-inline-actions"><button type="button" class="kn-text-action" data-action="appearanceAllOn">全选</button><button type="button" class="kn-text-action" data-action="appearanceDefault">重置默认</button></div></div><div class="kn-visual-list"><label class="kn-check"><span>圆角卡片</span><input type="checkbox" data-appearance="enableRadius"></label><label class="kn-check"><span>悬浮阴影</span><input type="checkbox" data-appearance="enableShadow"></label><label class="kn-check"><span>胶囊按钮</span><input type="checkbox" data-appearance="enableCapsule"></label><label class="kn-check"><span>玻璃拟态</span><input type="checkbox" data-appearance="enableGlass"></label><label class="kn-check"><span>紧凑布局</span><input type="checkbox" data-appearance="enableCompact"></label><label class="kn-check"><span>动态悬停</span><input type="checkbox" data-appearance="enableHover"></label><label class="kn-check"><span>极简滚条</span><input type="checkbox" data-appearance="enableScrollbar"></label><label class="kn-check"><span>渐变标题</span><input type="checkbox" data-appearance="enableGradient"></label><label class="kn-check"><span>柔和分割线</span><input type="checkbox" data-appearance="enableSoftDivider"></label><label class="kn-check"><span>文字增强</span><input type="checkbox" data-appearance="enableReadableText"></label></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">渐变标题</div><div class="kn-field-help local">开启“渐变标题”后，这里配置标题的起止颜色。</div></div></div><div class="kn-inline-config" data-effect-config="enableGradient"><div class="kn-input-row"><label>起点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor1"><input type="text" class="kn-color-hex" data-appearance="gradColor1" maxlength="9"></div></div><div class="kn-input-row"><label>终点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor2"><input type="text" class="kn-color-hex" data-appearance="gradColor2" maxlength="9"></div></div></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">顶栏质感</div><div class="kn-field-help local">控制顶部栏模糊、透明度与紧凑状态。</div></div><button type="button" class="kn-panel-btn small-text" data-action="compact">切换紧凑顶栏</button></div><div class="kn-inline-config"><div class="kn-slider-row"><label>顶栏模糊</label><input type="range" min="8" max="40" data-appearance="headerBlur"><span class="kn-slider-value" data-value-for="headerBlur">--</span></div><div class="kn-slider-row"><label>顶栏透明度</label><input type="range" min="35" max="98" data-appearance="headerOpacity"><span class="kn-slider-value" data-value-for="headerOpacity">--</span></div></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">美化配置</div><div class="kn-field-help" style="margin:0 0 12px">这里只重置界面美化相关配置，不影响导航分组和插件面板归类。</div><div class="kn-settings-actions" style="margin-top:0;padding-top:0;border-top:0"><button type="button" class="kn-panel-btn" data-action="resetAppearance">恢复默认美化</button></div></div></div></div><div id="kn-settings-panel-background" class="kn-settings-panel"><div class="kn-form-grid kn-bg-card-row"><div class="kn-form-card full"><div class="kn-bg-toolbar"><div class="kn-form-title">首页背景图</div><label class="kn-check"><input type="checkbox" data-appearance="enableBackground">启用背景图</label></div><div class="kn-bg-mode-grid kn-bg-dependent" data-bg-scope="source"><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="preset" data-appearance="backgroundMode"><span><strong>使用预装背景</strong><span>从内置背景中选择，适合快速切换。</span></span></label><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="custom" data-appearance="backgroundMode"><span><strong>使用自定义 URL</strong><span>使用图片链接作为首页背景。</span></span></label></div><div class="kn-input-row kn-bg-dependent" data-bg-scope="preset"><label>预装背景</label><select data-appearance="backgroundPreset">' + presetOptions + '</select></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="preset">选择预装项后立即生效；“无背景”会保留背景系统但不显示图片。</div><div class="kn-input-row kn-bg-dependent" data-bg-scope="custom"><label>自定义 URL</label><div class="kn-input-with-action"><input type="text" data-appearance="backgroundImage" placeholder="粘贴 https://.../background.jpg"><button type="button" class="kn-icon-clear" data-action="clearBackgroundUrl" title="清空自定义 URL">×</button></div></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="custom">仅在选择“使用自定义 URL”时生效。建议使用 1920×1080 或更高分辨率图片。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景遮罩</div><div class="kn-slider-row"><label>暗度</label><input type="range" min="0" max="85" data-appearance="backgroundDim"><span class="kn-slider-value" data-value-for="backgroundDim">--</span></div><div class="kn-slider-row"><label>模糊</label><input type="range" min="0" max="30" data-appearance="backgroundBlur"><span class="kn-slider-value" data-value-for="backgroundBlur">--</span></div><div class="kn-field-help" style="margin:4px 0 0">暗度控制背景遮罩透明度；模糊用于降低图片细节干扰。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景质感</div><div class="kn-slider-row"><label>饱和度</label><input type="range" min="50" max="180" data-appearance="backgroundSaturate"><span class="kn-slider-value" data-value-for="backgroundSaturate">--</span></div><div class="kn-field-help" style="margin:4px 0 14px">饱和度用于控制背景颜色浓度，不影响页面组件本身。</div><button type="button" class="kn-panel-btn small-text" data-action="resetBackgroundSettings" style="margin-top:auto;align-self:flex-start">重置背景设置</button></div></div></div><div id="kn-settings-panel-forward" class="kn-settings-panel"><div class="kn-forward-page-head"><div class="kn-forward-head-left"><div class="kn-forward-title">消息转发</div><div class="kn-forward-desc">可读取并保存原生消息/电源转发配置；电话事件转发为本插件增强配置。</div></div><div class="kn-forward-head-actions"><span id="kn-native-forward-read-status" class="kn-forward-inline-status">未读取</span><button type="button" class="kn-google-btn primary" data-action="refreshNativeForwardConfig">读取配置</button><button type="button" class="kn-google-btn primary" data-action="saveNativeForwardConfig">保存原生配置</button><button type="button" class="kn-google-btn" data-action="testNativeForwardConfig">测试原生通道</button><button type="button" class="kn-google-btn" data-action="toggleForwardTemplates">消息模板</button><button type="button" class="kn-google-btn" data-action="openNativeSmsForward">打开原生界面</button></div></div><div class="kn-forward-grid modern"><section class="kn-forward-card native full"><div class="kn-form-title-row"><div><div class="kn-form-title">原生消息转发</div><div class="kn-field-help local">原生界面名称可能显示为“短信转发”，但实际包含短信转发和设备通电通知。本页可直接修改并保存原生配置。</div></div></div><div class="kn-native-control-grid"><label class="kn-check primary-switch"><span>启用消息转发</span><input id="kn-native-forward-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>启用电源通知</span><input id="kn-native-power-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>附加设备信息</span><input id="kn-native-forward-devinfo" type="checkbox"></label><div class="kn-input-row compact"><label>当前通道</label><select id="kn-native-forward-method-select"><option value="dingtalk">钉钉机器人</option><option value="smtp">SMTP 邮件</option><option value="curl">CURL 命令</option></select></div></div><div class="kn-forward-kv-grid compact-status"><div class="kn-forward-kv"><b>消息转发</b><span id="kn-native-forward-enabled">--</span></div><div class="kn-forward-kv"><b>电源通知</b><span id="kn-native-power-enabled">--</span></div><div class="kn-forward-kv"><b>当前方式</b><span id="kn-native-forward-method">--</span></div><div class="kn-forward-kv"><b>原始值</b><span id="kn-native-forward-method-raw">--</span></div><div class="kn-forward-kv full"><b>设备信息</b><span id="kn-native-forward-device-info">--</span></div></div></section><section class="kn-forward-card native" data-native-method-card="dingtalk"><div class="kn-form-title">钉钉配置</div><div class="kn-input-row compact"><label>Webhook</label><input id="kn-native-dingtalk-webhook" placeholder="https://oapi.dingtalk.com/robot/send?..." autocomplete="off"></div><div class="kn-input-row compact"><label>加密密钥</label><input id="kn-native-dingtalk-secret" placeholder="SEC... 可为空" autocomplete="off"></div><div class="kn-field-help">保存后会写入原生钉钉转发配置；测试原生通道会调用原生转发接口。</div></section><section class="kn-forward-card native" data-native-method-card="smtp"><div class="kn-form-title">SMTP 配置</div><div class="kn-native-mini-grid normalized"><div class="kn-input-row"><label>主机</label><input id="kn-native-smtp-host" placeholder="smtp.example.com"></div><div class="kn-input-row short"><label>端口</label><input id="kn-native-smtp-port" placeholder="465" inputmode="numeric"></div><div class="kn-input-row"><label>账号</label><input id="kn-native-smtp-user" placeholder="user@example.com"></div><div class="kn-input-row"><label>收件人</label><input id="kn-native-smtp-to" placeholder="to@example.com"></div><div class="kn-input-row full"><label>密码</label><input id="kn-native-smtp-pass" placeholder="SMTP 授权码 / 密码" type="password"></div></div></section><section class="kn-forward-card native" data-native-method-card="curl"><div class="kn-form-title">CURL 命令 / 模板</div><textarea id="kn-native-curl-text" class="kn-forward-textarea" placeholder="例如：curl -s -X POST ..."></textarea><div class="kn-field-help">CURL 通道会把这里的命令写入原生配置。</div></section><section id="kn-forward-template-card" class="kn-forward-card native full kn-forward-template-viewer" hidden><div class="kn-form-title-row"><div><div class="kn-form-title">消息转发信息模板</div><div class="kn-field-help local">当前通道：<span id="kn-native-template-channel">--</span>。这里展示短信、电源通知和附加设备信息的组成方式。</div></div><button type="button" class="kn-panel-btn small-text" data-action="toggleForwardTemplates">收起</button></div><div class="kn-template-grid"><div><b>短信模板</b><div id="kn-template-sms" class="kn-forward-readonly-box plain">尚未读取。</div></div><div><b>电源模板</b><div id="kn-template-power" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>附加设备信息</b><div id="kn-template-device" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>CURL 当前命令</b><div id="kn-template-curl-preview" class="kn-forward-readonly-box">尚未读取。</div></div></div></section><section id="kn-forward-call-card" class="kn-forward-card"><div class="kn-form-title">电话事件转发增强</div><label class="kn-check primary-switch"><span>启用电话事件转发</span><input type="checkbox" data-forward="enableCallForward"></label><div class="kn-forward-event-list"><label class="kn-check"><span>来电</span><input type="checkbox" data-forward="callIncoming"></label><label class="kn-check"><span>未接</span><input type="checkbox" data-forward="callMissed"></label><label class="kn-check"><span>接通</span><input type="checkbox" data-forward="callAnswered"></label><label class="kn-check"><span>挂断</span><input type="checkbox" data-forward="callEnded"></label></div><div class="kn-input-row"><label>转发目标</label><select data-forward="callForwardTarget"><option value="native">复用原生转发方式</option><option value="custom">独立电话转发配置</option></select></div><div class="kn-forward-status slim">关闭电话事件转发时，下方事件、模板和测试按钮会自动禁用。</div></section><section id="kn-forward-call-template-card" class="kn-forward-card"><div class="kn-form-title">电话消息模板</div><textarea class="kn-forward-textarea" data-forward="callTemplate" placeholder="例如：{event} | {number} | {time} | {duration}"></textarea><div class="kn-settings-actions local"><button type="button" class="kn-panel-btn primary" data-action="saveForwardConfig">保存电话转发</button><button type="button" class="kn-panel-btn" data-action="testForwardConfig">测试电话转发</button></div></section></div></div><div id="kn-settings-panel-plugins" class="kn-settings-panel"><div class="kn-plugin-manager-shell"><div class="kn-plugin-topbar kn-plugin-merged-head"><div class="kn-plugin-title-block"><div class="kn-plugin-title-line"><span class="kn-plugin-title">插件管理</span><span id="kn-plugin-status" class="kn-plugin-status">尚未读取插件列表。</span></div><div class="kn-plugin-desc">左侧选择与启停，右侧编辑名称和源码。保存后写入 custom head，并自动刷新页面载入新插件。</div><div class="kn-plugin-risk top">改动会写入 UFI-TOOLS custom head；修改前建议先导出备份。</div></div><div class="kn-plugin-head-right"><div class="kn-plugin-native-row"><span class="kn-native-group-label">原生</span><button type="button" class="kn-google-btn" data-action="openNativePluginFeature">插件管理</button><button type="button" class="kn-google-btn" data-action="openNativePluginStore">插件商店</button><button type="button" class="kn-google-btn" data-action="openNativePluginFiles">上传文件</button></div><div class="kn-plugin-actions" aria-label="插件全局操作"><button type="button" class="kn-plugin-tool-btn" data-plugin-action="refresh" title="重新读取插件列表"><span class="kn-tool-ico">↻</span><span class="kn-tool-text">读取</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="import" title="导入插件文件"><span class="kn-tool-ico">＋</span><span class="kn-tool-text">导入</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="export" title="导出当前插件备份"><span class="kn-tool-ico">⇩</span><span class="kn-tool-text">备份</span></button></div></div></div><input type="file" id="kn-plugin-import-file" accept=".txt,.js,.html,.htm" style="display:none"><div class="kn-plugin-layout"><aside class="kn-plugin-list-card"><div class="kn-plugin-list-head"><div class="kn-plugin-list-title-row"><div><strong>插件列表</strong><span id="kn-plugin-count">0 个插件</span></div><button type="button" id="kn-plugin-search-toggle" class="kn-plugin-search-toggle" title="搜索插件" aria-label="搜索插件">⌕</button></div><input id="kn-plugin-search" type="text" placeholder="搜索插件名称 / 源码"></div><div id="kn-plugin-list" class="kn-plugin-list"><div class="kn-plugin-empty">点击“重新读取”读取当前插件。</div></div></aside><section class="kn-plugin-editor-card"><div class="kn-plugin-editor-head"><div><strong>插件详情</strong><span id="kn-plugin-editor-state">未选择插件</span><div class="kn-plugin-editor-name-line"><span id="kn-plugin-editor-title-name" class="kn-plugin-editor-title-name">未选择插件</span><button type="button" class="kn-plugin-title-edit" data-plugin-action="beginRename" title="重命名插件" aria-label="重命名插件">' + knPluginActionIcon('edit') + '</button></div></div><div class="kn-plugin-editor-actions"><button type="button" class="kn-plugin-icon-action primary" data-plugin-action="applyEditor" title="保存插件" aria-label="保存插件">' + knPluginActionIcon('save') + '<span class="kn-action-text">保存插件</span></button><button type="button" class="kn-plugin-icon-action" data-plugin-action="copyCode" title="复制源码" aria-label="复制源码">' + knPluginActionIcon('copy') + '<span class="kn-action-text">复制源码</span></button><button type="button" class="kn-plugin-icon-action danger" data-plugin-action="deleteSelected" title="删除插件" aria-label="删除插件">' + knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span></button></div></div><div class="kn-plugin-editor-form"><div class="kn-plugin-field kn-plugin-name-field"><label>插件名称</label><input id="kn-plugin-editor-name" type="text" placeholder="选择插件后可重命名"></div><div class="kn-plugin-code-head"><label>源码内容</label><span>轻量编辑模式</span></div><div class="kn-code-editor-wrap"><div id="kn-plugin-editor-lines" class="kn-code-lines">1</div><div class="kn-code-layer"><pre id="kn-plugin-editor-highlight" class="kn-code-highlight" aria-hidden="true"></pre><textarea id="kn-plugin-editor-code" spellcheck="false" placeholder="选择插件后显示源码"></textarea></div></div></div></section></div></div></div><div id="kn-settings-panel-about" class="kn-settings-panel"><div class="kn-about-hero"><div class="kn-about-logo">G</div><div><div class="kn-about-title">UFI WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS / UFI / CPE 设备的桌面化增强控制台。核心原则：不移动第三方插件 div，不破坏原插件结构，只做安全的导航分组、原地显隐和界面增强。</div><div class="kn-about-tags"><span>Material UI</span><span>Safe Layout</span><span>UFI-TOOLS v4.x</span><span>2026 UI</span></div></div></div><div class="kn-about-grid"><div class="kn-about-card"><div class="kn-about-card-title">版本信息</div><div class="kn-about-kv"><b>当前版本</b><span id="kn-about-current-version">' + VERSION + '</span></div><div class="kn-about-kv"><b>GitHub 仓库</b><span>' + GITHUB_REPO + '</span></div><div class="kn-about-kv"><b>最新版本</b><span id="kn-about-latest-version">未检查</span></div><div class="kn-about-kv"><b>版本状态</b><span id="kn-about-version-state">点击下方按钮检查</span></div><div class="kn-about-actions"><button type="button" class="kn-google-btn primary" data-action="checkGithubVersion">检查 GitHub 版本</button><a class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">打开仓库</a><button type="button" class="kn-google-btn" data-action="copy">导出配置</button></div><div id="kn-about-update-note" class="kn-about-update-note">将请求 GitHub Releases 最新版本；如果仓库没有 Release，会自动尝试 Tags。</div></div><div class="kn-about-card"><div class="kn-about-card-title">适配与策略</div><div class="kn-about-kv"><b>适配环境</b><span>UFI-TOOLS v4.x / 通用 UFI 设备</span></div><div class="kn-about-kv"><b>布局策略</b><span>安全原地显隐</span></div><div class="kn-about-kv"><b>插件原则</b><span>不迁移第三方 div</span></div><div class="kn-about-small">设置页采用 Google Material 风格重构：更明确的信息层级、更轻的卡片、更克制的蓝色强调和更好的小屏适配。</div></div><div class="kn-about-card"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 原生功能分类 · 消息转发设置 · 现代插件管理 · 原生插件备用入口 · 插件面板分组 · 日/夜间模式 · 预设背景 · 自定义背景 · 玻璃拟态 · 圆角阴影 · 胶囊按钮 · 渐变标题 · 紧凑布局 · 扩展工具箱</div></div><div class="kn-about-card"><div class="kn-about-card-title">项目信息</div><div class="kn-about-list">项目名称：UFI WebOS 控制台<br>作者：LceAn<br>定位：面向 UFI-TOOLS 的高级桌面化管理界面<br>愿景：让插件管理、网络管理和设备状态展示更清晰、更现代、更安全。</div></div></div></div></div><div class="kn-dialog-footer"><div class="kn-footer-right only"><button type="button" class="kn-panel-btn primary" data-action="done">完成</button></div></div></div>';
+    dialog.innerHTML = '<div class="kn-dialog-content"><div class="kn-dialog-header"><div><div class="kn-dialog-title">界面设置</div><div class="kn-dialog-subtitle">安全布局：不移动第三方插件 div，不创建插件 Hub。这里集成导航分组、界面美化与背景、原生功能分类、消息转发和现代插件管理。</div></div><button type="button" class="kn-panel-btn" data-action="close">关闭</button></div><div class="kn-dialog-body"><div class="kn-settings-tabs"><button class="kn-settings-tab active" data-tab="layout" type="button">导航分组</button><button class="kn-settings-tab" data-tab="appearance" type="button">界面美化</button><button class="kn-settings-tab" data-tab="forward" type="button">消息转发</button><button class="kn-settings-tab" data-tab="plugins" type="button">插件功能</button><button class="kn-settings-tab" data-tab="about" type="button">关于</button></div><div id="kn-settings-panel-layout" class="kn-settings-panel active"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.74);font-weight:800"><span>导航分组与模块管理</span><span style="font-size:11px;color:rgba(255,255,255,.46);font-weight:500">点击项目循环移动；电脑端可拖拽</span></div><div id="kn-settings-board" class="kn-group-board"></div><div class="kn-note">当前版本采用原地显隐：第三方 div 面板不再被移动到其他容器，避免破坏原插件结构。</div><div class="kn-settings-actions"><button type="button" class="kn-panel-btn" data-action="reset">恢复默认分组</button></div></div><div id="kn-settings-panel-appearance" class="kn-settings-panel"><div class="kn-form-grid kn-appearance-grid"><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">主题与基础</div><div class="kn-input-row"><label>模式</label><select data-appearance="themeMode"><option value="dark">夜间模式</option><option value="light">日间模式</option><option value="auto">跟随系统</option></select></div><div class="kn-input-row"><label>强调色</label><div class="kn-color-control"><input type="color" data-appearance="accentColor" aria-label="选择强调色"><input type="text" class="kn-color-hex" data-appearance="accentColor" maxlength="9" placeholder="#4E92FF"></div></div><div class="kn-field-help">支持 HEX 颜色值，例如 #3B82F6；可直接复制或手动输入。</div><div class="kn-slider-row"><label>字体缩放</label><input type="range" min="88" max="116" data-appearance="fontScale"><span class="kn-slider-value" data-value-for="fontScale">--</span></div><div class="kn-slider-row"><label>动画强度</label><input type="range" min="0" max="2" data-appearance="animationLevel"><span class="kn-slider-value" data-value-for="animationLevel">--</span></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title-row"><div class="kn-form-title">视觉效果</div><div class="kn-inline-actions"><button type="button" class="kn-text-action" data-action="appearanceAllOn">全选</button><button type="button" class="kn-text-action" data-action="appearanceDefault">重置默认</button></div></div><div class="kn-visual-list"><label class="kn-check"><span>圆角卡片</span><input type="checkbox" data-appearance="enableRadius"></label><label class="kn-check"><span>悬浮阴影</span><input type="checkbox" data-appearance="enableShadow"></label><label class="kn-check"><span>胶囊按钮</span><input type="checkbox" data-appearance="enableCapsule"></label><label class="kn-check"><span>玻璃拟态</span><input type="checkbox" data-appearance="enableGlass"></label><label class="kn-check"><span>紧凑布局</span><input type="checkbox" data-appearance="enableCompact"></label><label class="kn-check"><span>动态悬停</span><input type="checkbox" data-appearance="enableHover"></label><label class="kn-check"><span>极简滚条</span><input type="checkbox" data-appearance="enableScrollbar"></label><label class="kn-check"><span>渐变标题</span><input type="checkbox" data-appearance="enableGradient"></label><label class="kn-check"><span>柔和分割线</span><input type="checkbox" data-appearance="enableSoftDivider"></label><label class="kn-check"><span>文字增强</span><input type="checkbox" data-appearance="enableReadableText"></label></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">渐变标题</div><div class="kn-field-help local">开启“渐变标题”后，这里配置标题的起止颜色。</div></div></div><div class="kn-inline-config" data-effect-config="enableGradient"><div class="kn-input-row"><label>起点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor1"><input type="text" class="kn-color-hex" data-appearance="gradColor1" maxlength="9"></div></div><div class="kn-input-row"><label>终点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor2"><input type="text" class="kn-color-hex" data-appearance="gradColor2" maxlength="9"></div></div></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">顶栏质感</div><div class="kn-field-help local">控制顶部栏模糊、透明度与紧凑状态。</div></div><button type="button" class="kn-panel-btn small-text" data-action="compact">切换紧凑顶栏</button></div><div class="kn-inline-config"><div class="kn-slider-row"><label>顶栏模糊</label><input type="range" min="8" max="40" data-appearance="headerBlur"><span class="kn-slider-value" data-value-for="headerBlur">--</span></div><div class="kn-slider-row"><label>顶栏透明度</label><input type="range" min="35" max="98" data-appearance="headerOpacity"><span class="kn-slider-value" data-value-for="headerOpacity">--</span></div></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">美化配置</div><div class="kn-field-help" style="margin:0 0 12px">这里只重置界面美化相关配置，不影响导航分组和插件面板归类。</div><div class="kn-settings-actions" style="margin-top:0;padding-top:0;border-top:0"><button type="button" class="kn-panel-btn" data-action="resetAppearance">恢复默认美化</button></div></div></div></div><div id="kn-settings-panel-background" class="kn-settings-panel"><div class="kn-form-grid kn-bg-card-row"><div class="kn-form-card full"><div class="kn-bg-toolbar"><div class="kn-form-title">首页背景图</div><label class="kn-check"><input type="checkbox" data-appearance="enableBackground">启用背景图</label></div><div class="kn-bg-mode-grid kn-bg-dependent" data-bg-scope="source"><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="preset" data-appearance="backgroundMode"><span><strong>使用预装背景</strong><span>从内置背景中选择，适合快速切换。</span></span></label><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="custom" data-appearance="backgroundMode"><span><strong>使用自定义 URL</strong><span>使用图片链接作为首页背景。</span></span></label></div><div class="kn-input-row kn-bg-dependent" data-bg-scope="preset"><label>预装背景</label><select data-appearance="backgroundPreset">' + presetOptions + '</select></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="preset">选择预装项后立即生效；“无背景”会保留背景系统但不显示图片。</div><div class="kn-input-row kn-bg-dependent" data-bg-scope="custom"><label>自定义 URL</label><div class="kn-input-with-action"><input type="text" data-appearance="backgroundImage" placeholder="粘贴 https://.../background.jpg"><button type="button" class="kn-icon-clear" data-action="clearBackgroundUrl" title="清空自定义 URL">×</button></div></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="custom">仅在选择“使用自定义 URL”时生效。建议使用 1920×1080 或更高分辨率图片。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景遮罩</div><div class="kn-slider-row"><label>暗度</label><input type="range" min="0" max="85" data-appearance="backgroundDim"><span class="kn-slider-value" data-value-for="backgroundDim">--</span></div><div class="kn-slider-row"><label>模糊</label><input type="range" min="0" max="30" data-appearance="backgroundBlur"><span class="kn-slider-value" data-value-for="backgroundBlur">--</span></div><div class="kn-field-help" style="margin:4px 0 0">暗度控制背景遮罩透明度；模糊用于降低图片细节干扰。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景质感</div><div class="kn-slider-row"><label>饱和度</label><input type="range" min="50" max="180" data-appearance="backgroundSaturate"><span class="kn-slider-value" data-value-for="backgroundSaturate">--</span></div><div class="kn-field-help" style="margin:4px 0 14px">饱和度用于控制背景颜色浓度，不影响页面组件本身。</div><button type="button" class="kn-panel-btn small-text" data-action="resetBackgroundSettings" style="margin-top:auto;align-self:flex-start">重置背景设置</button></div></div></div><div id="kn-settings-panel-forward" class="kn-settings-panel"><div class="kn-forward-page-head"><div class="kn-forward-head-left"><div class="kn-forward-title">消息转发</div><div class="kn-forward-desc">可读取并保存原生消息/电源转发配置；电话事件转发为本插件增强配置。</div></div><div class="kn-forward-head-actions"><span id="kn-native-forward-read-status" class="kn-forward-inline-status">未读取</span><button type="button" class="kn-google-btn primary" data-action="refreshNativeForwardConfig">读取配置</button><button type="button" class="kn-google-btn primary" data-action="saveNativeForwardConfig">保存原生配置</button><button type="button" class="kn-google-btn" data-action="testNativeForwardConfig">测试原生通道</button><button type="button" class="kn-google-btn" data-action="toggleForwardTemplates">消息模板</button><button type="button" class="kn-google-btn" data-action="openNativeSmsForward">打开原生界面</button></div></div><div class="kn-forward-grid modern"><section class="kn-forward-card native full"><div class="kn-form-title-row"><div><div class="kn-form-title">原生消息转发</div><div class="kn-field-help local">原生界面名称可能显示为“短信转发”，但实际包含短信转发和设备通电通知。本页可直接修改并保存原生配置。</div></div></div><div class="kn-native-control-grid"><label class="kn-check primary-switch"><span>启用消息转发</span><input id="kn-native-forward-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>启用电源通知</span><input id="kn-native-power-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>附加设备信息</span><input id="kn-native-forward-devinfo" type="checkbox"></label><div class="kn-input-row compact"><label>当前通道</label><select id="kn-native-forward-method-select"><option value="dingtalk">钉钉机器人</option><option value="smtp">SMTP 邮件</option><option value="curl">CURL 命令</option></select></div></div><div class="kn-forward-kv-grid compact-status"><div class="kn-forward-kv"><b>消息转发</b><span id="kn-native-forward-enabled">--</span></div><div class="kn-forward-kv"><b>电源通知</b><span id="kn-native-power-enabled">--</span></div><div class="kn-forward-kv"><b>当前方式</b><span id="kn-native-forward-method">--</span></div><div class="kn-forward-kv"><b>原始值</b><span id="kn-native-forward-method-raw">--</span></div><div class="kn-forward-kv full"><b>设备信息</b><span id="kn-native-forward-device-info">--</span></div></div></section><section class="kn-forward-card native" data-native-method-card="dingtalk"><div class="kn-form-title">钉钉配置</div><div class="kn-input-row compact"><label>Webhook</label><input id="kn-native-dingtalk-webhook" placeholder="https://oapi.dingtalk.com/robot/send?..." autocomplete="off"></div><div class="kn-input-row compact"><label>加密密钥</label><input id="kn-native-dingtalk-secret" placeholder="SEC... 可为空" autocomplete="off"></div><div class="kn-field-help">保存后会写入原生钉钉转发配置；测试原生通道会调用原生转发接口。</div></section><section class="kn-forward-card native" data-native-method-card="smtp"><div class="kn-form-title">SMTP 配置</div><div class="kn-native-mini-grid normalized"><div class="kn-input-row"><label>主机</label><input id="kn-native-smtp-host" placeholder="smtp.example.com"></div><div class="kn-input-row short"><label>端口</label><input id="kn-native-smtp-port" placeholder="465" inputmode="numeric"></div><div class="kn-input-row"><label>账号</label><input id="kn-native-smtp-user" placeholder="user@example.com"></div><div class="kn-input-row"><label>收件人</label><input id="kn-native-smtp-to" placeholder="to@example.com"></div><div class="kn-input-row full"><label>密码</label><input id="kn-native-smtp-pass" placeholder="SMTP 授权码 / 密码" type="password"></div></div></section><section class="kn-forward-card native" data-native-method-card="curl"><div class="kn-form-title">CURL 命令 / 模板</div><textarea id="kn-native-curl-text" class="kn-forward-textarea" placeholder="例如：curl -s -X POST ..."></textarea><div class="kn-field-help">CURL 通道会把这里的命令写入原生配置。</div></section><section id="kn-forward-template-card" class="kn-forward-card native full kn-forward-template-viewer" hidden><div class="kn-form-title-row"><div><div class="kn-form-title">消息转发信息模板</div><div class="kn-field-help local">当前通道：<span id="kn-native-template-channel">--</span>。这里展示短信、电源通知和附加设备信息的组成方式。</div></div><button type="button" class="kn-panel-btn small-text" data-action="toggleForwardTemplates">收起</button></div><div class="kn-template-grid"><div><b>短信模板</b><div id="kn-template-sms" class="kn-forward-readonly-box plain">尚未读取。</div></div><div><b>电源模板</b><div id="kn-template-power" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>附加设备信息</b><div id="kn-template-device" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>CURL 当前命令</b><div id="kn-template-curl-preview" class="kn-forward-readonly-box">尚未读取。</div></div></div></section><section id="kn-forward-call-card" class="kn-forward-card"><div class="kn-form-title">电话事件转发增强</div><label class="kn-check primary-switch"><span>启用电话事件转发</span><input type="checkbox" data-forward="enableCallForward"></label><div class="kn-forward-event-list"><label class="kn-check"><span>来电</span><input type="checkbox" data-forward="callIncoming"></label><label class="kn-check"><span>未接</span><input type="checkbox" data-forward="callMissed"></label><label class="kn-check"><span>接通</span><input type="checkbox" data-forward="callAnswered"></label><label class="kn-check"><span>挂断</span><input type="checkbox" data-forward="callEnded"></label></div><div class="kn-input-row"><label>转发目标</label><select data-forward="callForwardTarget"><option value="native">复用原生转发方式</option><option value="custom">独立电话转发配置</option></select></div><div class="kn-forward-status slim">关闭电话事件转发时，下方事件、模板和测试按钮会自动禁用。</div></section><section id="kn-forward-call-template-card" class="kn-forward-card"><div class="kn-form-title">电话消息模板</div><textarea class="kn-forward-textarea" data-forward="callTemplate" placeholder="例如：{event} | {number} | {time} | {duration}"></textarea><div class="kn-settings-actions local"><button type="button" class="kn-panel-btn primary" data-action="saveForwardConfig">保存电话转发</button><button type="button" class="kn-panel-btn" data-action="testForwardConfig">测试电话转发</button></div></section></div></div><div id="kn-settings-panel-plugins" class="kn-settings-panel"><div class="kn-plugin-manager-shell"><div class="kn-plugin-topbar kn-plugin-merged-head"><div class="kn-plugin-title-block"><div class="kn-plugin-title-line"><span class="kn-plugin-title">插件管理</span><span id="kn-plugin-status" class="kn-plugin-status">尚未读取插件列表。</span></div><div class="kn-plugin-desc">左侧选择与启停，右侧编辑名称和源码。保存后写入 custom head，并自动刷新页面载入新插件。</div><div class="kn-plugin-risk top">改动会写入 UFI-TOOLS custom head；修改前建议先导出备份。</div></div><div class="kn-plugin-head-right"><div class="kn-plugin-native-row"><span class="kn-native-group-label">原生</span><button type="button" class="kn-google-btn" data-action="openNativePluginFeature">插件管理</button><button type="button" class="kn-google-btn" data-action="openNativePluginStore">插件商店</button><button type="button" class="kn-google-btn" data-action="openNativePluginFiles">上传文件</button></div><div class="kn-plugin-actions" aria-label="插件全局操作"><button type="button" class="kn-plugin-tool-btn" data-plugin-action="refresh" title="重新读取插件列表"><span class="kn-tool-ico">↻</span><span class="kn-tool-text">读取</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="import" title="导入插件文件"><span class="kn-tool-ico">＋</span><span class="kn-tool-text">导入</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="export" title="导出当前插件备份"><span class="kn-tool-ico">⇩</span><span class="kn-tool-text">备份</span></button></div></div></div><input type="file" id="kn-plugin-import-file" accept=".txt,.js,.html,.htm" style="display:none"><div class="kn-plugin-layout"><aside class="kn-plugin-list-card"><div class="kn-plugin-list-head"><div class="kn-plugin-list-title-row"><div><strong>插件列表</strong><span id="kn-plugin-count">0 个插件</span></div><button type="button" id="kn-plugin-search-toggle" class="kn-plugin-search-toggle" title="搜索插件" aria-label="搜索插件">⌕</button></div><input id="kn-plugin-search" type="text" placeholder="搜索插件名称 / 源码"></div><div id="kn-plugin-list" class="kn-plugin-list"><div class="kn-plugin-empty">点击“重新读取”读取当前插件。</div></div></aside><section class="kn-plugin-editor-card"><div class="kn-plugin-editor-head"><div><strong>插件详情</strong><span id="kn-plugin-editor-state">未选择插件</span><div class="kn-plugin-editor-name-line"><span id="kn-plugin-editor-title-name" class="kn-plugin-editor-title-name">未选择插件</span><button type="button" class="kn-plugin-title-edit" data-plugin-action="beginRename" title="重命名插件" aria-label="重命名插件">' + knPluginActionIcon('edit') + '</button></div></div><div class="kn-plugin-editor-actions"><button type="button" class="kn-plugin-icon-action primary" data-plugin-action="applyEditor" title="保存插件" aria-label="保存插件">' + knPluginActionIcon('save') + '<span class="kn-action-text">保存插件</span></button><button type="button" class="kn-plugin-icon-action" data-plugin-action="copyCode" title="复制源码" aria-label="复制源码">' + knPluginActionIcon('copy') + '<span class="kn-action-text">复制源码</span></button><button type="button" class="kn-plugin-icon-action danger" data-plugin-action="deleteSelected" title="删除插件" aria-label="删除插件">' + knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span></button></div></div><div class="kn-plugin-editor-form"><div class="kn-plugin-field kn-plugin-name-field"><label>插件名称</label><input id="kn-plugin-editor-name" type="text" placeholder="选择插件后可重命名"></div><div class="kn-plugin-code-head"><label>源码内容</label><span>轻量编辑模式</span></div><div class="kn-code-editor-wrap"><div id="kn-plugin-editor-lines" class="kn-code-lines">1</div><div class="kn-code-layer"><pre id="kn-plugin-editor-highlight" class="kn-code-highlight" aria-hidden="true"></pre><textarea id="kn-plugin-editor-code" spellcheck="false" placeholder="选择插件后显示源码"></textarea></div></div></div></section></div></div></div><div id="kn-settings-panel-about" class="kn-settings-panel"><div class="kn-about-hero"><div class="kn-about-logo">G</div><div><div class="kn-about-title">UFI WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS / UFI / CPE 设备的桌面化增强控制台。核心原则：不移动第三方插件 div，不破坏原插件结构，只做安全的导航分组、原地显隐和界面增强。</div><div class="kn-about-tags"><span>Material UI</span><span>Safe Layout</span><span>UFI-TOOLS v4.x</span><span>2026 UI</span></div></div></div><div class="kn-about-grid"><div class="kn-about-card"><div class="kn-about-card-title">版本信息</div><div class="kn-about-kv"><b>当前版本</b><span id="kn-about-current-version">' + VERSION + '</span></div><div class="kn-about-kv"><b>GitHub 仓库</b><span>' + GITHUB_REPO + '</span></div><div class="kn-about-kv"><b>最新版本</b><span id="kn-about-latest-version">未检查</span></div><div class="kn-about-kv"><b>版本状态</b><span id="kn-about-version-state">点击下方按钮检查</span></div><div class="kn-about-actions"><button type="button" class="kn-google-btn primary" data-action="checkGithubVersion">检查 GitHub 版本</button><a class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">打开仓库</a><a class="kn-google-btn" href="' + GITHUB_ISSUES_URL + '" target="_blank" rel="noopener noreferrer">提交问题</a><button type="button" class="kn-google-btn" data-action="copy">导出配置</button></div><div id="kn-about-update-note" class="kn-about-update-note">将请求 GitHub Releases 最新版本；如果仓库没有 Release，会自动尝试 Tags。</div></div><div class="kn-about-card"><div class="kn-about-card-title">适配与策略</div><div class="kn-about-kv"><b>适配环境</b><span>UFI-TOOLS v4.x / 通用 UFI 设备</span></div><div class="kn-about-kv"><b>布局策略</b><span>安全原地显隐</span></div><div class="kn-about-kv"><b>插件原则</b><span>不迁移第三方 div</span></div><div class="kn-about-small">设置页采用 Google Material 风格重构：更明确的信息层级、更轻的卡片、更克制的蓝色强调和更好的小屏适配。</div></div><div class="kn-about-card"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 原生功能分类 · 消息转发设置 · 现代插件管理 · 原生插件备用入口 · 插件面板分组 · 日/夜间模式 · 预设背景 · 自定义背景 · 玻璃拟态 · 圆角阴影 · 胶囊按钮 · 渐变标题 · 紧凑布局 · 扩展工具箱</div></div><div class="kn-about-card"><div class="kn-about-card-title">项目信息</div><div class="kn-about-list">项目名称：UFI WebOS 控制台<br>作者：LceAn<br>定位：面向 UFI-TOOLS 的高级桌面化管理界面<br>愿景：让插件管理、网络管理和设备状态展示更清晰、更现代、更安全。</div></div></div></div></div><div class="kn-dialog-footer"><div class="kn-footer-right only"><button type="button" class="kn-panel-btn primary" data-action="done">完成</button></div></div></div>';
 
-    ensureFunctionCenterPanel(dialog);
+    if (isWebOSFeatureEnabled('nativeButtonMigration')) ensureFunctionCenterPanel(dialog);
+    else restoreHomeFunctionListButtons();
 
     dialog.addEventListener('click', function (e) { if (e.target === dialog) closeSettingsDialog(); });
     dialog.querySelector('[data-action="close"]').onclick = closeSettingsDialog;
@@ -2914,6 +3084,7 @@
       bindAppearanceControls();
       applyAppearance();
     };
+    ensureWebOSSettingsPanel(dialog);
     Array.prototype.slice.call(dialog.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
       btn.onclick = function () { switchSettingsTab(btn.getAttribute('data-tab')); };
     });
@@ -2921,6 +3092,43 @@
     document.body.appendChild(dialog);
   }
 
+
+
+  function ensureWebOSSettingsPanel(dialog) {
+    if (!dialog) return;
+    ensureWebOSRuntimeCSS();
+    var tabs = dialog.querySelector('.kn-settings-tabs');
+    if (tabs && !tabs.querySelector('[data-tab="webos"]')) {
+      var btn = document.createElement('button');
+      btn.className = 'kn-settings-tab';
+      btn.setAttribute('data-tab', 'webos');
+      btn.type = 'button';
+      btn.textContent = 'WebOS';
+      tabs.appendChild(btn);
+    }
+    if (!dialog.querySelector('#kn-settings-panel-webos')) {
+      var panel = document.createElement('div');
+      panel.id = 'kn-settings-panel-webos';
+      panel.className = 'kn-settings-panel';
+      panel.innerHTML = '<div class="kn-webos-settings-grid"><div class="kn-webos-setting-card full"><div class="kn-webos-setting-title">WebOS 兼容与功能开关</div><div class="kn-webos-setting-desc">F50 完全适配时建议全部开启；非 F50 或低性能设备可一键关闭增强，减少大量状态读取、首页重度卡片和原生按钮迁移。</div><div class="kn-settings-actions" style="margin:0;padding:0;border:0"><button type="button" class="kn-panel-btn primary" data-webos-action="compatMode">一键关闭增强功能</button><button type="button" class="kn-panel-btn" data-webos-action="resetWebOS">恢复 F50 完整体验</button><button type="button" class="kn-panel-btn" data-webos-action="showWelcome">重新显示欢迎页</button></div></div><div class="kn-webos-setting-card full"><div class="kn-webos-setting-title">功能模块</div><div class="kn-webos-switch-list"><label class="kn-webos-switch"><span>原生按钮迁移到设置二级菜单</span><input type="checkbox" data-webos-feature="nativeButtonMigration"></label><label class="kn-webos-switch"><span>首页分析区重度卡片</span><input type="checkbox" data-webos-feature="homeHeavyCards"></label><label class="kn-webos-switch"><span>首页设备详情折叠区</span><input type="checkbox" data-webos-feature="homeDetails"></label><label class="kn-webos-switch"><span>设备出口 IP 查询</span><input type="checkbox" data-webos-feature="homeExitIp"></label><label class="kn-webos-switch"><span>电话与短信卡片</span><input type="checkbox" data-webos-feature="homePhoneSmsCard"></label><label class="kn-webos-switch"><span>运营商信息卡片</span><input type="checkbox" data-webos-feature="homeOperatorCard"></label><label class="kn-webos-switch"><span>设备维护操作卡片</span><input type="checkbox" data-webos-feature="homeMaintenance"></label><label class="kn-webos-switch"><span>首页自动刷新</span><input type="checkbox" data-webos-feature="homeAutoRefresh"></label><label class="kn-webos-switch"><span>扩展工具箱捕获第三方按钮</span><input type="checkbox" data-webos-feature="toolboxCapture"></label><label class="kn-webos-switch"><span>内置电话短信插件</span><input type="checkbox" data-webos-feature="phoneSmsBuiltin"></label></div></div><div class="kn-webos-setting-card full"><div class="kn-webos-setting-title">设备适配提示</div><div class="kn-webos-setting-desc" id="kn-webos-device-summary">正在识别设备...</div></div></div>';
+      dialog.querySelector('.kn-dialog-body').appendChild(panel);
+    }
+    Array.prototype.slice.call(dialog.querySelectorAll('[data-webos-feature]')).forEach(function (el) {
+      el.onchange = function () { setWebOSFeature(el.getAttribute('data-webos-feature'), !!el.checked); };
+    });
+    var compat = dialog.querySelector('[data-webos-action="compatMode"]');
+    if (compat) compat.onclick = function () { setWebOSCompatibilityMode(!readWebOSConfig().compatibilityMode); };
+    var reset = dialog.querySelector('[data-webos-action="resetWebOS"]');
+    if (reset) reset.onclick = function () { setWebOSCompatibilityMode(false); };
+    var show = dialog.querySelector('[data-webos-action="showWelcome"]');
+    if (show) show.onclick = function () { try { localStorage.removeItem(WEBOS_WELCOME_KEY); } catch (e) {} showWebOSWelcomeIfNeeded(true); };
+    var summary = dialog.querySelector('#kn-webos-device-summary');
+    if (summary) {
+      var info = detectWebOSDeviceInfo();
+      summary.textContent = info.isF50 ? ('当前识别为 F50：' + info.model + '，建议保持完整增强体验。') : ('当前未明确识别为 F50：' + info.model + '。如出现字段错误或页面卡顿，可一键关闭增强功能。');
+    }
+    syncWebOSSettingsControls();
+  }
 
   function mergeBackgroundSettingsIntoAppearance(dialog) {
     dialog = dialog || document.getElementById(DIALOG_ID);
@@ -2947,7 +3155,7 @@
 
 
   var FUNCTION_CENTER_STYLE_ID = 'kano-webos-function-center-style';
-  var functionCenterState = { active: 'network', search: '' };
+  var functionCenterState = { active: 'network', search: '', adopted: [] };
 
   var FUNCTION_CENTER_GROUPS = [
     { key: 'network', label: '网络与连接', desc: 'APN、内网、SIM、USB 上网、网络模式和运营商相关入口。' },
@@ -3082,7 +3290,7 @@
       if (!el || !(el instanceof HTMLElement)) return;
       var tag = el.tagName ? el.tagName.toUpperCase() : '';
       if (tag !== 'BUTTON' && tag !== 'SELECT') return;
-      if (el.closest && (el.closest('#' + DIALOG_ID) || el.closest('#' + HEADER_ID) || el.closest('#' + TOOLBOX_WRAPPER_ID) || el.closest('#' + TOOLBOX_DRAWER_ID) || el.closest('#' + TOOLBOX_SETTINGS_ID))) return;
+      if (el.closest && (el.closest('#' + DIALOG_ID) || el.closest('#' + HEADER_ID) || el.closest('#' + TOOLBOX_WRAPPER_ID) || el.closest('#' + TOOLBOX_DRAWER_ID) || el.closest('#' + TOOLBOX_SETTINGS_ID)) && el.getAttribute('data-kn-fc-direct-native') !== '1') return;
       if (seen.indexOf(el) !== -1) return;
       var label = knFunctionCenterElementLabel(el);
       if (!label) return;
@@ -3098,6 +3306,7 @@
         }
       });
     });
+    Array.prototype.slice.call(functionCenterState.adopted || []).forEach(push);
     return nodes;
   }
 
@@ -3174,6 +3383,12 @@
       '#' + DIALOG_ID + ' .kn-fc-native-grid{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}' +
       '#' + DIALOG_ID + ' .kn-fc-native-btn{min-height:36px;padding:0 13px;border-radius:999px;border:1px solid rgba(232,234,237,.11);background:rgba(255,255,255,.06);color:#e8eaed;font-size:12px;font-weight:850;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '#' + DIALOG_ID + ' .kn-fc-native-btn:hover{border-color:rgba(138,180,248,.28);background:rgba(138,180,248,.10)}' +
+      '#' + DIALOG_ID + ' .kn-fc-native-btn.needs-confirm{border-color:rgba(247,201,72,.30);background:rgba(247,201,72,.08);color:#fff4d0}' +
+      '#' + DIALOG_ID + ' .kn-fc-native-btn.needs-confirm.is-called{background:rgba(247,201,72,.15);box-shadow:0 0 0 3px rgba(247,201,72,.08) inset}' +
+      '#' + DIALOG_ID + ' .kn-fc-native-direct{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:36px!important;height:36px!important;padding:0 13px!important;border-radius:999px!important;border:1px solid rgba(247,201,72,.30)!important;background:rgba(247,201,72,.08)!important;color:#fff4d0!important;font-size:12px!important;font-weight:850!important;cursor:pointer!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;margin:0!important;box-shadow:none!important;line-height:1!important}' +
+      '#' + DIALOG_ID + ' .kn-fc-native-direct:hover{background:rgba(247,201,72,.14)!important;border-color:rgba(247,201,72,.42)!important;transform:translateY(-1px)}' +
+      '#' + DIALOG_ID + ' .kn-fc-native-direct:active{transform:translateY(0)}' +
+      '.kn-native-dialog-lifted-direct{z-index:2147483647!important;position:fixed!important;left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%)!important;max-width:min(560px,calc(100vw - 36px))!important;max-height:calc(100vh - 80px)!important;overflow:auto!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}' +
       '#' + DIALOG_ID + ' .kn-fc-select-wrap{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 10px;border-radius:999px;border:1px solid rgba(138,180,248,.16);background:rgba(138,180,248,.06)}' +
       '#' + DIALOG_ID + ' .kn-fc-select-wrap span{font-size:12px;font-weight:850;color:#d3e3fd}.kn-fc-select-wrap select{height:28px;min-width:92px;border-radius:999px;background:#111722;color:#e8eaed;border:1px solid rgba(232,234,237,.12);padding:0 8px}' +
       '#' + DIALOG_ID + ' .kn-fc-enhanced{display:flex;flex-direction:column;gap:10px}.kn-fc-enh-card{padding:12px;border-radius:18px;background:rgba(138,180,248,.055);border:1px solid rgba(138,180,248,.12)}' +
@@ -3184,6 +3399,7 @@
   }
 
   function hideHomeFunctionListButtons() {
+    if (!isWebOSFeatureEnabled('nativeButtonMigration')) { restoreHomeFunctionListButtons(); return; }
     ensureFunctionCenterStyles();
     var boxes = getNativeFunctionButtonBoxes();
     function hideControl(el) {
@@ -3291,6 +3507,283 @@
     FUNCTION_CENTER_GROUPS.forEach(function (g) { renderFunctionCenterGroupPanel(g.key); });
   }
 
+
+  function knFunctionCenterShouldKeepSettingsOpen(label, groupKey) {
+    var text = clean(label || '');
+    if (groupKey !== 'device' && !/重启|重啟|恢复出厂|恢復出廠|恢复|关机|關機|断电|斷電|电源|電源/i.test(text)) return false;
+    return /重启|重啟|重启设备|重啟設備|重启网络|重啟網絡|恢复出厂|恢復出廠|恢复默认|关机|關機|断电|斷電|电源/i.test(text);
+  }
+
+  function knFunctionCenterEnsureNativeDialogCSS() {
+    if (document.getElementById('kn-function-center-native-dialog-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kn-function-center-native-dialog-style';
+    style.textContent = '' +
+      '#kn-native-risk-overlay{position:sticky;top:0;z-index:2147483647;border-radius:18px;border:1px solid rgba(255,197,96,.35);background:linear-gradient(180deg,rgba(40,30,16,.96),rgba(18,16,12,.96));box-shadow:0 18px 46px rgba(0,0,0,.36);padding:12px;color:#fff;box-sizing:border-box;margin:0 0 12px}' +
+      '#kn-native-risk-overlay .kn-risk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}' +
+      '#kn-native-risk-overlay .kn-risk-title{font-size:13px;font-weight:950;color:#fff1c6}' +
+      '#kn-native-risk-overlay .kn-risk-desc{font-size:12px;line-height:1.65;color:rgba(255,255,255,.72);margin-bottom:10px}' +
+      '#kn-native-risk-overlay .kn-risk-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}' +
+      '#kn-native-risk-overlay .kn-risk-btn{height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:rgba(255,255,255,.88);font-size:12px;font-weight:900;cursor:pointer}' +
+      '#kn-native-risk-overlay .kn-risk-btn.primary{background:rgba(247,201,72,.20);border-color:rgba(247,201,72,.38);color:#fff4d0}' +
+      '#kn-native-risk-overlay .kn-risk-btn:hover{background:rgba(255,255,255,.13)}' +
+      '#kn-native-dialog-portal{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.36);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);pointer-events:none;box-sizing:border-box}' +
+      '#kn-native-dialog-portal:empty{display:none}' +
+      '#kn-native-dialog-portal>.kn-native-dialog-ported{pointer-events:auto;max-width:min(560px,calc(100vw - 36px))!important;max-height:calc(100vh - 110px)!important;overflow:auto!important;z-index:2147483647!important;position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;margin:0!important}' +
+      '#kn-native-dialog-portal .modal,#kn-native-dialog-portal .modal-wrapper,#kn-native-dialog-portal .modal-mask,#kn-native-dialog-portal .van-dialog,#kn-native-dialog-portal .el-message-box__wrapper,#kn-native-dialog-portal .layui-layer,#kn-native-dialog-portal .swal2-container{z-index:2147483647!important}' +
+      '.kn-native-dialog-lifted,.swal2-container,.van-overlay,.van-popup,.van-dialog,.el-overlay,.el-message-box__wrapper,.modal-mask,.modal-wrapper,#modal,#confirmModal,#messageBox,#dialog,#popup{z-index:2147483646!important}';
+    document.head.appendChild(style);
+  }
+
+  function knFunctionCenterGetDialogPortal() {
+    knFunctionCenterEnsureNativeDialogCSS();
+    var portal = document.getElementById('kn-native-dialog-portal');
+    if (!portal) {
+      portal = document.createElement('div');
+      portal.id = 'kn-native-dialog-portal';
+      document.body.appendChild(portal);
+      portal.addEventListener('click', function (e) {
+        if (e.target !== portal) return;
+        // 点击遮罩只做置顶，不关闭原生确认，避免误取消重启流程。
+        knFunctionCenterBringNativeDialogsToFront();
+      });
+    }
+    return portal;
+  }
+
+  function knFunctionCenterIsNativeDialogCandidate(el) {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    if (el.id === DIALOG_ID || el.id === 'kn-native-risk-overlay' || el.id === 'kn-native-dialog-portal') return false;
+    if (el.closest && (el.closest('#' + DIALOG_ID) || el.closest('#' + TOOLBOX_DRAWER_ID) || el.closest('#' + TOOLBOX_SETTINGS_ID) || el.closest('#kn-phone-sms-modal') || el.closest('#kn-operator-info-missing') || el.closest('#kn-phone-sms-missing'))) return false;
+    if (el.classList && (el.classList.contains('kn-dialog-content') || el.classList.contains('kn-native-dialog-ported'))) return false;
+    var id = String(el.id || '').toLowerCase();
+    var cls = String(el.className || '').toLowerCase();
+    var role = String(el.getAttribute && (el.getAttribute('role') || '') || '').toLowerCase();
+    var text = clean((el.innerText || el.textContent || '')).slice(0, 300);
+    var looksLike = /confirm|dialog|modal|popup|messagebox|message-box|swal|layui-layer|van-dialog|el-message|alert/.test(id + ' ' + cls + ' ' + role)
+      || /确认|取消|重启|重啟|恢复出厂|关机|确定/.test(text);
+    if (!looksLike) return false;
+    try {
+      var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      if (cs && (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0)) return false;
+      var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      if (rect && rect.width < 80 && rect.height < 40) return false;
+    } catch (e) {}
+    return true;
+  }
+
+  function knFunctionCenterPortNativeDialog(el) {
+    if (!knFunctionCenterIsNativeDialogCandidate(el)) return false;
+    var portal = knFunctionCenterGetDialogPortal();
+    try {
+      el.classList.add('kn-native-dialog-ported', 'kn-native-dialog-lifted');
+      el.setAttribute('data-kn-native-dialog-ported', '1');
+      el.style.zIndex = '2147483647';
+      el.style.pointerEvents = 'auto';
+      portal.appendChild(el);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function knFunctionCenterBringNativeDialogsToFront() {
+    knFunctionCenterEnsureNativeDialogCSS();
+    var selectors = [
+      'dialog:not(#' + DIALOG_ID + ')',
+      '.swal2-container', '.van-dialog', '.van-popup', '.el-message-box__wrapper', '.layui-layer', '.ant-modal-root', '.ant-modal-wrap', '.ivu-modal-wrap', '.n-modal-container',
+      '.modal:not(#' + TOOLBOX_DRAWER_ID + '):not(#' + TOOLBOX_SETTINGS_ID + ')', '.modal-wrapper',
+      '#modal', '#confirmModal', '#messageBox', '#dialog', '#popup'
+    ];
+    var moved = false;
+    selectors.forEach(function (selector) {
+      Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function (el) {
+        if (knFunctionCenterPortNativeDialog(el)) moved = true;
+        else {
+          try {
+            el.classList.add('kn-native-dialog-lifted');
+            el.style.zIndex = '2147483646';
+            el.style.pointerEvents = 'auto';
+          } catch (e) {}
+        }
+      });
+    });
+    return moved;
+  }
+
+  function knFunctionCenterStartNativeDialogLift() {
+    knFunctionCenterEnsureNativeDialogCSS();
+    var times = 0;
+    knFunctionCenterBringNativeDialogsToFront();
+    var observer = null;
+    try {
+      observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+          Array.prototype.slice.call(m.addedNodes || []).forEach(function (node) {
+            if (node instanceof HTMLElement) {
+              knFunctionCenterPortNativeDialog(node);
+              Array.prototype.slice.call(node.querySelectorAll ? node.querySelectorAll('dialog,.modal,.modal-wrapper,.swal2-container,.van-dialog,.van-popup,.el-message-box__wrapper,.layui-layer,#modal,#confirmModal,#messageBox,#dialog,#popup') : []).forEach(knFunctionCenterPortNativeDialog);
+            }
+          });
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
+    var timer = window.setInterval(function () {
+      times += 1;
+      knFunctionCenterBringNativeDialogsToFront();
+      if (times >= 40) {
+        window.clearInterval(timer);
+        if (observer) { try { observer.disconnect(); } catch (e) {} }
+      }
+    }, 120);
+  }
+
+  function knFunctionCenterShowHighRiskOverlay(original, label, proxyBtn) {
+    knFunctionCenterEnsureNativeDialogCSS();
+    var dialog = document.getElementById(DIALOG_ID);
+    if (!dialog) return;
+    var old = document.getElementById('kn-native-risk-overlay');
+    if (old) old.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'kn-native-risk-overlay';
+    overlay.innerHTML = '<div class="kn-risk-head"><div class="kn-risk-title">原生确认流程已置顶</div><button type="button" class="kn-risk-btn" data-risk-close="1">关闭提示</button></div><div class="kn-risk-desc">已调用原生「' + knEsc(label) + '」。如果原生流程需要二次确认或多次点击，不要关闭设置面板，直接点击下面的“再次调用原生按钮”。同时会持续把原生确认弹窗提升到最上层。</div><div class="kn-risk-actions"><button type="button" class="kn-risk-btn" data-risk-lift="1">重新置顶弹窗</button><button type="button" class="kn-risk-btn primary" data-risk-again="1">再次调用原生按钮</button></div>';
+    var callNative = function () {
+      var count = Number(proxyBtn && proxyBtn.getAttribute('data-native-click-count') || '0') + 1;
+      if (proxyBtn) {
+        proxyBtn.setAttribute('data-native-click-count', String(count));
+        proxyBtn.classList.add('is-called');
+        proxyBtn.title = '已调用原生按钮 ' + count + ' 次；设置面板保持打开，原生弹窗会自动置顶。';
+      }
+      try {
+        original.click();
+        knFunctionCenterStartNativeDialogLift();
+      } catch (e) {
+        if (typeof createToast === 'function') createToast('原生按钮调用失败：' + label, 'red');
+      }
+    };
+    overlay.querySelector('[data-risk-close]').onclick = function () { overlay.remove(); };
+    overlay.querySelector('[data-risk-lift]').onclick = knFunctionCenterStartNativeDialogLift;
+    overlay.querySelector('[data-risk-again]').onclick = callNative;
+    dialog.appendChild(overlay);
+  }
+
+  function knFunctionCenterInvokeHighRiskNative(original, label, proxyBtn) {
+    if (!original) return;
+    if (typeof createToast === 'function') createToast('正在调用原生「' + label + '」；设置面板保持打开，确认弹窗将自动置顶', 'yellow');
+    knFunctionCenterShowHighRiskOverlay(original, label, proxyBtn);
+    window.setTimeout(function () {
+      try {
+        var count = Number(proxyBtn && proxyBtn.getAttribute('data-native-click-count') || '0') + 1;
+        if (proxyBtn) {
+          proxyBtn.setAttribute('data-native-click-count', String(count));
+          proxyBtn.classList.add('is-called');
+          proxyBtn.title = '已调用原生按钮 ' + count + ' 次；设置面板保持打开，原生弹窗会自动置顶。';
+        }
+        original.click();
+        knFunctionCenterStartNativeDialogLift();
+      } catch (e) {
+        if (typeof createToast === 'function') createToast('原生按钮调用失败：' + label, 'red');
+      }
+    }, 60);
+  }
+
+
+  function knFunctionCenterCleanupNativeRiskUI() {
+    var old = document.getElementById('kn-native-risk-overlay');
+    if (old) old.remove();
+    var portal = document.getElementById('kn-native-dialog-portal');
+    if (portal && !portal.children.length) portal.remove();
+  }
+
+  function knFunctionCenterLiftNativeDialogsDirect() {
+    knFunctionCenterEnsureNativeDialogCSS();
+    var selectors = [
+      'dialog:not(#' + DIALOG_ID + ')',
+      '.swal2-container', '.van-dialog', '.van-popup', '.el-message-box__wrapper', '.layui-layer', '.ant-modal-root', '.ant-modal-wrap', '.ivu-modal-wrap', '.n-modal-container',
+      '.modal:not(#' + TOOLBOX_DRAWER_ID + '):not(#' + TOOLBOX_SETTINGS_ID + ')', '.modal-wrapper',
+      '#modal', '#confirmModal', '#messageBox', '#dialog', '#popup'
+    ];
+    selectors.forEach(function (selector) {
+      Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function (el) {
+        if (!knFunctionCenterIsNativeDialogCandidate(el)) return;
+        try {
+          el.classList.add('kn-native-dialog-lifted', 'kn-native-dialog-lifted-direct');
+          el.style.zIndex = '2147483647';
+          el.style.pointerEvents = 'auto';
+        } catch (e) {}
+      });
+    });
+  }
+
+  function knFunctionCenterStartDirectNativeLift() {
+    knFunctionCenterLiftNativeDialogsDirect();
+    var times = 0;
+    var observer = null;
+    try {
+      observer = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+          Array.prototype.slice.call(m.addedNodes || []).forEach(function (node) {
+            if (!(node instanceof HTMLElement)) return;
+            if (knFunctionCenterIsNativeDialogCandidate(node)) {
+              try {
+                node.classList.add('kn-native-dialog-lifted', 'kn-native-dialog-lifted-direct');
+                node.style.zIndex = '2147483647';
+                node.style.pointerEvents = 'auto';
+              } catch (e) {}
+            }
+            Array.prototype.slice.call(node.querySelectorAll ? node.querySelectorAll('dialog,.modal,.modal-wrapper,.swal2-container,.van-dialog,.van-popup,.el-message-box__wrapper,.layui-layer,#modal,#confirmModal,#messageBox,#dialog,#popup') : []).forEach(function (el) {
+              if (!knFunctionCenterIsNativeDialogCandidate(el)) return;
+              try {
+                el.classList.add('kn-native-dialog-lifted', 'kn-native-dialog-lifted-direct');
+                el.style.zIndex = '2147483647';
+                el.style.pointerEvents = 'auto';
+              } catch (e) {}
+            });
+          });
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
+    var timer = window.setInterval(function () {
+      times += 1;
+      knFunctionCenterLiftNativeDialogsDirect();
+      if (times >= 36) {
+        window.clearInterval(timer);
+        if (observer) { try { observer.disconnect(); } catch (e) {} }
+      }
+    }, 120);
+  }
+
+  function knFunctionCenterMountDirectNativeButton(original, label, key) {
+    if (!original || !(original instanceof HTMLElement)) return null;
+    knFunctionCenterCleanupNativeRiskUI();
+    if (functionCenterState.adopted.indexOf(original) === -1) functionCenterState.adopted.push(original);
+    try {
+      original.classList.remove('kn-home-function-hidden');
+      original.removeAttribute('data-kn-home-function-hidden');
+      original.setAttribute('data-kn-fc-direct-native', '1');
+      original.classList.add('kn-fc-native-direct', 'needs-confirm');
+      original.style.display = 'inline-flex';
+      original.style.visibility = 'visible';
+      original.style.opacity = '1';
+      original.title = '原生按钮：' + label + '。保持原按钮本体，支持原生多次点击确认流程。';
+      if (!clean(original.innerText || original.textContent || original.value || '')) {
+        if ('value' in original) original.value = label;
+        else original.textContent = label;
+      }
+      if (!original.__kn_fc_direct_native_bound__) {
+        original.__kn_fc_direct_native_bound__ = true;
+        original.addEventListener('click', function () {
+          // 不拦截原生 click，只负责把原生确认层提升到设置面板之上。
+          window.setTimeout(knFunctionCenterStartDirectNativeLift, 30);
+          window.setTimeout(knFunctionCenterLiftNativeDialogsDirect, 260);
+        }, true);
+      }
+    } catch (e) {}
+    return original;
+  }
+
   function renderFunctionCenterGroupPanel(key) {
     hideHomeFunctionListButtons();
     var panel = document.getElementById('kn-settings-panel-fc-' + key);
@@ -3340,6 +3833,13 @@
             wrap.appendChild(sel);
             grid.appendChild(wrap);
           } else {
+            if (knFunctionCenterShouldKeepSettingsOpen(item.label, key)) {
+              var directNative = knFunctionCenterMountDirectNativeButton(item.el, item.label, key);
+              if (directNative) {
+                grid.appendChild(directNative);
+                return;
+              }
+            }
             var b = document.createElement('button');
             b.type = 'button';
             b.className = 'kn-fc-native-btn';
@@ -3538,6 +4038,7 @@
       if ([5000, 10000, 30000, 60000].indexOf(interval) === -1) interval = def.interval;
       var userSetAuto = cfg.userSetAuto === true;
       var auto = userSetAuto ? !!cfg.auto : true;
+      if (!isWebOSFeatureEnabled('homeAutoRefresh')) auto = false;
       return { auto: auto, interval: interval, userSetAuto: userSetAuto };
     } catch (e) {
       return def;
@@ -3573,6 +4074,203 @@
     var prefix = success ? '已更新 ' : '读取失败 ';
     el.textContent = text || (prefix + new Date().toLocaleTimeString());
     el.title = el.textContent;
+  }
+
+
+  var homeExitIpState = { v4: '', v6: '', at: 0, busy: false };
+
+  function setHomeExitIp(info, source, stateText) {
+    if (!info || typeof info !== 'object') info = {};
+    var v4 = clean(info.v4 || '');
+    var v6 = clean(info.v6 || '');
+    var valueEl = document.getElementById('kn-home-exit-ip');
+    var v4El = document.getElementById('kn-home-exit-ip-v4');
+    var v6El = document.getElementById('kn-home-exit-ip-v6');
+    var subEl = document.getElementById('kn-home-exit-ip-sub');
+    var card = document.getElementById('kn-home-exit-ip-card');
+    if (valueEl) valueEl.textContent = stateText || (v4 || v6 ? '设备端已获取' : '设备端查询');
+    if (v4El) v4El.textContent = v4 || '--';
+    if (v6El) v6El.textContent = v6 || '--';
+    // 不在界面暴露具体第三方接口 / 代理来源，避免把调试信息展示给用户。
+    if (subEl) {
+      if (v4 || v6) subEl.textContent = '点击复制设备出口 IP';
+      else subEl.textContent = stateText || '设备端查询 IPv4 / IPv6';
+    }
+    if (card) {
+      var copy = [v4 ? ('IPv4 ' + v4) : '', v6 ? ('IPv6 ' + v6) : ''].filter(Boolean).join('\n');
+      card.setAttribute('data-copy-exit-ip', copy);
+      card.title = copy ? ('点击复制设备出口 IP\n' + copy) : '设备出口 IP 暂未获取';
+    }
+  }
+
+  function parseHomeExitIpsFromResponse(text) {
+    var raw = String(text == null ? '' : text).trim();
+    var result = { v4: '', v6: '' };
+    if (!raw) return result;
+    try {
+      var json = JSON.parse(raw);
+      raw = json.ip || json.query || json.origin || json.address || json.ipv4 || json.ipv6 || raw;
+    } catch (e) {}
+    var str = String(raw);
+    var v4 = str.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+    if (v4) result.v4 = v4[0];
+    var v6Matches = str.match(/(?:^|[^\w:])((?:[a-f0-9]{1,4}:){2,}[a-f0-9:]{1,4})(?:$|[^\w:])/ig) || [];
+    for (var i = 0; i < v6Matches.length; i += 1) {
+      var candidate = clean(v6Matches[i]).replace(/^[^a-f0-9:]+|[^a-f0-9:]+$/ig, '');
+      if (candidate && candidate.indexOf(':') !== -1 && !/^fe80:/i.test(candidate) && candidate !== '::1') {
+        result.v6 = candidate;
+        break;
+      }
+    }
+    return result;
+  }
+
+  function homeShellText(res) {
+    if (res == null) return '';
+    if (typeof res === 'string') return res;
+    if (typeof res === 'object') {
+      return String(res.content || res.output || res.stdout || res.stderr || res.data || res.result || '');
+    }
+    return String(res);
+  }
+
+  function homeShellQuote(value) {
+    return "'" + String(value == null ? '' : value).replace(/'/g, "'\\''") + "'";
+  }
+
+  function runHomeDeviceShellCommand(cmd) {
+    function postRootShellApi(command) {
+      var headers = Object.assign({}, getHeaderHeaders(), { 'Content-Type': 'application/json;charset=UTF-8' });
+      return fetch(getHeaderBaseURL().replace(/\/$/, '') + '/root_shell', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ command: command })
+      }).then(function (res) {
+        return res.text().then(function (text) {
+          if (!res.ok) throw new Error('root_shell HTTP ' + res.status + ': ' + text.slice(0, 160));
+          try { return JSON.parse(text); } catch (e) { return text; }
+        });
+      });
+    }
+    var attempts = [];
+    attempts.push(function () { return postRootShellApi(cmd); });
+    if (typeof runRootShellCommand === 'function') attempts.push(function () { return runRootShellCommand(cmd); });
+    if (typeof runShellWithRoot === 'function') attempts.push(function () { return runShellWithRoot(cmd); });
+    if (window.KanoShell && typeof window.KanoShell.run === 'function') attempts.push(function () { return window.KanoShell.run(cmd); });
+    if (window.KanoShell && typeof window.KanoShell.exec === 'function') attempts.push(function () { return window.KanoShell.exec(cmd); });
+    if (typeof window.runShell === 'function') attempts.push(function () { return window.runShell(cmd); });
+    if (typeof window.execShell === 'function') attempts.push(function () { return window.execShell(cmd); });
+    var chain = Promise.reject(new Error('start'));
+    attempts.forEach(function (fn) {
+      chain = chain.catch(function () { return Promise.resolve().then(fn); });
+    });
+    return chain;
+  }
+
+  function buildHomeExitIpCommand(url, family) {
+    var safeUrl = homeShellQuote(url);
+    var curlFlag = family === 6 ? '-6' : '-4';
+    var wgetFlag = family === 6 ? '-6' : '-4';
+    return [
+      'URL=' + safeUrl,
+      'OUT=""',
+      'if command -v curl >/dev/null 2>&1; then OUT=$(curl ' + curlFlag + ' -fsSL --connect-timeout 4 --max-time 8 "$URL" 2>/dev/null || true); fi',
+      'if [ -z "$OUT" ] && command -v wget >/dev/null 2>&1; then OUT=$(wget ' + wgetFlag + ' -qO- "$URL" 2>/dev/null || true); fi',
+      'if [ -z "$OUT" ] && command -v busybox >/dev/null 2>&1; then OUT=$(busybox wget -qO- "$URL" 2>/dev/null || true); fi',
+      'printf "%s" "$OUT"'
+    ].join('; ');
+  }
+
+  function fetchHomeExitIpOne(item, family) {
+    function fetchByDeviceProxy() {
+      var base = getHeaderBaseURL().replace(/\/$/, '');
+      var proxyUrl = base + '/proxy/--' + item.url;
+      return fetch(proxyUrl, { headers: getHeaderHeaders(), cache: 'no-store' }).then(function (res) {
+        return res.text().then(function (text) {
+          if (!res.ok) throw new Error('proxy HTTP ' + res.status + ': ' + text.slice(0, 160));
+          var ips = parseHomeExitIpsFromResponse(text);
+          var ip = family === 4 ? ips.v4 : ips.v6;
+          if (!ip) throw new Error('proxy empty IPv' + family);
+          return { ip: ip, source: item.name + ' 设备代理' };
+        });
+      });
+    }
+    function fetchByRootShell() {
+      var cmd = buildHomeExitIpCommand(item.url, family);
+      return runHomeDeviceShellCommand(cmd).then(function (res) {
+        var body = homeShellText(res);
+        var ips = parseHomeExitIpsFromResponse(body);
+        var ip = family === 4 ? ips.v4 : ips.v6;
+        if (!ip) throw new Error('empty device IPv' + family);
+        return { ip: ip, source: item.name + ' 设备命令' };
+      });
+    }
+    return fetchByDeviceProxy().catch(fetchByRootShell);
+  }
+
+  function fetchHomeExitIpFamily(family) {
+    var endpoints = family === 4 ? [
+      { name: 'ipify IPv4', url: 'https://api.ipify.org?format=json' },
+      { name: 'icanhazip IPv4', url: 'https://ipv4.icanhazip.com' },
+      { name: 'ident IPv4', url: 'http://v4.ident.me' },
+      { name: 'IP.sb IPv4', url: 'https://api-ipv4.ip.sb/ip' },
+      { name: 'ifconfig IPv4', url: 'http://ipv4.icanhazip.com' }
+    ] : [
+      { name: 'ipify IPv6', url: 'https://api64.ipify.org?format=json' },
+      { name: 'icanhazip IPv6', url: 'https://ipv6.icanhazip.com' },
+      { name: 'ident IPv6', url: 'http://v6.ident.me' },
+      { name: 'IP.sb IPv6', url: 'https://api-ipv6.ip.sb/ip' }
+    ];
+    var p = Promise.reject(new Error('start'));
+    endpoints.forEach(function (item) {
+      p = p.catch(function () { return fetchHomeExitIpOne(item, family); });
+    });
+    return p;
+  }
+
+  function refreshHomeExitIp(force) {
+    if (!isWebOSFeatureEnabled('homeExitIp')) return;
+    var home = document.getElementById(HOME_DASHBOARD_ID);
+    if (!home) return;
+    var now = Date.now();
+    if (!force && (homeExitIpState.v4 || homeExitIpState.v6) && now - homeExitIpState.at < 60000) {
+      setHomeExitIp(homeExitIpState, '', '已缓存');
+      return;
+    }
+    if (homeExitIpState.busy) return;
+    homeExitIpState.busy = true;
+    if (!homeExitIpState.v4 && !homeExitIpState.v6) setHomeExitIp({}, '', '设备端查询中');
+
+    Promise.allSettled([fetchHomeExitIpFamily(4), fetchHomeExitIpFamily(6)]).then(function (results) {
+      var next = {
+        v4: homeExitIpState.v4,
+        v6: homeExitIpState.v6,
+      };
+      if (results[0].status === 'fulfilled') { next.v4 = results[0].value.ip; }
+      if (results[1].status === 'fulfilled') { next.v6 = results[1].value.ip; }
+      if (!next.v4 && !next.v6) throw new Error('device exit ip empty');
+      homeExitIpState.v4 = next.v4;
+      homeExitIpState.v6 = next.v6;
+      homeExitIpState.at = Date.now();
+      setHomeExitIp(homeExitIpState, '', '设备端已获取');
+    }).catch(function (err) {
+      console.warn('[KanoWebOS] 设备端出口 IP 查询失败:', err);
+      if (homeExitIpState.v4 || homeExitIpState.v6) setHomeExitIp(homeExitIpState, '', '保留缓存');
+      else setHomeExitIp({}, '', '设备端代理/命令不可用');
+    }).finally(function () { homeExitIpState.busy = false; });
+  }
+
+  function copyHomeExitIp() {
+    var card = document.getElementById('kn-home-exit-ip-card');
+    var ip = card ? clean(card.getAttribute('data-copy-exit-ip') || '') : '';
+    if (!ip) { homeToast('设备出口 IP 尚未获取', 'yellow'); refreshHomeExitIp(true); return; }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ip).then(function () { homeToast('设备出口 IP 已复制', 'green'); }).catch(function () { prompt('复制设备出口 IP', ip); });
+        return;
+      }
+    } catch (e) {}
+    prompt('复制设备出口 IP', ip);
   }
 
   function countryFlagFromDialCode(code) {
@@ -3715,11 +4413,11 @@
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-toggle{height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:rgba(255,255,255,.72);font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap;}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-toggle.is-on{background:rgba(57,210,121,.15);border-color:rgba(134,239,172,.28);color:rgba(225,255,235,.96);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-time{width:100%;font-size:10.5px;color:var(--home-muted-2);text-align:right;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat{min-width:0;padding:14px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-label{font-size:11px;color:var(--home-muted);font-weight:780;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-value{font-size:18px;font-weight:950;color:var(--home-text);line-height:1.32;word-break:break-word;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-sub{margin-top:6px;font-size:10.5px;color:var(--home-muted-2);line-height:1.38;word-break:break-word;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-sub{margin-top:6px;font-size:10.5px;color:var(--home-muted-2);line-height:1.38;word-break:break-word;}#'+ HOME_DASHBOARD_ID + ' .kn-home-stat.is-clickable{cursor:pointer;}#'+ HOME_DASHBOARD_ID + ' .kn-home-stat.is-clickable:hover{border-color:rgba(120,180,255,.26);background:rgba(120,180,255,.06);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-line{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 8px;margin-top:7px;border-radius:999px;background:rgba(57,210,121,.08);border:1px solid rgba(134,239,172,.16);color:rgba(229,255,237,.86);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-line:hover{background:rgba(57,210,121,.14);border-color:rgba(134,239,172,.28);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-dashboard-fusion{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;margin-top:14px;align-items:stretch;}' +
@@ -3831,6 +4529,10 @@
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-status.ready{color:rgba(134,239,172,.88);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-status.missing{color:rgba(247,201,72,.88);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-action-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-stack{display:grid;gap:5px;margin-top:4px;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-row{display:grid;grid-template-columns:38px minmax(0,1fr);gap:7px;align-items:center;font-size:12px;line-height:1.25;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-row b{font-size:10px;color:var(--home-muted-2);font-weight:900;letter-spacing:.03em;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--home-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:850;}' +
       '.kn-phone-missing-modal{position:fixed;inset:0;z-index:1000001;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.58);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}.kn-phone-missing-card{width:min(440px,calc(100vw - 34px));border-radius:24px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(28,32,42,.96),rgba(13,16,22,.96));box-shadow:0 32px 90px rgba(0,0,0,.56);padding:20px;color:#fff;}.kn-phone-missing-title{font-size:18px;font-weight:950;margin-bottom:8px}.kn-phone-missing-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.58);margin-bottom:16px}.kn-phone-missing-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}.kn-phone-missing-actions button{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#fff;font-weight:850;cursor:pointer}.kn-phone-missing-actions .primary{background:rgba(72,150,255,.28);border-color:rgba(120,180,255,.32);}' +
       '.kn-theme-light #'+ HOME_DASHBOARD_ID + '{--home-card-bg:rgba(255,255,255,.72);--home-card-bg-soft:rgba(255,255,255,.54);--home-card-border:rgba(34,50,80,.08);--home-text:#172033;--home-muted:rgba(23,32,51,.58);--home-muted-2:rgba(23,32,51,.42);}' +
       '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-card,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-dash-card,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-details-wrap{background:rgba(255,255,255,.58)!important;border-color:rgba(34,50,80,.08)!important;box-shadow:0 14px 36px rgba(34,50,80,.10),inset 0 1px 0 rgba(255,255,255,.58)!important;}' +
@@ -3860,7 +4562,8 @@
           '<div class="kn-home-status-grid">',
             '<div class="kn-home-stat"><div class="kn-home-stat-label">运行状态</div><div id="kn-home-modem" class="kn-home-stat-value">--</div><div id="kn-home-uptime" class="kn-home-stat-sub">运行时长读取中</div></div>',
             '<div class="kn-home-stat"><div class="kn-home-stat-label">网络状态 / 信号</div><div id="kn-home-network" class="kn-home-stat-value">--</div><div id="kn-home-phone-line" class="kn-home-stat-sub kn-home-phone-line" title="点击复制手机号">手机号读取中</div><div id="kn-home-signal" class="kn-home-stat-sub">信号 --</div></div>',
-            '<div class="kn-home-stat"><div class="kn-home-stat-label">当前 IP</div><div id="kn-home-ip" class="kn-home-stat-value">--</div><div id="kn-home-ip-sub" class="kn-home-stat-sub">WAN / LAN</div></div>',
+            '<div class="kn-home-stat"><div class="kn-home-stat-label">内网 IP</div><div id="kn-home-ip" class="kn-home-stat-value">--</div><div id="kn-home-ip-sub" class="kn-home-stat-sub">设备管理 IPv4</div></div>',
+            '<div class="kn-home-stat is-clickable" id="kn-home-exit-ip-card" title="点击复制设备出口 IP"><div class="kn-home-stat-label">设备出口 IP</div><div id="kn-home-exit-ip" class="kn-home-stat-value">设备端查询</div><div class="kn-home-exit-ip-stack"><div class="kn-home-exit-ip-row"><b>IPv4</b><span id="kn-home-exit-ip-v4">--</span></div><div class="kn-home-exit-ip-row"><b>IPv6</b><span id="kn-home-exit-ip-v6">--</span></div></div><div id="kn-home-exit-ip-sub" class="kn-home-stat-sub">设备端查询 IPv4 / IPv6</div></div>',
             '<div class="kn-home-stat"><div class="kn-home-stat-label">WiFi 接入</div><div id="kn-home-wifi" class="kn-home-stat-value">--</div><div id="kn-home-wifi-sub" class="kn-home-stat-sub">接入设备 --</div></div>',
           '</div>',
           '<div class="kn-home-dashboard-fusion">',
@@ -3954,6 +4657,9 @@
     if (operatorGithubBtn) operatorGithubBtn.onclick = openOperatorInfoGithub;
     updateHomeOperatorPluginCard();
     setTimeout(updateHomeOperatorPluginCard, 800);
+    var exitIpCard = home.querySelector('#kn-home-exit-ip-card');
+    if (exitIpCard) exitIpCard.onclick = copyHomeExitIp;
+    refreshHomeExitIp(false);
     var cleanBtn = home.querySelector('[data-home-action="cleanMem"]');
     if (cleanBtn) cleanBtn.onclick = function () { triggerHomeRocketAction(cleanBtn, 'clean'); };
     var coolBtn = home.querySelector('[data-home-action="coolDown"]');
@@ -4197,6 +4903,93 @@
       if (parts.length === 4 && parts.every(function (p) { return p >= 0 && p <= 255; }) && out.indexOf(x) === -1) out.push(x);
     });
     return out;
+  }
+
+  function isHomePrivateIPv4(ip) {
+    var parts = String(ip || '').split('.').map(Number);
+    if (parts.length !== 4 || !parts.every(function (p) { return isFinite(p) && p >= 0 && p <= 255; })) return false;
+    var a = parts[0], b = parts[1];
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    if (a === 169 && b === 254) return true;
+    return false;
+  }
+
+  function isLikelyHomeManagementIPv4(ip) {
+    var parts = String(ip || '').split('.').map(Number);
+    if (parts.length !== 4 || !parts.every(function (p) { return isFinite(p) && p >= 0 && p <= 255; })) return false;
+    // 常见管理口 / 网关地址：x.x.x.1、x.x.x.254。
+    return parts[3] === 1 || parts[3] === 254;
+  }
+
+  function isLikelyHomeTunnelIPv4(ip) {
+    var parts = String(ip || '').split('.').map(Number);
+    if (parts.length !== 4 || !parts.every(function (p) { return isFinite(p) && p >= 0 && p <= 255; })) return false;
+    var a = parts[0], b = parts[1];
+    // Tailscale/ZeroTier/VPN/overlay 常见地址段：10/8、100.64/10、172.16/12。
+    // 192.168/16 容易混入当前接入终端地址，除非它是 .1/.254 管理口，否则不作为隧道地址保留。
+    if (a === 10) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    return false;
+  }
+
+  function filterHomeManagementIPv4Values(list) {
+    var raw = [];
+    (Array.isArray(list) ? list : []).forEach(function (ip) {
+      if (!ip || ip === '0.0.0.0' || ip === '255.255.255.255' || /^127\./.test(ip)) return;
+      if (!isHomePrivateIPv4(ip)) return;
+      if (raw.indexOf(ip) === -1) raw.push(ip);
+    });
+    if (!raw.length) return [];
+
+    var keep = [];
+    raw.forEach(function (ip) {
+      if (isLikelyHomeTunnelIPv4(ip) || isLikelyHomeManagementIPv4(ip)) {
+        if (keep.indexOf(ip) === -1) keep.push(ip);
+      }
+    });
+
+    // 如果同一段“本机 IP”里同时出现 192.168.100.1 与 192.168.100.101，
+    // 只保留 .1 这类设备管理口；但保留 10.x / 100.64.x / 172.16.x 这类设备隧道地址。
+    return keep;
+  }
+
+  function collectHomeLanIPv4Values(data, domInfo) {
+    // 展示设备自己的内网地址：管理口 + Tailscale/ZeroTier/VPN 等隧道地址。
+    // 排除当前接入终端/客户端地址，例如 192.168.100.101。
+    var out = [];
+    function add(v) {
+      extractHomeIPv4Values(v).forEach(function (ip) {
+        if (out.indexOf(ip) === -1) out.push(ip);
+      });
+    }
+
+    // 设备侧接口 / 管理口 / AP / 网桥地址。明确排除 client_ip、station_ip_addr、dhcp_ip_addr、local_ip_addr。
+    var strictDeviceKeys = [
+      'lan_ipaddr','lan_ip','lan_addr','lan_address','lan_gateway','lan_gateway_ip',
+      'ap_ipaddr','ap_ip','ap_addr','ap_address','wifi_ap_ip','wlan_ap_ip',
+      'br0_ipaddr','br_lan_ipaddr','bridge_ipaddr','bridge_ip','gateway','default_gateway',
+      'router_ip','router_ipaddr','device_ip','device_ipaddr','manage_ip','management_ip'
+    ];
+    strictDeviceKeys.forEach(function (k) { add(data && data[k]); });
+
+    // “本机 IP”里可能包含：IPv6、Tailscale/VPN、设备管理口、当前客户端 IP。
+    // 这里读取后再通过 filterHomeManagementIPv4Values 保留隧道地址和管理口，排除客户端地址。
+    if (domInfo) { add(domInfo.lanIp); add(domInfo.gateway); }
+    add(pickHomeValueFromText([
+      'LAN IP','LAN地址','LAN 地址','局域网IP','局域网 IP','管理IP','管理 IP',
+      '网关IP','网关 IP','默认网关','设备管理IP','设备管理 IP','路由器IP','路由器 IP',
+      'AP IP','WiFi AP IP','WLAN AP IP','br-lan','br0'
+    ], { maxLen: 160 }));
+
+    if (!out.length) {
+      add(firstClean(data || {}, ['ipv4_gateway','gateway_ip','gateway','default_gateway']));
+      add(pickHomeMetricFromDom(['网关','默认网关','Gateway']));
+    }
+    return filterHomeManagementIPv4Values(out);
   }
 
   function extractHomeIPv6Values(v) {
@@ -4831,6 +5624,7 @@
   }
 
   function openExternalPhoneSmsOrPrompt() {
+    if (!isWebOSFeatureEnabled('phoneSmsBuiltin')) { homeToast('内置电话短信插件已在 WebOS 设置中关闭', 'yellow'); return; }
     var plugin = getExternalPhoneSmsPlugin();
     if (plugin) {
       try { plugin.open(); return; } catch (e) { console.warn('[KanoWebOS] 外部电话与短信插件打开失败:', e); }
@@ -5356,6 +6150,7 @@
     var home = document.getElementById(HOME_DASHBOARD_ID);
     if (!home) return;
     var cfg = readHomeRefreshConfig();
+    refreshHomeExitIp(!!force);
     if (!force && !cfg.auto) return;
     var now = Date.now();
     if (!force && state.homeRefreshAt && now < state.homeRefreshAt) return;
@@ -5436,14 +6231,15 @@
       var totalTx = formatBytes(firstClean(merged, ['monthly_tx_bytes','total_tx_bytes']));
       var totalRx = formatBytes(firstClean(merged, ['monthly_rx_bytes','total_rx_bytes']));
       var ipList = collectHomeIps(merged, domInfo);
-      var clientIp = extractHomeIPv4Values(domInfo.clientIp || firstClean(merged, ['client_ip','station_ip_addr','local_ip_addr','lan_ipaddr','ipv4_wan_ipaddr','wan_ipaddr']))[0] || '';
+      var lanIpList = collectHomeLanIPv4Values(merged, domInfo);
+      var clientIp = lanIpList[0] || extractHomeIPv4Values(domInfo.clientIp || firstClean(merged, ['client_ip','station_ip_addr','local_ip_addr','lan_ipaddr','ipv4_wan_ipaddr','wan_ipaddr']))[0] || '';
       var ipv6Addr = extractHomeIPv6Values(domInfo.ipv6 || firstClean(merged, ['ipv6_wan_ipaddr','wan_ipaddr6','ipv6_ip_addr','ipv6_pdp_addr'])).join(' ｜ ');
       var gatewayAddr = extractHomeIPv4Values(domInfo.gateway || firstClean(merged, ['gateway','ipv4_gateway','default_gateway'])).filter(function (x) { return x !== clientIp; })[0] || '';
       var macAddr = domInfo.mac || extractHomeMacValue(pickHomeMetricFromDom(['MAC地址','MAC 地址','MAC']));
       var dnsRaw = joinHomeValues([firstClean(merged, ['dns1','ipv4_dns1','dns']), firstClean(merged, ['dns2','ipv4_dns2'])], ' / ') || pickHomeMetricFromDom(['DNS服务器','DNS 服务器','DNS']);
       var dnsVals = extractHomeIPv4Values(dnsRaw).concat(extractHomeIPv6Values(dnsRaw));
       var dnsText = dnsVals.length ? dnsVals.join(' / ') : sanitizeHomeDisplayValue(dnsRaw, 'DNS');
-      var ipMain = clientIp || ipList.filter(function (x) { return /^\d+\./.test(x); })[0] || ipv6Addr || '--';
+      var ipMain = lanIpList.length ? lanIpList.join(' ｜ ') : (clientIp || '--');
       var rsrp = pickHomeRadioValue(merged, ['nr5g_rsrp','nr_rsrp','lte_rsrp','rsrp'], ['RSRP','5G RSRP','NR RSRP','LTE RSRP'], 'RSRP');
       var rsrq = pickHomeRadioValue(merged, ['nr5g_rsrq','nr_rsrq','lte_rsrq','rsrq'], ['RSRQ','5G RSRQ','NR RSRQ','LTE RSRQ'], 'RSRQ');
       var sinr = pickHomeRadioValue(merged, ['nr5g_sinr','nr5g_snr','nr_sinr','lte_sinr','lte_snr','sinr','snr'], ['SINR','SNR','5G SINR','NR SINR','LTE SINR'], 'SINR');
@@ -5469,7 +6265,7 @@
       setHomeTitle('#kn-home-sim', simState || '--');
       setHomeTitle('#kn-home-sim-sub', '号码 ' + (phone || '--'));
       setHomeTitle('#kn-home-ip', ipMain || '--');
-      setHomeTitle('#kn-home-ip-sub', ipv6Addr ? ('IPv6 ' + ipv6Addr) : (gatewayAddr ? ('网关 ' + gatewayAddr) : 'WAN / LAN'));
+      setHomeTitle('#kn-home-ip-sub', lanIpList.length ? '设备管理 IPv4' : '未读取到设备管理 IPv4');
       setHomeTitle('#kn-home-cpu', cpu || '--');
       setHomeTitle('#kn-home-load', '负载 ' + (load || '--'));
       setHomeTitle('#kn-home-memory', memUsage || (memUsed && memTotal ? memUsed + ' / ' + memTotal : '--'));
@@ -6083,15 +6879,43 @@
   }
 
   function parseWifiEnabled(data) {
-    var values = [
-      data.wifi_cur_state, data.wifi_enable, data.wifi_enabled, data.wlan_enable,
-      data.ap_status, data.wifi_status, data.m_ssid_enable
-    ].map(function (v) { return clean(v).toLowerCase(); }).filter(Boolean);
+    data = data || {};
+    function val(key) { return data[key]; }
+    function raw(key) { return clean(data[key]).toLowerCase(); }
+    function has(v) { return v !== undefined && v !== null && clean(v) !== '' && clean(v) !== '--'; }
+    function isOnText(v) { return /^(1|on|enable|enabled|up|open|true|yes|开启|已开启|打开|启用|已启用|active|running|正常)$/i.test(clean(v)); }
+    function isOffText(v) { return /^(off|disable|disabled|down|close|closed|false|no|关闭|已关闭|未开启|停用|已停用|inactive|radiooff)$/i.test(clean(v)); }
 
-    if (values.some(function (v) { return v === '1' || v === 'on' || v === 'enable' || v === 'enabled' || v === 'up' || v === 'open' || v === 'true'; })) return true;
-    if (values.some(function (v) { return v === '0' || v === 'off' || v === 'disable' || v === 'disabled' || v === 'down' || v === 'close' || v === 'false'; })) return false;
-    if (clean(data.RadioOff || data.radioOff) === '1') return false;
-    if (clean(data.RadioOff || data.radioOff) === '0') return true;
+    var band = resolveWifiBandLabel(data);
+    var count = resolveWifiClientCount(data);
+    var radioOff = raw('RadioOff') || raw('radioOff') || raw('wifi_radio_off') || raw('wlan_radio_off');
+    var explicitRadioOff = /^(1|true|on|yes)$/i.test(radioOff);
+    var explicitRadioOn = /^(0|false|off|no)$/i.test(radioOff);
+
+    // F50/UFI 页面中“5G/2.4G”通常就是 WiFi 当前制式；它优先级高于 0/1 这类含义不稳定的字段。
+    if (band && !explicitRadioOff) return true;
+    if (typeof count === 'number' && isFinite(count) && count > 0 && !explicitRadioOff) return true;
+    if (explicitRadioOn) return true;
+    if (explicitRadioOff && !band && !(typeof count === 'number' && count > 0)) return false;
+
+    var ssidKeys = ['SSID1','SSID2','ssid','wifi_ssid','wifi_2g_ssid','wifi_5g_ssid','m_ssid','m_ssid_2g','m_ssid_5g','ap_ssid','wlan_ssid','wifi_name','wifi_2g_name','wifi_5g_name'];
+    for (var i = 0; i < ssidKeys.length; i += 1) {
+      var ssid = clean(val(ssidKeys[i]));
+      if (ssid && !/^(0|off|false|disabled|关闭|已关闭|null|none|unknown|--)$/i.test(ssid)) return true;
+    }
+
+    // 只信任“明确文字关闭”，不再把 0 当作关闭；很多设备用 0 表示索引/当前模式。
+    var statusKeys = ['wifi_status','wlan_status','ap_status','wifi_state','wifi_mode','wifi_enable','wifi_enabled','wlan_enable','m_ssid_enable','wifi_2g_enable','wifi_5g_enable','ssid_enable','wifi_2g_switch','wifi_5g_switch','wifi_2g_state','wifi_5g_state'];
+    var sawExplicitOff = false;
+    for (var j = 0; j < statusKeys.length; j += 1) {
+      var tv = raw(statusKeys[j]);
+      if (!tv) continue;
+      if (isOnText(tv)) return true;
+      if (/^(2\.4g|2g|5g|5ghz|2\.4ghz|2\.4g\/5g|wifi|wlan)$/i.test(tv)) return true;
+      if (isOffText(tv)) sawExplicitOff = true;
+    }
+    if (sawExplicitOff) return false;
+
     return null;
   }
 
@@ -6155,29 +6979,120 @@
     return null;
   }
 
+  function getNativeWifiBandFromDom() {
+    function bandFromText(text) {
+      text = clean(text);
+      if (!text) return '';
+      // 只在 WiFi / WLAN / SSID 语境下判断，避免把蜂窝网络“5G”误当成 WiFi 频段。
+      var wifiContext = /wifi|wi-fi|wlan|无线|热点|ssid|ap|接入设备|接入终端/i.test(text);
+      if (!wifiContext) return '';
+      var has5 = /(^|[^\d])5\s*g(?:hz)?($|[^a-z\d])|5ghz|5\.8\s*g|ssid\s*2|ssid2|_5g|5g_/i.test(text);
+      var has24 = /2\.4\s*g(?:hz)?|2\.4ghz|ssid\s*1|ssid1|_2g|2g_/i.test(text);
+      // 对 F50/UFI 顶部胶囊来说，用户更关心当前打开的 5G 热点；同时存在时优先显示 5G，避免继续误显示 2.4G。
+      if (has5) return '5G';
+      if (has24) return '2.4G';
+      return '';
+    }
+
+    var sources = [];
+    try {
+      [state.nativeWifiInfoBtn, state.nativeWifiSettingsBtn, document.getElementById('kn-header-wifi-menu')].forEach(function (el) {
+        if (!el) return;
+        sources.push(el.innerText || el.textContent || '');
+        sources.push(el.getAttribute && (el.getAttribute('title') || el.getAttribute('aria-label') || el.getAttribute('onclick') || ''));
+        var parent = el.parentElement;
+        if (parent) sources.push(parent.innerText || parent.textContent || '');
+      });
+    } catch (e) {}
+
+    for (var i = 0; i < sources.length; i += 1) {
+      var b = bandFromText(sources[i]);
+      if (b) return b;
+    }
+    return '';
+  }
+
+  function resolveWifiBandLabel(data) {
+    data = data || {};
+    function raw(key) { return clean(data[key]); }
+    function isEnabledValue(v) { return /^(1|on|enable|enabled|true|yes|开启|已开启|启用|已启用|active|running|up)$/i.test(clean(v)); }
+    function isDisabledValue(v) { return /^(off|disable|disabled|false|no|关闭|已关闭|停用|已停用|inactive|down)$/i.test(clean(v)); }
+    function textHas5g(v) { return /(^|[^\d])5\s*g(?:hz)?($|[^a-z\d])|5ghz|5\.8\s*g|_5g|5g_|ssid\s*2|ssid2/i.test(clean(v)); }
+    function textHas2g(v) { return /2\.4\s*g(?:hz)?|2\.4ghz|_2g|2g_|ssid\s*1|ssid1/i.test(clean(v)); }
+
+    // 只允许“当前频段/原生当前显示”决定 2.4G / 5G。
+    // SSID1、2G 开关、2G SSID 只说明 2.4G 配置存在，不代表当前 Header 应显示 2.4G。
+    var currentKeys = [
+      'wifi_cur_state', 'wifi_current_state', 'wifi_current_band', 'wifi_band', 'wifi_mode',
+      'wifi_status', 'wlan_status', 'ap_status', 'current_wifi_band', 'current_band',
+      'wifi_work_band', 'wifi_current_frequency', 'wlan_current_band'
+    ];
+    for (var i = 0; i < currentKeys.length; i += 1) {
+      var current = raw(currentKeys[i]);
+      if (!current || /^\d+$/.test(current)) continue;
+      if (textHas5g(current)) return '5G';
+      if (textHas2g(current)) return '2.4G';
+    }
+
+    var domBand = getNativeWifiBandFromDom();
+    if (domBand === '5G') return '5G';
+    if (domBand === '2.4G') return '2.4G';
+
+    var enable5gKeys = ['wifi_5g_enable','wifi_5g_state','wifi_5g_switch','m_ssid_5g_enable','ssid2_enable','wifi5g_enable','wlan_5g_enable','wifi_5g_on','wifi_5g_status'];
+    var enable2gKeys = ['wifi_2g_enable','wifi_2g_state','wifi_2g_switch','m_ssid_2g_enable','ssid1_enable','wifi2g_enable','wlan_2g_enable','wifi_2g_on','wifi_2g_status'];
+    var name5gKeys = ['wifi_5g_name','wifi_5g_ssid','m_ssid_5g','SSID2','ssid2','SSID_5G','ssid_5g'];
+    var on5g = false, on2g = false, off5g = false;
+
+    enable5gKeys.forEach(function (key) {
+      var v = raw(key);
+      if (isEnabledValue(v) || textHas5g(v)) on5g = true;
+      if (isDisabledValue(v)) off5g = true;
+    });
+    name5gKeys.forEach(function (key) {
+      var v = raw(key);
+      if (v && !/^(0|null|none|unknown|--|off|disable|disabled|false|no|关闭|已关闭|停用|已停用|inactive|down)$/i.test(v)) on5g = true;
+    });
+    enable2gKeys.forEach(function (key) {
+      var v = raw(key);
+      // 只有字段值本身写明 2.4G 才作为 2.4G 证据；值为 1 只是“2.4G 配置启用”，不压过当前 5G。
+      if (textHas2g(v)) on2g = true;
+    });
+
+    if (on5g && !off5g) return '5G';
+    if (on2g && !on5g) return '2.4G';
+
+    // F50 场景：WiFi 已开启但固件未明确返回当前频段时，不再默认显示 2.4G。
+    // 旧逻辑会被 SSID1 / 2G 配置字段误导；这里返回空，由上层显示“已开启”。
+    return '';
+  }
+
   function updateHeaderWifiStatus(data) {
     var btn = document.getElementById('kn-header-wifi-btn');
     var stateEl = document.getElementById('kn-header-wifi-state');
     var countEl = document.getElementById('kn-header-wifi-count');
     if (!btn) return;
 
-    var enabled = parseWifiEnabled(data || {});
-    var count = resolveWifiClientCount(data || {});
+    data = data || {};
+    var count = resolveWifiClientCount(data);
+    var band = resolveWifiBandLabel(data);
+    var enabled = parseWifiEnabled(data);
+    var radioOffRaw = clean(data.RadioOff || data.radioOff || data.wifi_radio_off || data.wlan_radio_off).toLowerCase();
+    var radioExplicitOff = /^(1|true|on|yes)$/i.test(radioOffRaw);
 
-    // 如果能读取到无线接入数量，且数量大于 0，则 WiFi 必然处于可用状态。
-    // 某些 F50 固件会把 m_ssid_enable / wifi_cur_state 返回成 0，但实际 AP 仍在工作，不能直接判成关闭。
-    if ((enabled === null || enabled === false) && typeof count === 'number' && isFinite(count) && count > 0) {
-      enabled = true;
-    }
+    if (!radioExplicitOff && band) enabled = true;
+    if (!radioExplicitOff && typeof count === 'number' && isFinite(count) && count > 0) enabled = true;
+    // 防误判策略：没有 RadioOff=1 这种强关闭证据时，不允许把 Header 染红；最多显示未知。
+    if (enabled === false && !radioExplicitOff) enabled = null;
 
-    var stateText = enabled === true ? '已开启' : (enabled === false ? '已关闭' : '未知');
-    var compactStateText = enabled === true ? '开' : (enabled === false ? '关' : '?');
+    var stateText = enabled === true ? (band || '已开启') : (enabled === false ? '已关闭' : (band || '状态未知'));
+    var compactStateText = enabled === true ? (band || '开') : (enabled === false ? '关' : '?');
     var countText = typeof count === 'number' && isFinite(count) ? String(count) : '--';
 
+    btn.classList.remove('is-on', 'is-off', 'offline', 'unknown');
     btn.classList.toggle('is-on', enabled === true);
     btn.classList.toggle('is-off', enabled === false);
     btn.classList.toggle('offline', enabled === false);
-    btn.classList.toggle('unknown', enabled === null);
+    btn.classList.toggle('unknown', enabled !== true && enabled !== false);
     btn.setAttribute('data-state', compactStateText);
     if (stateEl) {
       stateEl.textContent = stateText;
@@ -6205,7 +7120,7 @@
       'local_ip_addr', 'lan_ipaddr', 'station_ip_addr', 'pdp_addr', 'ipv6_pdp_addr',
       'wifi_cur_state', 'wifi_enable', 'wifi_enabled', 'wlan_enable', 'RadioOff', 'ap_status', 'wifi_status', 'm_ssid_enable',
       'wifi_access_sta_num', 'wifi_sta_num', 'sta_count', 'station_num', 'station_count', 'ap_station_num', 'connected_devices', 'attached_devices_num', 'lan_station_num', 'wifi_client_num', 'wlan_client_num', 'client_num',
-      'station_list', 'wifi_client_list', 'wlan_client_list', 'attached_devices', 'client_list', 'SSID1', 'ssid', 'wifi_ssid'
+      'station_list', 'wifi_client_list', 'wlan_client_list', 'attached_devices', 'client_list', 'SSID1', 'SSID2', 'ssid', 'wifi_ssid', 'wifi_2g_ssid', 'wifi_5g_ssid', 'm_ssid', 'm_ssid_2g', 'm_ssid_5g', 'ap_ssid', 'wlan_ssid', 'wifi_name', 'wifi_2g_enable', 'wifi_5g_enable', 'wifi_2g_state', 'wifi_5g_state', 'wifi_2g_name', 'wifi_5g_name', 'wifi_2g_switch', 'wifi_5g_switch', 'wlan_status', 'wifi_state', 'wifi_mode'
     ].join(',');
     var url = getHeaderBaseURL() + '/goform/goform_get_cmd_process?multi_data=1&isTest=false&cmd=' + encodeURIComponent(cmds) + '&_=' + Date.now();
 
@@ -6438,10 +7353,11 @@
     applyAppearance();
     refreshHeaderNetworkInfo(true);
     refreshHomeDashboardStatus(true);
-    state.timer = setInterval(function () { grabTopElements(); refreshHeaderNetworkInfo(false); refreshHomeDashboardStatus(false); applyToolboxRouting(); hideHomeFunctionListButtons(); scheduleClassify(); }, 1200);
+    state.timer = setInterval(function () { grabTopElements(); refreshHeaderNetworkInfo(false); refreshHomeDashboardStatus(false); applyToolboxRouting(); if (isWebOSFeatureEnabled('nativeButtonMigration')) hideHomeFunctionListButtons(); else restoreHomeFunctionListButtons(); scheduleClassify(); }, 1200);
     state.observer = new MutationObserver(scheduleClassify);
     state.observer.observe(container, { childList: true, subtree: true });
     switchGroup(state.config.currentGroup);
+    setTimeout(function () { showWebOSWelcomeIfNeeded(false); }, 280);
     console.info('[KanoWebOS] 已启动 v' + VERSION);
   }
 
