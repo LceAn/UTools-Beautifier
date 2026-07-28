@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.11.8-webos-welcome-issue-fix';
+  var VERSION = '26.12.0-webos-network-diagnostics';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
@@ -113,7 +113,7 @@
         });
       });
     } catch (e) {}
-    var selector = '#kn-os-dialog,#' + DIALOG_ID + ',#' + HOME_DASHBOARD_ID + ',#' + TOOLBOX_WRAPPER_ID + ',#' + TOOLBOX_DRAWER_ID + ',#' + TOOLBOX_SETTINGS_ID + ',#' + HEADER_ID + ',#' + STYLE_ID + ',#' + THEME_STYLE_ID + ',#' + RESPONSIVE_STYLE_ID + ',#' + HOME_STYLE_ID + ',#' + TOOLBOX_STYLE_ID + ',#kano-webos-appearance-style,#kano-webos-phone-sms-style,#kn-phone-sms-modal,#kano-webos-function-center-style,#kn-plugin-hub-wrapper,#kn-header-polish-style,#kano-webos-theme-fix-style,#kano-webos-settings-polish-style';
+    var selector = '#kn-os-dialog,#' + DIALOG_ID + ',#' + HOME_DASHBOARD_ID + ',#' + TOOLBOX_WRAPPER_ID + ',#' + TOOLBOX_DRAWER_ID + ',#' + TOOLBOX_SETTINGS_ID + ',#' + HEADER_ID + ',#' + STYLE_ID + ',#' + THEME_STYLE_ID + ',#' + RESPONSIVE_STYLE_ID + ',#' + HOME_STYLE_ID + ',#' + TOOLBOX_STYLE_ID + ',#kano-webos-appearance-style,#kano-webos-phone-sms-style,#kn-phone-sms-modal,#kano-webos-function-center-style,#kn-network-diagnostics-modal,#kn-plugin-hub-wrapper,#kn-header-polish-style,#kano-webos-theme-fix-style,#kano-webos-settings-polish-style';
     Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function (el) { el.remove(); });
     Array.prototype.slice.call(document.querySelectorAll('.' + HIDDEN_CLASS + ',.kn-plugin-entry-hidden,.kn-toolbox-captured,.kn-home-function-hidden')).forEach(function (el) {
       el.classList.remove(HIDDEN_CLASS);
@@ -131,7 +131,7 @@
       el.classList.remove('kn-native-plugin-source');
       el.style.display = '';
     });
-    document.documentElement.classList.remove('kn-theme-dark', 'kn-theme-light');
+    document.documentElement.classList.remove('kn-theme-dark', 'kn-theme-light', 'kn-webos-active');
   }
 
   function clone(obj) { return JSON.parse(JSON.stringify(obj || {})); }
@@ -395,6 +395,7 @@
     style.id = STYLE_ID;
     style.textContent = '' +
       ':root{--kn-accent:#4e92ff;--kn-radius:22px}' +
+      'html.kn-webos-active body>.footer,html.kn-webos-active body>.toolbar{display:none!important}' +
       '#'+ HEADER_ID + '{width:min(1320px,calc(100% - 40px));box-sizing:border-box;display:grid;grid-template-columns:minmax(240px,300px) minmax(320px,1fr) minmax(520px,620px);align-items:center;gap:18px;margin:12px auto 24px;padding:12px 16px;position:sticky;top:12px;z-index:8888;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:rgba(22,26,32,.82);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);box-shadow:0 16px 40px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.05)}' +
       '#' + HEADER_ID + '.compact{padding-top:8px;padding-bottom:8px}' +
       '#kn-title-placeholder{display:flex;align-items:center;min-width:0}' +
@@ -1744,6 +1745,14 @@
 
   async function readNativeMessageForwardConfig() {
     var status = document.querySelector('#kn-native-forward-read-status');
+    if (!getStoredLoginState()) {
+      if (status) {
+        status.textContent = '登录后读取';
+        status.className = 'kn-forward-inline-status';
+        status.title = '请先登录 UFI-TOOLS，再读取原生消息转发配置';
+      }
+      return null;
+    }
     if (status) {
       status.textContent = '正在读取原生消息转发配置…';
       status.className = 'kn-forward-inline-status loading';
@@ -2963,13 +2972,14 @@
       '#' + DIALOG_ID + ' .kn-footer-right.only{margin-left:auto}' +
       '#' + DIALOG_ID + ' .kn-version-state.ok{color:#81c995}#' + DIALOG_ID + ' .kn-version-state.new{color:#8ab4f8}#' + DIALOG_ID + ' .kn-version-state.warn{color:#fdd663}#' + DIALOG_ID + ' .kn-version-state.error{color:#f28b82}#' + DIALOG_ID + ' .kn-version-state.checking{color:#bdc1c6}' +
       '@media(max-width:980px){#' + DIALOG_ID + ' .kn-visual-list{grid-template-columns:repeat(2,minmax(0,1fr))}#' + DIALOG_ID + ' .kn-inline-config{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-color-control{grid-template-columns:52px minmax(0,1fr)}}' +
-      '@media(max-width:860px){#' + DIALOG_ID + ' .kn-dialog-content{width:calc(100vw - 20px);height:calc(100vh - 20px);border-radius:24px}#' + DIALOG_ID + ' .kn-dialog-header{padding:20px}#' + DIALOG_ID + ' .kn-dialog-body{display:block;padding:16px 20px}#' + DIALOG_ID + ' .kn-settings-tabs{position:relative;display:grid;grid-template-columns:repeat(6,max-content);overflow-x:auto;margin-bottom:16px;border-radius:999px}#' + DIALOG_ID + ' .kn-settings-tab{text-align:center;white-space:nowrap}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-plugin-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-dialog-footer{padding:14px 20px 18px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-bg-mode-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-slider-row{grid-template-columns:74px minmax(0,1fr) 54px}}' +
+      '@media(max-width:860px){#' + DIALOG_ID + ' .kn-dialog-content{width:calc(100vw - 20px);height:calc(100vh - 20px);border-radius:24px}#' + DIALOG_ID + ' .kn-dialog-header{padding:20px}#' + DIALOG_ID + ' .kn-dialog-body{display:block;padding:16px 20px}#' + DIALOG_ID + ' .kn-settings-tabs{position:relative;display:flex;flex-direction:row;align-items:stretch;overflow-x:auto;overflow-y:hidden;gap:6px;margin-bottom:16px;padding:6px;border-radius:14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}#' + DIALOG_ID + ' .kn-settings-tabs::-webkit-scrollbar{height:0}#' + DIALOG_ID + ' .kn-settings-tab{flex:0 0 auto;min-width:96px;min-height:38px;padding:0 14px;border-radius:10px;text-align:center;white-space:nowrap;scroll-snap-align:start}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-plugin-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-dialog-footer{padding:14px 20px 18px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-bg-mode-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-slider-row{grid-template-columns:74px minmax(0,1fr) 54px}}' +
       '@media(max-width:520px){#' + DIALOG_ID + ' .kn-dialog-header{align-items:flex-start;gap:12px}#' + DIALOG_ID + ' .kn-dialog-title{font-size:22px}#' + DIALOG_ID + ' .kn-about-hero{align-items:flex-start;flex-direction:column}#' + DIALOG_ID + ' .kn-footer-left,#' + DIALOG_ID + ' .kn-footer-right{width:100%}#' + DIALOG_ID + ' .kn-panel-btn{flex:1 1 auto}}';
     style.textContent += '' +
-      '#' + DIALOG_ID + ' .kn-forward-page-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;margin-bottom:12px;border:1px solid rgba(232,234,237,.10);border-radius:22px;background:linear-gradient(135deg,rgba(138,180,248,.08),rgba(22,25,32,.94))}' +
+      '#' + DIALOG_ID + ' .kn-forward-page-head{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:14px 16px;margin-bottom:12px;border:1px solid rgba(232,234,237,.10);border-radius:22px;background:linear-gradient(135deg,rgba(138,180,248,.08),rgba(22,25,32,.94))}' +
+      '#' + DIALOG_ID + ' .kn-forward-head-left{min-width:0}' +
       '#' + DIALOG_ID + ' .kn-forward-page-head .kn-forward-title{font-size:18px;font-weight:800;color:#f1f3f4;margin:0 0 4px}' +
       '#' + DIALOG_ID + ' .kn-forward-page-head .kn-forward-desc{font-size:12px;line-height:1.45;color:#bdc1c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '#' + DIALOG_ID + ' .kn-forward-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}' +
+      '#' + DIALOG_ID + ' .kn-forward-head-actions{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap}' +
       '#' + DIALOG_ID + ' .kn-forward-inline-status{display:inline-flex;align-items:center;max-width:230px;height:32px;padding:0 10px;border-radius:999px;border:1px solid rgba(232,234,237,.10);background:#151a22;color:#bdc1c6;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '#' + DIALOG_ID + ' .kn-forward-inline-status.ok{color:#81c995;border-color:rgba(129,201,149,.24);background:rgba(52,168,83,.08)}' +
       '#' + DIALOG_ID + ' .kn-forward-inline-status.loading{color:#8ab4f8;border-color:rgba(138,180,248,.24);background:rgba(138,180,248,.08)}' +
@@ -3155,6 +3165,7 @@
 
 
   var FUNCTION_CENTER_STYLE_ID = 'kano-webos-function-center-style';
+  var NETWORK_DIAGNOSTICS_MODAL_ID = 'kn-network-diagnostics-modal';
   var functionCenterState = { active: 'network', search: '', adopted: [] };
 
   var FUNCTION_CENTER_GROUPS = [
@@ -3343,7 +3354,7 @@
         { title: '已加工展示', text: 'Header 已增强运营商、信号强度、WiFi 状态和接入数量；这里保留原生入口作为完整设置。', tab: '' }
       ],
       traffic: [
-        { title: '诊断与测速', text: '流量、测速、漫游、IP 查询等能力保留原生按钮；后续可继续合并为诊断面板。', tab: '' }
+        { title: '网络诊断', text: '集中查看连接、信号、吞吐、流量、地址与系统负载，并保留当前固件提供的原生检测工具。', action: 'diagnostics', actionLabel: '打开诊断面板' }
       ],
       message: [
         { title: '消息转发增强', text: '短信/电源通知转发和电话事件转发已经在“消息转发”页二次开发。', tab: 'forward' },
@@ -3394,8 +3405,287 @@
       '#' + DIALOG_ID + ' .kn-fc-enhanced{display:flex;flex-direction:column;gap:10px}.kn-fc-enh-card{padding:12px;border-radius:18px;background:rgba(138,180,248,.055);border:1px solid rgba(138,180,248,.12)}' +
       '#' + DIALOG_ID + ' .kn-fc-enh-card b{display:block;color:#f1f3f4;font-size:13px;margin-bottom:6px}.kn-fc-enh-card p{margin:0;color:#bdc1c6;font-size:12px;line-height:1.55}.kn-fc-enh-card button{margin-top:10px}' +
       '#' + DIALOG_ID + ' .kn-fc-empty{padding:28px 10px;text-align:center;color:#9aa0a6;font-size:13px;border:1px dashed rgba(232,234,237,.12);border-radius:18px;width:100%}' +
-      '@media(max-width:980px){#' + DIALOG_ID + ' .kn-fc-direct-panel{overflow:visible}#' + DIALOG_ID + ' .kn-fc-direct-shell{height:auto;overflow:visible}#' + DIALOG_ID + ' .kn-fc-head{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-fc-body{grid-template-columns:1fr;overflow:visible}}';
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + '{position:fixed;inset:0;z-index:2147483640;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(4,7,12,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-sizing:border-box}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' *{box-sizing:border-box}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-panel{width:min(1040px,100%);max-height:min(820px,calc(100vh - 40px));display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(232,234,237,.12);border-radius:20px;background:#10141b;color:#f1f3f4;box-shadow:0 34px 100px rgba(0,0,0,.58)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid rgba(232,234,237,.09)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-title{font-size:18px;font-weight:950;color:#f8f9fa}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-sub{margin-top:4px;font-size:12px;line-height:1.5;color:#9aa0a6}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-close{flex:0 0 38px;width:38px;height:38px;border:1px solid rgba(232,234,237,.12);border-radius:50%;background:rgba(255,255,255,.06);color:#e8eaed;font-size:22px;line-height:1;cursor:pointer}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-close:hover{background:rgba(255,255,255,.11)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-body{min-height:0;overflow:auto;padding:2px 20px 18px}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-section{min-width:0;padding:18px 0;border-bottom:1px solid rgba(232,234,237,.08)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-section.full{grid-column:1/-1}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-section h3{margin:0 0 11px;font-size:13px;font-weight:950;color:#d3e3fd}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-rows{display:grid;gap:8px}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:start;font-size:12px;line-height:1.5}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-label{color:#8f98a6}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value{min-width:0;color:#e8eaed;font-weight:760;overflow-wrap:anywhere}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.good{color:#8bd7a5}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.warn{color:#f7c948}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.bad{color:#ff8b8b}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.empty{color:#737b88;font-weight:650}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-cores{display:flex;gap:8px;overflow-x:auto;padding:1px 0 5px;scrollbar-width:thin}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-core{flex:0 0 190px;padding:10px;border:1px solid rgba(232,234,237,.09);border-radius:8px;background:rgba(255,255,255,.035)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-core b{display:block;margin-bottom:5px;font-size:11px;color:#9ec5ff}.kn-diag-core span{display:block;font-size:11px;line-height:1.5;color:#bdc1c6}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-tools{display:flex;flex-wrap:wrap;gap:8px}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-tool,#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-action{min-height:36px;padding:0 13px;border:1px solid rgba(232,234,237,.12);border-radius:999px;background:rgba(255,255,255,.06);color:#e8eaed;font-size:12px;font-weight:850;cursor:pointer}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-tool:hover,#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-action:hover{border-color:rgba(138,180,248,.32);background:rgba(138,180,248,.12)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-action.primary{border-color:rgba(138,180,248,.32);background:#2f6fc9;color:#fff}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-action:disabled{cursor:wait;opacity:.58}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-empty{font-size:12px;color:#737b88}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-foot{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 20px;border-top:1px solid rgba(232,234,237,.09);background:rgba(7,10,15,.48)}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-updated{min-width:0;font-size:11px;color:#8f98a6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + '{background:rgba(27,31,38,.32)}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-panel{border-color:rgba(32,36,43,.14);background:#f8fafc;color:#202124;box-shadow:0 30px 90px rgba(35,45,60,.26)}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-head,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-section,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-foot{border-color:rgba(32,36,43,.10)}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-title,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value{color:#202124}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-label,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-sub,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-updated{color:#667085}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-section h3{color:#245caa}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.good{color:#19713c}.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.warn{color:#956400}.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.bad{color:#b42318}.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-value.empty{color:#7b8492}' +
+      '.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-core,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-tool,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-action,.kn-theme-light #' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-close{border-color:rgba(32,36,43,.14);background:rgba(32,36,43,.045);color:#202124}' +
+      '@media(max-width:980px){#' + DIALOG_ID + ' .kn-fc-direct-panel{overflow:visible}#' + DIALOG_ID + ' .kn-fc-direct-shell{height:auto;overflow:visible}#' + DIALOG_ID + ' .kn-fc-head{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-fc-body{grid-template-columns:1fr;overflow:visible}}' +
+      '@media(max-width:720px){#' + NETWORK_DIAGNOSTICS_MODAL_ID + '{align-items:flex-start;padding:10px}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-panel{max-height:calc(100vh - 20px);border-radius:14px}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-head{padding:15px 14px}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-body{padding:0 14px 14px}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-grid{grid-template-columns:1fr}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-section.full{grid-column:auto}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-row{grid-template-columns:96px minmax(0,1fr)}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-foot{align-items:stretch;flex-direction:column;padding:12px 14px}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' .kn-diag-action{width:100%}}';
     document.head.appendChild(style);
+  }
+
+  function knDiagnosticsRead(id, fallback) {
+    var el = document.getElementById(id);
+    var value = el ? clean(el.textContent || el.innerText || '') : '';
+    if (!value || value === '--') return fallback || '暂无数据';
+    return value;
+  }
+
+  function knDiagnosticsRadioMetric(valueId, stateId) {
+    var value = knDiagnosticsRead(valueId, '--');
+    var level = knDiagnosticsRead(stateId, '');
+    return [value, level && level !== '暂无数据' ? level : ''].filter(Boolean).join(' · ') || '暂无数据';
+  }
+
+  function knDiagnosticsTone(value) {
+    var text = clean(value || '');
+    if (!text || text === '--' || text === '暂无数据' || /等待|未读取|未检测/.test(text)) return 'empty';
+    if (/断开|失败|异常|偏弱|很差|较差|无服务|未连接/.test(text)) return 'bad';
+    if (/一般|较弱|警告|观察/.test(text)) return 'warn';
+    if (/良好|优秀|正常|已连接|connected|online|无需处理/i.test(text)) return 'good';
+    return '';
+  }
+
+  function knDiagnosticsCpuCores() {
+    return Array.prototype.slice.call(document.querySelectorAll('#kn-home-cpu-cores .kn-home-core-chip')).map(function (chip) {
+      var nameEl = chip.querySelector('b');
+      var name = clean(nameEl ? nameEl.textContent : 'CPU');
+      var metrics = Array.prototype.slice.call(chip.querySelectorAll('.kn-home-core-metric')).map(function (metric) {
+        var labelEl = metric.querySelector('.kn-home-core-metric-label');
+        var valueEl = metric.querySelector('.kn-home-core-metric-value');
+        return clean((labelEl ? labelEl.textContent : '') + ' ' + (valueEl ? valueEl.textContent : '--'));
+      }).filter(Boolean);
+      return { name: name || 'CPU', detail: metrics.join(' · ') || '暂无数据' };
+    }).filter(function (core) { return core.name || core.detail; });
+  }
+
+  function knDiagnosticsSnapshot() {
+    return {
+      updated: knDiagnosticsRead('kn-home-refresh-time', '尚未刷新'),
+      sections: [
+        {
+          title: '连接与网络',
+          items: [
+            ['运营商 / 制式', knDiagnosticsRead('kn-home-network')],
+            ['连接状态', knDiagnosticsRead('kn-home-net-context', knDiagnosticsRead('kn-home-modem'))],
+            ['SIM 状态', knDiagnosticsRead('kn-home-sim')],
+            ['信号格', knDiagnosticsRead('kn-home-signal')]
+          ]
+        },
+        {
+          title: '无线信号',
+          items: [
+            ['综合质量', knDiagnosticsRead('kn-home-signal-overall')],
+            ['RSRP', knDiagnosticsRadioMetric('kn-home-val-rsrp', 'kn-home-state-rsrp')],
+            ['RSRQ', knDiagnosticsRadioMetric('kn-home-val-rsrq', 'kn-home-state-rsrq')],
+            ['SINR', knDiagnosticsRadioMetric('kn-home-val-sinr', 'kn-home-state-sinr')],
+            ['射频上下文', knDiagnosticsRead('kn-home-signal-radio')],
+            ['当前建议', knDiagnosticsRead('kn-home-signal-advice')]
+          ]
+        },
+        {
+          title: '实时与累计流量',
+          items: [
+            ['下载 RX', knDiagnosticsRead('kn-home-kpi-rx')],
+            ['上传 TX', knDiagnosticsRead('kn-home-kpi-tx')],
+            ['当日流量', knDiagnosticsRead('kn-home-kpi-daily')],
+            ['本月已用', knDiagnosticsRead('kn-home-kpi-month')],
+            ['累计流量', knDiagnosticsRead('kn-home-kpi-total')],
+            ['QoS / QCI', knDiagnosticsRead('kn-home-kpi-qci')]
+          ]
+        },
+        {
+          title: '网络地址',
+          items: [
+            ['管理 IPv4', knDiagnosticsRead('kn-home-ip')],
+            ['本地网关', knDiagnosticsRead('kn-home-info-lan')],
+            ['出口 IPv4', knDiagnosticsRead('kn-home-exit-ip-v4')],
+            ['出口 IPv6', knDiagnosticsRead('kn-home-exit-ip-v6')]
+          ]
+        },
+        {
+          title: '系统资源',
+          items: [
+            ['内存使用', knDiagnosticsRead('kn-home-val-mem')],
+            ['SWAP', knDiagnosticsRead('kn-home-val-swap')],
+            ['内部存储', knDiagnosticsRead('kn-home-val-storage')],
+            ['SD 卡', knDiagnosticsRead('kn-home-val-sd')]
+          ]
+        },
+        {
+          title: 'CPU 状态',
+          items: [
+            ['平均占用', knDiagnosticsRead('kn-home-cpu-avg')],
+            ['活跃核心', knDiagnosticsRead('kn-home-cpu-active')],
+            ['最高温度', knDiagnosticsRead('kn-home-cpu-max-temp')],
+            ['最高频率', knDiagnosticsRead('kn-home-cpu-max-freq')]
+          ]
+        }
+      ],
+      cores: knDiagnosticsCpuCores()
+    };
+  }
+
+  function knDiagnosticsNativeTools() {
+    var seen = {};
+    return knFunctionCenterGetItems().filter(function (item) {
+      if (!item || item.type !== 'button' || item.group !== 'traffic' || !item.el) return false;
+      if (!/测速|速度测试|内网速度|外网速度|流量历史|流量统计|流量管理|流量查询|网络诊断|Ping|IP\s*查询|speed\s*test/i.test(item.label)) return false;
+      if (seen[item.label]) return false;
+      seen[item.label] = true;
+      return true;
+    }).slice(0, 8);
+  }
+
+  function knDiagnosticsSectionHtml(section) {
+    return '<section class="kn-diag-section"><h3>' + knEsc(section.title) + '</h3><div class="kn-diag-rows">' + section.items.map(function (item) {
+      var tone = knDiagnosticsTone(item[1]);
+      return '<div class="kn-diag-row"><span class="kn-diag-label">' + knEsc(item[0]) + '</span><span class="kn-diag-value' + (tone ? ' ' + tone : '') + '">' + knEsc(item[1]) + '</span></div>';
+    }).join('') + '</div></section>';
+  }
+
+  function knDiagnosticsRender() {
+    var modal = document.getElementById(NETWORK_DIAGNOSTICS_MODAL_ID);
+    if (!modal) return;
+    var snapshot = knDiagnosticsSnapshot();
+    var body = modal.querySelector('[data-diag-body]');
+    var updated = modal.querySelector('[data-diag-updated]');
+    var cores = snapshot.cores.length ? snapshot.cores.map(function (core) {
+      return '<div class="kn-diag-core"><b>' + knEsc(core.name) + '</b><span>' + knEsc(core.detail) + '</span></div>';
+    }).join('') : '<span class="kn-diag-empty">暂无 CPU 核心数据</span>';
+    var tools = knDiagnosticsNativeTools();
+    modal.__knDiagnosticsTools = tools;
+    var toolHtml = tools.length ? tools.map(function (tool, index) {
+      return '<button type="button" class="kn-diag-tool" data-diag-native="' + index + '">' + knEsc(tool.label) + '</button>';
+    }).join('') : '<span class="kn-diag-empty">当前固件未检测到原生测速或流量工具</span>';
+    if (body) {
+      body.innerHTML = '<div class="kn-diag-grid">' + snapshot.sections.map(knDiagnosticsSectionHtml).join('') +
+        '<section class="kn-diag-section full"><h3>CPU 核心明细</h3><div class="kn-diag-cores">' + cores + '</div></section>' +
+        '<section class="kn-diag-section full"><h3>原生网络工具</h3><div class="kn-diag-tools">' + toolHtml + '</div></section></div>';
+      Array.prototype.slice.call(body.querySelectorAll('[data-diag-native]')).forEach(function (btn) {
+        btn.onclick = function () {
+          var index = Number(btn.getAttribute('data-diag-native'));
+          var item = modal.__knDiagnosticsTools && modal.__knDiagnosticsTools[index];
+          if (!item || !item.el) return;
+          closeNetworkDiagnostics();
+          closeSettingsDialog();
+          window.setTimeout(function () {
+            try { item.el.click(); }
+            catch (e) { homeToast('原生工具调用失败：' + item.label, 'red'); }
+          }, 120);
+        };
+      });
+    }
+    if (updated) updated.textContent = snapshot.updated;
+  }
+
+  function knDiagnosticsMaskAddress(value) {
+    var text = clean(value || '');
+    text = text.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}\b/g, '$1.x');
+    text = text.replace(/\b(?:[0-9a-f]{0,4}:){2,}[0-9a-f:]{0,}\b/ig, function (ip) {
+      var parts = ip.split(':').filter(Boolean);
+      return parts.slice(0, 2).join(':') + '::xxxx';
+    });
+    return text;
+  }
+
+  function knDiagnosticsReport() {
+    var snapshot = knDiagnosticsSnapshot();
+    var lines = ['F50 WebOS 网络诊断', '生成时间：' + new Date().toLocaleString(), '数据状态：' + snapshot.updated];
+    snapshot.sections.forEach(function (section) {
+      lines.push('', '[' + section.title + ']');
+      section.items.forEach(function (item) {
+        var value = /IP|地址|网关/.test(item[0]) ? knDiagnosticsMaskAddress(item[1]) : item[1];
+        lines.push(item[0] + '：' + value);
+      });
+    });
+    lines.push('', '[CPU 核心明细]');
+    if (snapshot.cores.length) snapshot.cores.forEach(function (core) { lines.push(core.name + '：' + core.detail); });
+    else lines.push('暂无 CPU 核心数据');
+    lines.push('', '隐私处理：未包含手机号、IMEI、IMSI、ICCID，IP 地址尾段已隐藏。');
+    return lines.join('\n');
+  }
+
+  function knDiagnosticsCopyReport() {
+    var report = knDiagnosticsReport();
+    function done() { homeToast('脱敏诊断报告已复制', 'green'); }
+    function fallback() { window.prompt('复制脱敏诊断报告', report); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(report).then(done).catch(fallback);
+        return;
+      }
+    } catch (e) {}
+    fallback();
+  }
+
+  function knDiagnosticsRefresh() {
+    var modal = document.getElementById(NETWORK_DIAGNOSTICS_MODAL_ID);
+    if (!modal) return;
+    var btn = modal.querySelector('[data-diag-refresh]');
+    if (btn) { btn.disabled = true; btn.textContent = '刷新中...'; }
+    refreshHomeDashboardStatus(true);
+    var started = Date.now();
+    function finish() {
+      if (state.homeBusy && Date.now() - started < 6000) {
+        window.setTimeout(finish, 180);
+        return;
+      }
+      knDiagnosticsRender();
+      var current = document.querySelector('#' + NETWORK_DIAGNOSTICS_MODAL_ID + ' [data-diag-refresh]');
+      if (current) { current.disabled = false; current.innerHTML = '<span aria-hidden="true">↻</span> 刷新状态'; }
+      window.setTimeout(knDiagnosticsRender, 900);
+    }
+    window.setTimeout(finish, 220);
+  }
+
+  function closeNetworkDiagnostics() {
+    var modal = document.getElementById(NETWORK_DIAGNOSTICS_MODAL_ID);
+    if (modal) modal.remove();
+  }
+
+  function openNetworkDiagnostics() {
+    ensureFunctionCenterStyles();
+    var modal = document.getElementById(NETWORK_DIAGNOSTICS_MODAL_ID);
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = NETWORK_DIAGNOSTICS_MODAL_ID;
+      modal.tabIndex = -1;
+      modal.innerHTML = '<div class="kn-diag-panel" role="dialog" aria-modal="true" aria-labelledby="kn-diag-title"><header class="kn-diag-head"><div><div class="kn-diag-title" id="kn-diag-title">网络诊断</div><div class="kn-diag-sub">连接、信号、流量、地址与系统资源</div></div><button type="button" class="kn-diag-close" data-diag-close aria-label="关闭" title="关闭">×</button></header><div class="kn-diag-body" data-diag-body></div><footer class="kn-diag-foot"><span class="kn-diag-updated" data-diag-updated>尚未刷新</span><div class="kn-diag-actions"><button type="button" class="kn-diag-action" data-diag-copy><span aria-hidden="true">⧉</span> 复制报告</button><button type="button" class="kn-diag-action primary" data-diag-refresh><span aria-hidden="true">↻</span> 刷新状态</button></div></footer></div>';
+      modal.addEventListener('click', function (e) { if (e.target === modal) closeNetworkDiagnostics(); });
+      modal.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeNetworkDiagnostics(); });
+      document.body.appendChild(modal);
+      modal.querySelector('[data-diag-close]').onclick = closeNetworkDiagnostics;
+      modal.querySelector('[data-diag-copy]').onclick = knDiagnosticsCopyReport;
+      modal.querySelector('[data-diag-refresh]').onclick = knDiagnosticsRefresh;
+    }
+    knDiagnosticsRender();
+    var closeBtn = modal.querySelector('[data-diag-close]');
+    if (closeBtn) closeBtn.focus();
   }
 
   function hideHomeFunctionListButtons() {
@@ -3862,10 +4152,16 @@
     var enhanced = panel.querySelector('.kn-fc-enhanced');
     if (enhanced) {
       enhanced.innerHTML = knFunctionCenterEnhancedCards(key).map(function (card) {
-        return '<div class="kn-fc-enh-card"><b>' + knEsc(card.title) + '</b><p>' + knEsc(card.text) + '</p>' + (card.tab ? '<button type="button" class="kn-google-btn" data-open-settings-tab="' + card.tab + '">打开相关设置</button>' : '') + '</div>';
+        var action = card.action ? '<button type="button" class="kn-google-btn" data-fc-action="' + knEsc(card.action) + '">' + knEsc(card.actionLabel || '打开') + '</button>' : '';
+        return '<div class="kn-fc-enh-card"><b>' + knEsc(card.title) + '</b><p>' + knEsc(card.text) + '</p>' + (card.tab ? '<button type="button" class="kn-google-btn" data-open-settings-tab="' + card.tab + '">打开相关设置</button>' : action) + '</div>';
       }).join('');
       Array.prototype.slice.call(enhanced.querySelectorAll('[data-open-settings-tab]')).forEach(function (btn) {
         btn.onclick = function () { switchSettingsTab(btn.getAttribute('data-open-settings-tab')); };
+      });
+      Array.prototype.slice.call(enhanced.querySelectorAll('[data-fc-action]')).forEach(function (btn) {
+        btn.onclick = function () {
+          if (btn.getAttribute('data-fc-action') === 'diagnostics') openNetworkDiagnostics();
+        };
       });
     }
   }
@@ -4051,13 +4347,14 @@
 
   function syncHomeRefreshControls() {
     var cfg = readHomeRefreshConfig();
+    var loggedIn = getStoredLoginState();
     var sel = document.querySelector('#' + HOME_DASHBOARD_ID + ' [data-home-refresh-interval]');
     var btn = document.querySelector('#' + HOME_DASHBOARD_ID + ' [data-home-auto-refresh]');
     if (sel) sel.value = String(cfg.interval);
     if (btn) {
-      btn.classList.toggle('is-on', !!cfg.auto);
-      btn.textContent = '自动刷新：' + (cfg.auto ? '开' : '关');
-      btn.title = cfg.auto ? ('每 ' + Math.round(cfg.interval / 1000) + ' 秒自动刷新') : '自动刷新已关闭';
+      btn.classList.toggle('is-on', !!cfg.auto && loggedIn);
+      btn.textContent = loggedIn ? ('自动刷新：' + (cfg.auto ? '开' : '关')) : '自动刷新：登录后';
+      btn.title = !loggedIn ? '登录 UFI-TOOLS 后自动刷新状态' : (cfg.auto ? ('每 ' + Math.round(cfg.interval / 1000) + ' 秒自动刷新') : '自动刷新已关闭');
     }
   }
 
@@ -4232,6 +4529,10 @@
     if (!isWebOSFeatureEnabled('homeExitIp')) return;
     var home = document.getElementById(HOME_DASHBOARD_ID);
     if (!home) return;
+    if (!getStoredLoginState()) {
+      setHomeExitIp({}, '', '登录后查询');
+      return;
+    }
     var now = Date.now();
     if (!force && (homeExitIpState.v4 || homeExitIpState.v6) && now - homeExitIpState.at < 60000) {
       setHomeExitIp(homeExitIpState, '', '已缓存');
@@ -6149,6 +6450,13 @@
   function refreshHomeDashboardStatus(force) {
     var home = document.getElementById(HOME_DASHBOARD_ID);
     if (!home) return;
+    if (!getStoredLoginState()) {
+      state.homeBusy = false;
+      setHomeRefreshBusy(false);
+      setHomeLastUpdate(false, '登录后读取');
+      syncHomeRefreshControls();
+      return;
+    }
     var cfg = readHomeRefreshConfig();
     refreshHomeExitIp(!!force);
     if (!force && !cfg.auto) return;
@@ -7107,6 +7415,25 @@
 
   function refreshHeaderNetworkInfo(force) {
     updateHeaderLoginState();
+    if (!getStoredLoginState()) {
+      state.headerNetworkBusy = false;
+      headerText('#kn-header-operator', '登录后读取');
+      headerText('#kn-header-nettype', '--');
+      headerText('#kn-pop-operator', '登录后读取');
+      headerText('#kn-pop-nettype', '--');
+      headerText('#kn-pop-signal', '--');
+      headerText('#kn-pop-ppp', '--');
+      headerText('#kn-pop-phone', '--');
+      headerText('#kn-pop-imei', '--');
+      headerText('#kn-pop-imsi', '--');
+      headerText('#kn-pop-iccid', '--');
+      headerText('#kn-pop-ip', '--');
+      updateHeaderWifiStatus({});
+      updateHeaderSignalMood(0, '', '登录后读取', '--');
+      var loggedOutDot = document.getElementById('kn-header-network-dot');
+      if (loggedOutDot) loggedOutDot.classList.remove('online', 'offline');
+      return;
+    }
     var now = Date.now();
     if (!force && now < state.headerRefreshAt) return;
     if (state.headerNetworkBusy) return;
@@ -7325,13 +7652,14 @@
   function closeSettingsDialog() { var d = document.getElementById(DIALOG_ID); if (d && typeof d.close === 'function' && d.open) d.close(); }
   function resetLayout() { if (!confirm('确认恢复默认分组吗？')) return; var oldAppearance = clone(state.config.appearance); state.config = normalizeConfig(null); state.config.appearance = oldAppearance; saveConfig(); renderSettingsZones(); updateNavButtons(); scheduleClassify(); }
   function exportConfig() { var text = JSON.stringify(state.config, null, 2); try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text); if (typeof createToast === 'function') createToast('配置已复制', 'pink'); return; } } catch (err) {} console.log('[KanoWebOS] config:', text); prompt('复制配置', text); }
-  function destroy() { try { closePhoneSmsModal(); } catch (e) {} try { if (window.__KANO_WEBOS_TOOLBOX_CAPTURE_HANDLER__) window.__KANO_WEBOS_TOOLBOX_CAPTURE_HANDLER__ = null; } catch (e) {} if (state.observer) state.observer.disconnect(); if (state.toolboxObserver) state.toolboxObserver.disconnect(); if (state.timer) clearInterval(state.timer); if (state.raf) cancelAnimationFrame(state.raf); if (state.headerResizeHandler) window.removeEventListener('resize', state.headerResizeHandler); cleanupOldUI(); }
+  function destroy() { try { closePhoneSmsModal(); } catch (e) {} try { closeNetworkDiagnostics(); } catch (e) {} try { if (window.__KANO_WEBOS_TOOLBOX_CAPTURE_HANDLER__) window.__KANO_WEBOS_TOOLBOX_CAPTURE_HANDLER__ = null; } catch (e) {} if (state.observer) state.observer.disconnect(); if (state.toolboxObserver) state.toolboxObserver.disconnect(); if (state.timer) clearInterval(state.timer); if (state.raf) cancelAnimationFrame(state.raf); if (state.headerResizeHandler) window.removeEventListener('resize', state.headerResizeHandler); cleanupOldUI(); }
 
   function init() {
     var container = document.querySelector('.container');
     if (!container) { setTimeout(init, 150); return; }
     state.container = container;
     state.config = readConfig();
+    document.documentElement.classList.add('kn-webos-active');
     injectCSS();
     injectHomeDashboardCSS();
     injectResponsiveCSS();
@@ -7351,8 +7679,8 @@
     buildDialog();
     grabTopElements();
     applyAppearance();
-    refreshHeaderNetworkInfo(true);
-    refreshHomeDashboardStatus(true);
+    refreshHeaderNetworkInfo(false);
+    refreshHomeDashboardStatus(false);
     state.timer = setInterval(function () { grabTopElements(); refreshHeaderNetworkInfo(false); refreshHomeDashboardStatus(false); applyToolboxRouting(); if (isWebOSFeatureEnabled('nativeButtonMigration')) hideHomeFunctionListButtons(); else restoreHomeFunctionListButtons(); scheduleClassify(); }, 1200);
     state.observer = new MutationObserver(scheduleClassify);
     state.observer.observe(container, { childList: true, subtree: true });
@@ -7362,7 +7690,7 @@
   }
 
   if (EXTERNAL_KANO_PHONE_SMS) window.KanoPhoneSMS = EXTERNAL_KANO_PHONE_SMS;
-  window.KanoWebOS = { version: VERSION, switchGroup: switchGroup, openSettingsDialog: openSettingsDialog, closeSettingsDialog: closeSettingsDialog, exportConfig: exportConfig, resetLayout: resetLayout, applyAppearance: applyAppearance, refreshHeaderNetworkInfo: refreshHeaderNetworkInfo, refreshHomeDashboardStatus: refreshHomeDashboardStatus, classify: classifyContainerNodes, destroy: destroy, openToolboxDrawer: openToolboxDrawer, openToolboxSettings: openToolboxSettings, applyToolboxRouting: applyToolboxRouting, openPhoneSms: openExternalPhoneSmsOrPrompt };
+  window.KanoWebOS = { version: VERSION, switchGroup: switchGroup, openSettingsDialog: openSettingsDialog, closeSettingsDialog: closeSettingsDialog, openNetworkDiagnostics: openNetworkDiagnostics, exportConfig: exportConfig, resetLayout: resetLayout, applyAppearance: applyAppearance, refreshHeaderNetworkInfo: refreshHeaderNetworkInfo, refreshHomeDashboardStatus: refreshHomeDashboardStatus, classify: classifyContainerNodes, destroy: destroy, openToolboxDrawer: openToolboxDrawer, openToolboxSettings: openToolboxSettings, applyToolboxRouting: applyToolboxRouting, openPhoneSms: openExternalPhoneSmsOrPrompt };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 }());
