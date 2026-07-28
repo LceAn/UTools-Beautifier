@@ -102,3 +102,25 @@ UTools-Beautifier/
 ## 📄 License
 
 MIT — Copyright © 2026 LceAn
+
+---
+
+## 仓库结构
+
+- `CHANGELOG.md`
+- `LICENSE`
+- `README.md`
+- `UTools-Beautifier-V1.0.1.js`
+- `Web重构_v26.12.0.js`
+- `电话与短信_V1.3.3.js`
+- `运营商信息_V1.0.0.js`
+
+<!-- repo-readme-standard:v1 -->
+## 仓库维护信息
+
+- 项目类型：产品/工具
+- 当前状态：近期维护
+- 可见性：public
+- 维护节奏：每月只选 1-2 个小更新
+- 相关仓库：无已确认的重复仓库关系；如需合并请先核对功能边界。
+- 维护边界：普通文档和代码更新可直接提交；归档、删除、历史重写或强制推送需单独确认。
