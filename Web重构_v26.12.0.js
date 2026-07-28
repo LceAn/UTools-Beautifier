@@ -416,9 +416,9 @@
       '.kn-dialog-content{width:970px;max-width:96vw;height:min(820px,88vh);display:flex;flex-direction:column;overflow:hidden;padding:0;border-radius:26px;color:#fff;background:linear-gradient(180deg,rgba(28,30,36,.98),rgba(18,20,25,.98));border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.72)}' +
       '.kn-dialog-header{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:26px 30px 20px;border-bottom:1px solid rgba(255,255,255,.08);background:radial-gradient(circle at top left,rgba(72,150,255,.16),transparent 35%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}.kn-dialog-title{font-size:22px;font-weight:900;margin-bottom:8px}.kn-dialog-subtitle{font-size:12px;line-height:1.7;color:rgba(255,255,255,.58);max-width:740px}.kn-dialog-body{flex:1 1 auto;overflow:auto;padding:24px 30px 16px;background:rgba(0,0,0,.06)}.kn-dialog-footer{flex:0 0 auto;display:flex;justify-content:space-between;gap:10px;padding:16px 30px 24px;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;background:rgba(0,0,0,.08)}.kn-footer-left,.kn-footer-right{display:flex;gap:8px;flex-wrap:wrap}' +
       '.kn-settings-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:7px;border-radius:20px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.07);margin-bottom:18px}.kn-settings-tab{min-height:42px;border:none;border-radius:15px;background:transparent;color:rgba(255,255,255,.58);font-weight:850;cursor:pointer}.kn-settings-tab.active{color:#fff;background:rgba(72,150,255,.20);box-shadow:0 8px 20px rgba(72,150,255,.16),inset 0 1px 0 rgba(255,255,255,.08)}.kn-settings-panel{display:none}.kn-settings-panel.active{display:block}' +
-      '.kn-group-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-group-zone{min-height:150px;padding:14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34));display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px}.kn-zone-head{width:100%;display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.07)}.kn-zone-name{font-size:14px;font-weight:900}.kn-zone-desc{font-size:11px;color:rgba(255,255,255,.43)}.kn-group-zone.drag-over{border-color:rgba(82,160,255,.85);background:rgba(82,160,255,.13)}' +
-      '.kn-item{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;color:rgba(255,255,255,.90);font-size:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);cursor:grab}.kn-item.panel{border-color:rgba(120,180,255,.24);background:rgba(40,132,255,.11)}.kn-item.missing{opacity:.45}.kn-badge{font-size:10px;color:rgba(255,255,255,.50);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:1px 5px;background:rgba(0,0,0,.16)}.kn-hidden-zone{border-color:rgba(255,120,120,.24);background:rgba(255,80,80,.055)}.kn-empty-tip{width:100%;color:rgba(255,255,255,.30);font-size:12px;padding:8px 0}.kn-note{font-size:12px;color:rgba(255,255,255,.58);line-height:1.75;margin:14px 0 0;padding:12px 14px;border-radius:14px;background:rgba(72,150,255,.07);border:1px solid rgba(120,180,255,.14)}' +
-      '.kn-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-form-card{position:relative;overflow:hidden;padding:18px;border-radius:22px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34))}.kn-form-card.full{grid-column:1/-1}.kn-form-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:900;margin-bottom:14px}.kn-form-title:before{content:"";width:7px;height:18px;border-radius:999px;background:linear-gradient(180deg,var(--kn-grad-1,#87ceeb),var(--kn-grad-2,#3b82f6));display:inline-block}.kn-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}.kn-check{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.82);cursor:pointer;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}.kn-check input{width:17px;height:17px;accent-color:#4e92ff}.kn-input-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:center;margin:12px 0}.kn-input-row label{font-size:12px;color:rgba(255,255,255,.55)}.kn-input-row input[type="text"],.kn-input-row input[type="number"],.kn-input-row select{min-height:40px;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:#fff;border-radius:14px;padding:9px 11px;outline:none}.kn-input-row input[type="color"]{width:42px;height:32px;border:none;background:transparent}.kn-input-row input[type="range"]{width:100%}' +
+      '.kn-group-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-group-zone{min-height:150px;padding:14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34));display:flex;flex-direction:column;align-items:stretch;gap:8px}.kn-zone-head{width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:2px;padding-bottom:9px;border-bottom:1px solid rgba(255,255,255,.07)}.kn-zone-copy{min-width:0}.kn-zone-name{font-size:14px;font-weight:900}.kn-zone-desc{margin-top:3px;font-size:11px;line-height:1.35;color:rgba(255,255,255,.43)}.kn-zone-count{flex:0 0 auto;min-width:42px;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:rgba(255,255,255,.58);font-size:10px;font-weight:800;text-align:center}.kn-group-zone.drag-over{border-color:rgba(82,160,255,.85);background:rgba(82,160,255,.13)}' +
+      '.kn-item{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;color:rgba(255,255,255,.90);font-size:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);cursor:default;box-sizing:border-box}.kn-item.panel{border-color:rgba(120,180,255,.24);background:rgba(40,132,255,.11)}.kn-item.missing{opacity:.55}.kn-item-main{min-width:0;display:flex;align-items:center;gap:7px;cursor:grab}.kn-item-main:active{cursor:grabbing}.kn-drag-handle{flex:0 0 auto;color:rgba(255,255,255,.35);font-size:15px;line-height:1}.kn-item-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kn-badge{flex:0 0 auto;font-size:10px;color:rgba(255,255,255,.50);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:1px 5px;background:rgba(0,0,0,.16)}.kn-item-move{display:flex;align-items:center;gap:5px;color:rgba(255,255,255,.46);font-size:10px;white-space:nowrap}.kn-item-move select{width:92px;min-height:30px;padding:4px 24px 4px 7px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:rgba(8,10,14,.48);color:rgba(255,255,255,.88);font-size:11px;outline:none}.kn-item-move select:focus{border-color:rgba(82,160,255,.85);box-shadow:0 0 0 2px rgba(82,160,255,.14)}.kn-hidden-zone{border-color:rgba(255,120,120,.24);background:rgba(255,80,80,.055)}.kn-empty-tip{width:100%;color:rgba(255,255,255,.30);font-size:12px;padding:8px 0}.kn-note{font-size:12px;color:rgba(255,255,255,.58);line-height:1.75;margin:14px 0 0;padding:12px 14px;border-radius:14px;background:rgba(72,150,255,.07);border:1px solid rgba(120,180,255,.14)}' +
+      '.kn-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-form-card{position:relative;overflow:hidden;padding:18px;border-radius:22px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34))}.kn-form-card.full{grid-column:1/-1}.kn-form-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:900;margin-bottom:14px}.kn-form-title:before{content:"";width:7px;height:18px;border-radius:999px;background:linear-gradient(180deg,var(--kn-grad-1,#87ceeb),var(--kn-grad-2,#3b82f6));display:inline-block}.kn-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}.kn-check{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.82);cursor:pointer;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07)}.kn-check input{width:17px;height:17px;accent-color:#4e92ff}.kn-input-row{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:center;margin:12px 0}.kn-input-row label{font-size:12px;color:rgba(255,255,255,.55)}.kn-input-row input[type="text"],.kn-input-row input[type="number"],.kn-input-row input[type="password"],.kn-input-row select{min-height:40px;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.22);color:#fff;border-radius:14px;padding:9px 11px;outline:none}.kn-input-row input[type="color"]{width:42px;height:32px;border:none;background:transparent}.kn-input-row input[type="range"]{width:100%}' +
       '.kn-about-hero{display:flex;gap:18px;align-items:center;padding:20px;border-radius:24px;background:radial-gradient(circle at top left,rgba(72,150,255,.12),transparent 38%),linear-gradient(180deg,rgba(18,21,27,.50),rgba(12,14,19,.36));border:1px solid rgba(255,255,255,.08);margin-bottom:16px}.kn-about-logo{width:58px;height:58px;flex:0 0 58px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#fff;background:linear-gradient(180deg,rgba(78,146,255,.34),rgba(78,146,255,.15));border:1px solid rgba(120,180,255,.28)}.kn-about-title{font-size:20px;font-weight:950;margin-bottom:7px}.kn-about-desc{font-size:13px;line-height:1.7;color:rgba(255,255,255,.62);max-width:760px}.kn-about-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.kn-about-tags span{font-size:11px;padding:5px 9px;border-radius:999px;background:rgba(72,150,255,.12);border:1px solid rgba(120,180,255,.18);color:#9dccff}.kn-about-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.kn-about-card{padding:18px;border-radius:22px;background:linear-gradient(180deg,rgba(18,21,27,.46),rgba(12,14,19,.34));border:1px solid rgba(255,255,255,.08)}.kn-about-card-title{font-size:14px;font-weight:900;margin-bottom:12px}.kn-about-kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)}.kn-about-kv b{font-size:12px;color:rgba(255,255,255,.48)}.kn-about-kv span{font-size:12px;color:rgba(255,255,255,.82);text-align:right}.kn-about-link-box{display:flex;flex-direction:column;gap:7px;padding:12px;border-radius:16px;background:rgba(72,150,255,.08);border:1px solid rgba(120,180,255,.14)}.kn-about-link-box a{font-size:12px;color:#8fc2ff;text-decoration:none;word-break:break-all}.kn-about-small,.kn-about-list{font-size:12px;line-height:1.75;color:rgba(255,255,255,.62);margin-top:12px}' +
       '#kn-header-actions{gap:8px;align-items:center}' +
       '#kn-header-actions.is-tight .kn-net-sep{display:none!important}#kn-header-actions.is-tight .kn-wifi-status-text,#kn-header-actions.is-tight .kn-wifi-sep{display:none!important}#kn-header-actions.is-ultra-tight #kn-header-operator{display:none!important}#kn-header-actions.is-ultra-tight #kn-header-net-pill{min-width:76px!important;flex:0 0 76px!important;padding:0 9px!important;justify-content:center!important}#kn-header-actions.is-ultra-tight .kn-header-tool-btn{min-width:44px!important;width:44px!important;padding:0!important;font-size:0!important}#kn-header-actions.is-ultra-tight .kn-header-tool-btn:after{content:attr(data-short);font-size:12px!important}#kn-header-actions.is-ultra-tight .kn-login-pill{min-width:42px!important;width:42px!important;padding:0!important;justify-content:center!important}#kn-header-actions.is-ultra-tight #kn-header-login-text{display:none!important}' +
@@ -960,6 +960,7 @@
       (a.enableReadableText && !light ? 'body,.box,.card,.kpi,.collapse_box{text-shadow:0 1px 1px rgba(0,0,0,.18)}' : '') +
       (a.enableGradient ? '.title strong,.box .title,.beauty-gradient{background:linear-gradient(135deg,var(--kn-grad-1),var(--kn-grad-2))!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;font-weight:900!important}' : '') +
       (a.enableScrollbar ? 'body::-webkit-scrollbar,.modal::-webkit-scrollbar,.kn-dialog-content::-webkit-scrollbar{width:7px;height:7px}body::-webkit-scrollbar-thumb,.modal::-webkit-scrollbar-thumb,.kn-dialog-content::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:999px}body::-webkit-scrollbar-track{background:transparent}' : '') +
+      (light ? '#' + DIALOG_ID + ' .kn-zone-count{color:rgba(23,32,51,.58)!important;background:rgba(34,50,80,.05)!important;border-color:rgba(34,50,80,.10)!important}#' + DIALOG_ID + ' .kn-drag-handle,#' + DIALOG_ID + ' .kn-item-move,#' + DIALOG_ID + ' #kn-layout-move-status{color:rgba(23,32,51,.52)!important}' : '') +
       (a.animationLevel === 0 ? '*{transition:none!important;animation:none!important}' : '');
 
     document.head.appendChild(style);
@@ -1594,6 +1595,7 @@
 
 
   var FORWARD_CONFIG_KEY = 'kano_webos_forward_config_v1';
+  var nativeForwardState = { loaded: false, dirty: false, busy: false, snapshot: '', data: null };
 
   function getForwardConfig() {
     var def = {
@@ -1607,7 +1609,11 @@
     };
     try {
       var raw = localStorage.getItem(FORWARD_CONFIG_KEY);
-      if (raw) return Object.assign(def, JSON.parse(raw) || {});
+      if (raw) {
+        var config = Object.assign(def, JSON.parse(raw) || {});
+        config.callForwardTarget = 'native';
+        return config;
+      }
     } catch (e) {}
     return def;
   }
@@ -1630,12 +1636,12 @@
       throw new Error('HTTP ' + res.status + '：接口无返回内容');
     }
 
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      if (res.ok) return { result: 'success', status: res.status, text: text };
-      throw new Error('HTTP ' + res.status + '：' + text.slice(0, 180));
+    var parsed = null;
+    try { parsed = JSON.parse(text); } catch (e) {}
+    if (!res.ok) {
+      throw new Error(parsed && (parsed.error || parsed.message) || ('HTTP ' + res.status + '：' + text.slice(0, 180)));
     }
+    return parsed || { result: 'success', status: res.status, text: text };
   }
 
   function setForwardText(selector, value) {
@@ -1652,7 +1658,8 @@
     var text = value == null ? '' : String(value);
     if ('value' in el) el.value = text;
     else el.textContent = text || '--';
-    el.title = text || '--';
+    var sensitive = el.id === 'kn-native-smtp-pass' || el.id === 'kn-native-dingtalk-secret';
+    el.title = sensitive && text ? '已填写' : (text || '--');
   }
 
   function setForwardReadonlyInfo(selector, value) {
@@ -1671,25 +1678,102 @@
     return method || '--';
   }
 
+  function setNativeForwardStatus(text, tone, title) {
+    var status = document.querySelector('#kn-native-forward-read-status');
+    if (!status) return;
+    status.textContent = text;
+    status.className = 'kn-forward-inline-status' + (tone ? ' ' + tone : '');
+    status.title = title || text;
+  }
+
+  function collectNativeForwardConfig() {
+    return {
+      method: getNativeForwardMethodFromUI(),
+      enabled: getForwardChecked('#kn-native-forward-enable') ? '1' : '0',
+      powerEnabled: getForwardChecked('#kn-native-power-enable') ? '1' : '0',
+      smtp: {
+        smtp_host: getForwardInputValue('#kn-native-smtp-host'),
+        smtp_port: getForwardInputValue('#kn-native-smtp-port'),
+        smtp_username: getForwardInputValue('#kn-native-smtp-user'),
+        smtp_password: getForwardInputValue('#kn-native-smtp-pass'),
+        smtp_to: getForwardInputValue('#kn-native-smtp-to'),
+        forward_dev_info: getForwardChecked('#kn-native-forward-devinfo') ? '1' : '0'
+      },
+      curl: { curl_text: getForwardInputValue('#kn-native-curl-text') },
+      dingtalk: {
+        webhook_url: getForwardInputValue('#kn-native-dingtalk-webhook'),
+        secret: getForwardInputValue('#kn-native-dingtalk-secret'),
+        forward_dev_info: getForwardChecked('#kn-native-forward-devinfo') ? '1' : '0'
+      }
+    };
+  }
+
+  function getNativeForwardSnapshot(data) {
+    try { return JSON.stringify(data || collectNativeForwardConfig()); } catch (e) { return ''; }
+  }
+
+  function updateNativeForwardSummary(data) {
+    data = data || collectNativeForwardConfig();
+    var method = String(data.method || '').toLowerCase();
+    var enabled = String(data.enabled || '') === '1';
+    var powerEnabled = String(data.powerEnabled || '') === '1';
+    var devInfoEnabled = String(data.smtp && data.smtp.forward_dev_info) === '1' || String(data.dingtalk && data.dingtalk.forward_dev_info) === '1';
+    var devInfo = devInfoEnabled ? '同时转发设备信息' : '不附加设备信息';
+    if (method === 'curl') devInfo = 'CURL 命令内容自行决定是否包含设备信息';
+    setForwardText('#kn-native-forward-enabled', enabled ? '已启用' : '已关闭');
+    setForwardText('#kn-native-power-enabled', powerEnabled ? '已启用' : '已关闭');
+    setForwardText('#kn-native-forward-method', getForwardMethodLabel(method));
+    setForwardText('#kn-native-forward-method-raw', method || '--');
+    setForwardText('#kn-native-forward-device-info', devInfo);
+    renderForwardTemplateViewer(method, data);
+  }
+
+  function updateNativeForwardControls() {
+    var dialog = document.getElementById(DIALOG_ID);
+    if (!dialog) return;
+    var loggedIn = getStoredLoginState();
+    var editable = loggedIn && nativeForwardState.loaded && !nativeForwardState.busy;
+    Array.prototype.slice.call(dialog.querySelectorAll('[data-native-forward-field]')).forEach(function (el) {
+      el.disabled = !editable;
+    });
+    var refreshBtn = dialog.querySelector('[data-action="refreshNativeForwardConfig"]');
+    var saveBtn = dialog.querySelector('[data-action="saveNativeForwardConfig"]');
+    var validateBtn = dialog.querySelector('[data-action="testNativeForwardConfig"]');
+    if (refreshBtn) refreshBtn.disabled = !loggedIn || nativeForwardState.busy;
+    if (saveBtn) saveBtn.disabled = !editable || !nativeForwardState.dirty;
+    if (validateBtn) validateBtn.disabled = !editable || (!getForwardChecked('#kn-native-forward-enable') && !getForwardChecked('#kn-native-power-enable'));
+    Array.prototype.slice.call(dialog.querySelectorAll('[data-secret-target]')).forEach(function (btn) {
+      btn.disabled = !editable;
+    });
+    var devInfo = dialog.querySelector('#kn-native-forward-devinfo');
+    if (devInfo && editable) devInfo.disabled = getNativeForwardMethodFromUI() === 'curl';
+    dialog.querySelector('#kn-settings-panel-forward').classList.toggle('native-locked', !editable);
+    if (!loggedIn) setNativeForwardStatus('登录后读取', '', '请先登录 UFI-TOOLS，再读取原生消息转发配置');
+    else if (!nativeForwardState.loaded && !nativeForwardState.busy) setNativeForwardStatus('点击读取配置', '', '读取设备上当前的原生消息转发配置');
+  }
+
+  function markNativeForwardDirty() {
+    if (!nativeForwardState.loaded || nativeForwardState.busy) return;
+    var data = collectNativeForwardConfig();
+    nativeForwardState.dirty = getNativeForwardSnapshot(data) !== nativeForwardState.snapshot;
+    updateNativeForwardSummary(data);
+    if (nativeForwardState.dirty) setNativeForwardStatus('有未保存更改', 'warn', '当前修改尚未写入设备');
+    else setNativeForwardStatus('已读取 · ' + getForwardMethodLabel(data.method), 'ok');
+    updateNativeForwardControls();
+  }
+
   function renderNativeForwardConfig(data) {
     data = data || {};
     var method = String(data.method || '').toLowerCase();
     var enabled = String(data.enabled || '') === '1';
     var powerEnabled = String(data.powerEnabled || '') === '1';
 
-    setForwardText('#kn-native-forward-enabled', enabled ? '已启用' : '已关闭');
-    setForwardText('#kn-native-power-enabled', powerEnabled ? '已启用' : '已关闭');
-    setForwardText('#kn-native-forward-method', getForwardMethodLabel(method));
-    setForwardText('#kn-native-forward-method-raw', method || '--');
     setForwardChecked('#kn-native-forward-enable', enabled);
     setForwardChecked('#kn-native-power-enable', powerEnabled);
     setNativeForwardMethodUI(method);
 
     var devInfoEnabled = String(data.smtp && data.smtp.forward_dev_info) === '1' || String(data.dingtalk && data.dingtalk.forward_dev_info) === '1';
     setForwardChecked('#kn-native-forward-devinfo', devInfoEnabled);
-    var devInfo = devInfoEnabled ? '同时转发设备信息' : '不附加设备信息';
-    if (method === 'curl') devInfo = 'CURL 命令内容自行决定是否包含设备信息';
-    setForwardText('#kn-native-forward-device-info', devInfo);
 
     setForwardInput('#kn-native-smtp-host', data.smtp && data.smtp.smtp_host);
     setForwardInput('#kn-native-smtp-port', data.smtp && data.smtp.smtp_port);
@@ -1701,17 +1785,15 @@
     setForwardInput('#kn-native-dingtalk-webhook', data.dingtalk && data.dingtalk.webhook_url);
     setForwardInput('#kn-native-dingtalk-secret', data.dingtalk && data.dingtalk.secret);
 
-    renderForwardTemplateViewer(method, data);
-
-    var status = document.querySelector('#kn-native-forward-read-status');
+    updateNativeForwardSummary(data);
+    nativeForwardState.data = data;
+    nativeForwardState.loaded = true;
+    nativeForwardState.dirty = false;
+    nativeForwardState.snapshot = getNativeForwardSnapshot(collectNativeForwardConfig());
     var statusText = '已读取 · ' + getForwardMethodLabel(method);
     var statusFull = '已读取原生配置：' + (enabled ? '消息转发开启' : '消息转发关闭') + ' / ' + (powerEnabled ? '电源通知开启' : '电源通知关闭') + ' / ' + getForwardMethodLabel(method);
-    if (status) {
-      status.textContent = statusText;
-      status.className = 'kn-forward-inline-status ok';
-      status.title = statusFull;
-    }
-    if (typeof createToast === 'function') createToast(statusFull, 'green');
+    setNativeForwardStatus(statusText, 'ok', statusFull);
+    updateNativeForwardControls();
   }
 
 
@@ -1743,20 +1825,21 @@
     }
   }
 
-  async function readNativeMessageForwardConfig() {
-    var status = document.querySelector('#kn-native-forward-read-status');
+  async function readNativeMessageForwardConfig(options) {
+    options = options || {};
     if (!getStoredLoginState()) {
-      if (status) {
-        status.textContent = '登录后读取';
-        status.className = 'kn-forward-inline-status';
-        status.title = '请先登录 UFI-TOOLS，再读取原生消息转发配置';
-      }
+      nativeForwardState.loaded = false;
+      nativeForwardState.dirty = false;
+      nativeForwardState.busy = false;
+      updateNativeForwardControls();
       return null;
     }
-    if (status) {
-      status.textContent = '正在读取原生消息转发配置…';
-      status.className = 'kn-forward-inline-status loading';
+    if (nativeForwardState.dirty && !options.force) {
+      if (!confirm('重新读取会覆盖当前未保存的更改，继续吗？')) return null;
     }
+    nativeForwardState.busy = true;
+    setNativeForwardStatus('正在读取…', 'loading', '正在读取原生消息转发配置');
+    updateNativeForwardControls();
 
     try {
       var methodRes = await forwardFetchJson('/sms_forward_method');
@@ -1764,9 +1847,9 @@
       var enabledRes = await forwardFetchJson('/sms_forward_enabled');
       var powerRes = await forwardFetchJson('/power_status_forward_enabled').catch(function () { return {}; });
 
-      var smtp = await forwardFetchJson('/sms_forward_mail').catch(function () { return {}; });
-      var curl = await forwardFetchJson('/sms_forward_curl').catch(function () { return {}; });
-      var dingtalk = await forwardFetchJson('/sms_forward_dingtalk').catch(function () { return {}; });
+      var smtp = await forwardFetchJson('/sms_forward_mail').catch(function (e) { if (method === 'smtp') throw e; return {}; });
+      var curl = await forwardFetchJson('/sms_forward_curl').catch(function (e) { if (method === 'curl') throw e; return {}; });
+      var dingtalk = await forwardFetchJson('/sms_forward_dingtalk').catch(function (e) { if (method === 'dingtalk') throw e; return {}; });
 
       var data = {
         method: method,
@@ -1780,12 +1863,12 @@
       renderNativeForwardConfig(data);
       return data;
     } catch (e) {
-      if (status) {
-        status.textContent = '原生配置读取失败：' + (e && e.message ? e.message : String(e));
-        status.className = 'kn-forward-inline-status error';
-      }
+      setNativeForwardStatus('读取失败', 'error', '原生配置读取失败：' + (e && e.message ? e.message : String(e)));
       if (typeof createToast === 'function') createToast('原生消息转发配置读取失败', 'red');
       return null;
+    } finally {
+      nativeForwardState.busy = false;
+      updateNativeForwardControls();
     }
   }
 
@@ -1828,7 +1911,9 @@
 
   function validateNativeForwardConfig(method) {
     if (method === 'dingtalk') {
-      if (!getForwardInputValue('#kn-native-dingtalk-webhook')) return '请输入钉钉 Webhook 地址';
+      var webhook = getForwardInputValue('#kn-native-dingtalk-webhook');
+      if (!webhook) return '请输入钉钉 Webhook 地址';
+      if (!/^https?:\/\//i.test(webhook)) return '钉钉 Webhook 需要以 http:// 或 https:// 开头';
       return '';
     }
     if (method === 'curl') {
@@ -1837,13 +1922,36 @@
     }
     if (method === 'smtp') {
       if (!getForwardInputValue('#kn-native-smtp-host')) return '请输入 SMTP 主机';
-      if (!getForwardInputValue('#kn-native-smtp-port')) return '请输入 SMTP 端口';
-      if (!getForwardInputValue('#kn-native-smtp-user')) return '请输入 SMTP 账号';
+      var port = Number(getForwardInputValue('#kn-native-smtp-port'));
+      if (!port) return '请输入 SMTP 端口';
+      if (!Number.isInteger(port) || port < 1 || port > 65535) return 'SMTP 端口需要是 1-65535 的整数';
+      var user = getForwardInputValue('#kn-native-smtp-user');
+      if (!user) return '请输入 SMTP 账号';
       if (!getForwardInputValue('#kn-native-smtp-pass')) return '请输入 SMTP 密码';
-      if (!getForwardInputValue('#kn-native-smtp-to')) return '请输入收件人';
+      var recipient = getForwardInputValue('#kn-native-smtp-to');
+      if (!recipient) return '请输入收件人';
+      if (recipient.indexOf('@') < 1) return '请输入有效的收件人邮箱';
       return '';
     }
     return '';
+  }
+
+  function validateNativeForwardUI() {
+    var active = getForwardChecked('#kn-native-forward-enable') || getForwardChecked('#kn-native-power-enable');
+    if (!active) {
+      setNativeForwardStatus('转发已关闭', '', '消息转发和电源通知均已关闭，无需校验通道');
+      return true;
+    }
+    var method = getNativeForwardMethodFromUI();
+    var err = validateNativeForwardConfig(method);
+    if (err) {
+      setNativeForwardStatus(err, 'error');
+      if (typeof createToast === 'function') createToast(err, 'red');
+      return false;
+    }
+    setNativeForwardStatus(nativeForwardState.dirty ? '配置完整 · 待保存' : '配置完整 · ' + getForwardMethodLabel(method), nativeForwardState.dirty ? 'warn' : 'ok', '当前通道的必填项已填写完整');
+    if (typeof createToast === 'function') createToast('当前通道配置完整', 'green');
+    return true;
   }
 
   async function postNativeForwardJson(path, payload) {
@@ -1854,34 +1962,41 @@
     });
   }
 
+  function assertNativeForwardResult(res) {
+    if (!res || !res.result) return res;
+    var result = String(res.result).toLowerCase();
+    if (result !== 'success' && result !== 'ok') throw new Error(res.error || res.message || '原生接口返回失败');
+    return res;
+  }
+
   async function saveNativeMessageForwardConfig(options) {
     options = options || {};
-    var status = document.querySelector('#kn-native-forward-read-status');
+    if (!getStoredLoginState() || !nativeForwardState.loaded || nativeForwardState.busy) return null;
     var method = getNativeForwardMethodFromUI();
-    var err = validateNativeForwardConfig(method);
+    var active = getForwardChecked('#kn-native-forward-enable') || getForwardChecked('#kn-native-power-enable');
+    var err = active ? validateNativeForwardConfig(method) : '';
     if (err) {
       if (typeof createToast === 'function') createToast(err, 'red');
-      if (status) { status.textContent = err; status.className = 'kn-forward-inline-status error'; }
+      setNativeForwardStatus(err, 'error');
       return null;
     }
 
-    if (status) {
-      status.textContent = options.test ? '正在发送测试…' : '正在保存原生配置…';
-      status.className = 'kn-forward-inline-status loading';
-    }
+    nativeForwardState.busy = true;
+    setNativeForwardStatus('正在保存…', 'loading', '正在将原生消息转发配置写入设备');
+    updateNativeForwardControls();
 
     try {
-      await forwardFetchJson('/sms_forward_enabled?enable=' + (getForwardChecked('#kn-native-forward-enable') ? '1' : '0'), {
+      assertNativeForwardResult(await forwardFetchJson('/sms_forward_enabled?enable=' + (getForwardChecked('#kn-native-forward-enable') ? '1' : '0'), {
         method: 'post',
         headers: { 'Content-Type': 'application/json' }
-      });
-      await forwardFetchJson('/power_status_forward_enabled?enable=' + (getForwardChecked('#kn-native-power-enable') ? '1' : '0'), {
+      }));
+      assertNativeForwardResult(await forwardFetchJson('/power_status_forward_enabled?enable=' + (getForwardChecked('#kn-native-power-enable') ? '1' : '0'), {
         method: 'post',
         headers: { 'Content-Type': 'application/json' }
-      });
+      }));
 
       var res = null;
-      if (method === 'smtp') {
+      if (active && method === 'smtp') {
         res = await postNativeForwardJson('/sms_forward_mail', {
           smtp_host: getForwardInputValue('#kn-native-smtp-host'),
           smtp_port: getForwardInputValue('#kn-native-smtp-port'),
@@ -1890,11 +2005,11 @@
           smtp_to: getForwardInputValue('#kn-native-smtp-to'),
           forward_dev_info: getForwardChecked('#kn-native-forward-devinfo') ? '1' : '0'
         });
-      } else if (method === 'curl') {
+      } else if (active && method === 'curl') {
         res = await postNativeForwardJson('/sms_forward_curl', {
           curl_text: getForwardInputValue('#kn-native-curl-text')
         });
-      } else if (method === 'dingtalk') {
+      } else if (active && method === 'dingtalk') {
         res = await postNativeForwardJson('/sms_forward_dingtalk', {
           webhook_url: getForwardInputValue('#kn-native-dingtalk-webhook'),
           secret: getForwardInputValue('#kn-native-dingtalk-secret'),
@@ -1902,29 +2017,29 @@
         });
       }
 
-      if (res && res.result && String(res.result).toLowerCase() !== 'success') {
-        throw new Error(res.error || res.message || '原生接口返回失败');
-      }
+      assertNativeForwardResult(res);
 
-      if (status) {
-        status.textContent = options.test ? '测试已提交 · ' + getForwardMethodLabel(method) : '已保存 · ' + getForwardMethodLabel(method);
-        status.className = 'kn-forward-inline-status ok';
-      }
+      nativeForwardState.dirty = false;
+      nativeForwardState.snapshot = getNativeForwardSnapshot(collectNativeForwardConfig());
+      setNativeForwardStatus('已保存 · ' + getForwardMethodLabel(method), 'ok');
       if (typeof createToast === 'function' && !options.silent) {
-        createToast(options.test ? '测试消息已通过当前原生通道提交' : '原生消息转发配置已保存', 'green');
+        createToast('原生消息转发配置已保存', 'green');
       }
-      await readNativeMessageForwardConfig();
+      await readNativeMessageForwardConfig({ force: true });
       return res || { result: 'success' };
     } catch (e) {
       var msg = e && e.message ? e.message : String(e);
-      if (status) { status.textContent = '保存/测试失败：' + msg; status.className = 'kn-forward-inline-status error'; }
-      if (typeof createToast === 'function') createToast('原生消息转发保存/测试失败：' + msg, 'red');
+      setNativeForwardStatus('保存失败', 'error', '原生配置保存失败：' + msg);
+      if (typeof createToast === 'function') createToast('原生消息转发保存失败：' + msg, 'red');
       return null;
+    } finally {
+      nativeForwardState.busy = false;
+      updateNativeForwardControls();
     }
   }
 
   async function triggerNativeForwardTest() {
-    return saveNativeMessageForwardConfig({ test: true });
+    return validateNativeForwardUI();
   }
 
   function updateForwardPhoneControls(scope) {
@@ -1964,6 +2079,24 @@
       };
     });
     updateForwardPhoneControls(scope);
+    Array.prototype.slice.call(scope.querySelectorAll('[data-native-forward-field]')).forEach(function (el) {
+      var eventName = el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(eventName, function () {
+        if (el.id === 'kn-native-forward-method-select') setNativeForwardMethodUI(el.value);
+        markNativeForwardDirty();
+      });
+    });
+    Array.prototype.slice.call(scope.querySelectorAll('[data-secret-target]')).forEach(function (btn) {
+      btn.onclick = function () {
+        var input = scope.querySelector(btn.getAttribute('data-secret-target'));
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.textContent = show ? '隐藏' : '显示';
+        btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+      };
+    });
+    setNativeForwardMethodUI(getNativeForwardMethodFromUI());
     setTimeout(readNativeMessageForwardConfig, 80);
   }
 
@@ -1976,7 +2109,7 @@
     var cfg = getForwardConfig();
     saveForwardConfig(cfg);
     if (!cfg.enableCallForward) {
-      if (typeof createToast === 'function') createToast('请先启用电话事件转发，再测试电话转发', 'red');
+      if (typeof createToast === 'function') createToast('请先启用电话事件转发，再预览电话模板', 'red');
       return;
     }
     var template = String(cfg.callTemplate || '{event} | {number} | {time} | {duration}');
@@ -1985,9 +2118,15 @@
       .replace(/\{number\}/g, '10086')
       .replace(/\{time\}/g, new Date().toLocaleString())
       .replace(/\{duration\}/g, '00:00');
-    console.log('[KanoForward] phone forward test message:', demo);
-    var res = await triggerNativeForwardTest();
-    if (res && typeof createToast === 'function') createToast('测试电话转发已提交：' + demo, 'green');
+    console.log('[KanoForward] phone forward preview:', demo);
+    var preview = document.querySelector('#kn-forward-call-preview');
+    if (preview) {
+      preview.hidden = false;
+      preview.textContent = demo;
+      preview.title = demo;
+    }
+    if (typeof createToast === 'function') createToast('电话消息模板预览已更新', 'green');
+    return demo;
   }
 
   function openNativePluginFeature() {
@@ -2889,6 +3028,9 @@
       '#' + DIALOG_ID + ' .kn-settings-panel{grid-column:2;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}' +
       '#' + DIALOG_ID + ' #kn-settings-panel-layout{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}' +
       '#' + DIALOG_ID + ' #kn-settings-board{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}' +
+      '#' + DIALOG_ID + ' .kn-layout-page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:#e8eaed;font-size:13px;font-weight:700}' +
+      '#' + DIALOG_ID + ' #kn-layout-move-status{min-width:0;color:#9aa0a6;font-size:11px;font-weight:500;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' #kn-layout-move-status.ok{color:#81c995}#' + DIALOG_ID + ' #kn-layout-move-status.error{color:#f28b82}' +
       '#' + DIALOG_ID + ' .kn-group-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}' +
       '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card,#' + DIALOG_ID + ' .kn-plugin-card,#' + DIALOG_ID + ' .kn-plugin-hero{border:1px solid rgba(232,234,237,.10);background:#1b1d23;border-radius:24px;box-shadow:none}' +
       '#' + DIALOG_ID + ' .kn-plugin-hero{display:flex;gap:16px;align-items:flex-start;padding:20px;margin-bottom:14px;background:linear-gradient(135deg,rgba(138,180,248,.14),rgba(27,29,35,1))}' +
@@ -2907,7 +3049,9 @@
       '#' + DIALOG_ID + ' .kn-zone-desc,#' + DIALOG_ID + ' .kn-note,#' + DIALOG_ID + ' .kn-about-small,#' + DIALOG_ID + ' .kn-about-list{color:#bdc1c6}' +
       '#' + DIALOG_ID + ' .kn-item{background:#202124;border-color:rgba(232,234,237,.13);color:#e8eaed;box-shadow:none}' +
       '#' + DIALOG_ID + ' .kn-item:hover{background:#2a2d34;border-color:#8ab4f8}' +
-      '#' + DIALOG_ID + ' .kn-input-row input[type="text"],#' + DIALOG_ID + ' .kn-input-row input[type="number"],#' + DIALOG_ID + ' .kn-input-row select{background:#111318;border:1px solid rgba(232,234,237,.16);border-radius:16px;color:#e8eaed}' +
+      '#' + DIALOG_ID + ' .kn-item-move select{background:#111318;border-color:rgba(232,234,237,.16);color:#e8eaed}' +
+      '#' + DIALOG_ID + ' .kn-group-zone.drag-invalid{border-color:rgba(242,139,130,.65);background:rgba(234,67,53,.08)}' +
+      '#' + DIALOG_ID + ' .kn-input-row input[type="text"],#' + DIALOG_ID + ' .kn-input-row input[type="number"],#' + DIALOG_ID + ' .kn-input-row input[type="password"],#' + DIALOG_ID + ' .kn-input-row select{background:#111318;border:1px solid rgba(232,234,237,.16);border-radius:16px;color:#e8eaed}' +
       '#' + DIALOG_ID + ' .kn-input-row input:focus,#' + DIALOG_ID + ' .kn-input-row select:focus{border-color:#8ab4f8;box-shadow:0 0 0 3px rgba(138,180,248,.14)}' +
       '#' + DIALOG_ID + ' .kn-panel-btn,#' + DIALOG_ID + ' .kn-google-btn{min-height:38px;padding:0 16px;border-radius:999px;border:1px solid rgba(232,234,237,.14);background:#202124;color:#e8eaed;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:none}' +
       '#' + DIALOG_ID + ' .kn-panel-btn:hover,#' + DIALOG_ID + ' .kn-google-btn:hover{background:#2a2d34;border-color:rgba(138,180,248,.45)}' +
@@ -2973,7 +3117,7 @@
       '#' + DIALOG_ID + ' .kn-version-state.ok{color:#81c995}#' + DIALOG_ID + ' .kn-version-state.new{color:#8ab4f8}#' + DIALOG_ID + ' .kn-version-state.warn{color:#fdd663}#' + DIALOG_ID + ' .kn-version-state.error{color:#f28b82}#' + DIALOG_ID + ' .kn-version-state.checking{color:#bdc1c6}' +
       '@media(max-width:980px){#' + DIALOG_ID + ' .kn-visual-list{grid-template-columns:repeat(2,minmax(0,1fr))}#' + DIALOG_ID + ' .kn-inline-config{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-color-control{grid-template-columns:52px minmax(0,1fr)}}' +
       '@media(max-width:860px){#' + DIALOG_ID + ' .kn-dialog-content{width:calc(100vw - 20px);height:calc(100vh - 20px);border-radius:24px}#' + DIALOG_ID + ' .kn-dialog-header{padding:20px}#' + DIALOG_ID + ' .kn-dialog-body{display:block;padding:16px 20px}#' + DIALOG_ID + ' .kn-settings-tabs{position:relative;display:flex;flex-direction:row;align-items:stretch;overflow-x:auto;overflow-y:hidden;gap:6px;margin-bottom:16px;padding:6px;border-radius:14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}#' + DIALOG_ID + ' .kn-settings-tabs::-webkit-scrollbar{height:0}#' + DIALOG_ID + ' .kn-settings-tab{flex:0 0 auto;min-width:96px;min-height:38px;padding:0 14px;border-radius:10px;text-align:center;white-space:nowrap;scroll-snap-align:start}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-plugin-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-dialog-footer{padding:14px 20px 18px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-bg-mode-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-slider-row{grid-template-columns:74px minmax(0,1fr) 54px}}' +
-      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-dialog-header{align-items:flex-start;gap:12px}#' + DIALOG_ID + ' .kn-dialog-title{font-size:22px}#' + DIALOG_ID + ' .kn-about-hero{align-items:flex-start;flex-direction:column}#' + DIALOG_ID + ' .kn-footer-left,#' + DIALOG_ID + ' .kn-footer-right{width:100%}#' + DIALOG_ID + ' .kn-panel-btn{flex:1 1 auto}}';
+      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-dialog-header{align-items:flex-start;gap:12px}#' + DIALOG_ID + ' .kn-dialog-title{font-size:22px}#' + DIALOG_ID + ' .kn-about-hero{align-items:flex-start;flex-direction:column}#' + DIALOG_ID + ' .kn-footer-left,#' + DIALOG_ID + ' .kn-footer-right{width:100%}#' + DIALOG_ID + ' .kn-panel-btn{flex:1 1 auto}#' + DIALOG_ID + ' .kn-layout-page-head{align-items:flex-start;flex-direction:column;gap:4px}#' + DIALOG_ID + ' #kn-layout-move-status{text-align:left;white-space:normal}#' + DIALOG_ID + ' .kn-item{grid-template-columns:minmax(0,1fr) auto}#' + DIALOG_ID + ' .kn-item-move>span{display:none}}';
     style.textContent += '' +
       '#' + DIALOG_ID + ' .kn-forward-page-head{display:flex;flex-direction:column;align-items:stretch;gap:12px;padding:14px 16px;margin-bottom:12px;border:1px solid rgba(232,234,237,.10);border-radius:22px;background:linear-gradient(135deg,rgba(138,180,248,.08),rgba(22,25,32,.94))}' +
       '#' + DIALOG_ID + ' .kn-forward-head-left{min-width:0}' +
@@ -3017,8 +3161,82 @@
       '#' + DIALOG_ID + ' .kn-template-grid b{display:block;margin:0 0 6px;color:#e8eaed;font-size:12px}' +
       '#' + DIALOG_ID + ' .kn-native-control-grid .kn-check{margin:0!important;justify-content:space-between;background:#171a20!important;border-color:rgba(232,234,237,.10)!important}' +
       '#' + DIALOG_ID + ' .kn-native-control-grid .kn-input-row{margin:0}' +
+      '#' + DIALOG_ID + ' .kn-forward-inline-status.warn{color:#fdd663;border-color:rgba(253,214,99,.26);background:rgba(251,188,4,.08)}' +
+      '#' + DIALOG_ID + ' .kn-secret-input{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:8px;min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-secret-input input{width:100%;min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-secret-toggle{min-height:36px;padding:0 10px;border-radius:12px;border:1px solid rgba(232,234,237,.14);background:#202124;color:#d3e3fd;font-size:11px;font-weight:700;cursor:pointer}' +
+      '#' + DIALOG_ID + ' .kn-secret-toggle:hover{background:#2a2d34;border-color:rgba(138,180,248,.45)}' +
+      '#' + DIALOG_ID + ' .kn-call-preview{min-height:44px;margin-top:10px}' +
+      '#' + DIALOG_ID + ' .native-locked [data-native-method-card]{opacity:.62}' +
       '@media(max-width:900px){#' + DIALOG_ID + ' .kn-forward-page-head{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-forward-head-actions{justify-content:flex-start}#' + DIALOG_ID + ' .kn-forward-grid.modern{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-forward-page-head .kn-forward-desc{white-space:normal}#' + DIALOG_ID + ' .kn-native-mini-grid.normalized{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-input-row.compact,#' + DIALOG_ID + ' .kn-native-mini-grid .kn-input-row{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-native-control-grid{grid-template-columns:1fr}}';
     document.head.appendChild(style);
+  }
+
+  function enhanceSettingsInteractionMarkup(dialog) {
+    var layoutPanel = dialog.querySelector('#kn-settings-panel-layout');
+    var layoutHead = layoutPanel && layoutPanel.firstElementChild;
+    if (layoutHead) {
+      layoutHead.removeAttribute('style');
+      layoutHead.className = 'kn-layout-page-head';
+      layoutHead.innerHTML = '<span>导航分组与模块管理</span><span id="kn-layout-move-status">选择目标分组；电脑端也可拖拽</span>';
+    }
+
+    var nativeFieldSelectors = [
+      '#kn-native-forward-enable', '#kn-native-power-enable', '#kn-native-forward-devinfo',
+      '#kn-native-forward-method-select', '#kn-native-dingtalk-webhook', '#kn-native-dingtalk-secret',
+      '#kn-native-smtp-host', '#kn-native-smtp-port', '#kn-native-smtp-user', '#kn-native-smtp-to',
+      '#kn-native-smtp-pass', '#kn-native-curl-text'
+    ];
+    nativeFieldSelectors.forEach(function (selector) {
+      var field = dialog.querySelector(selector);
+      if (!field) return;
+      field.setAttribute('data-native-forward-field', '');
+      field.disabled = true;
+    });
+
+    function addSecretToggle(selector, label) {
+      var input = dialog.querySelector(selector);
+      if (!input || input.parentElement.classList.contains('kn-secret-input')) return;
+      input.type = 'password';
+      var wrap = document.createElement('div');
+      wrap.className = 'kn-secret-input';
+      input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'kn-secret-toggle';
+      btn.textContent = '显示';
+      btn.setAttribute('data-secret-target', selector);
+      btn.setAttribute('aria-label', '显示或隐藏' + label);
+      btn.setAttribute('aria-pressed', 'false');
+      wrap.appendChild(btn);
+    }
+    addSecretToggle('#kn-native-dingtalk-secret', '钉钉加密密钥');
+    addSecretToggle('#kn-native-smtp-pass', 'SMTP 密码');
+
+    var validateBtn = dialog.querySelector('[data-action="testNativeForwardConfig"]');
+    if (validateBtn) validateBtn.textContent = '校验当前通道';
+    var dingtalkHelp = dialog.querySelector('[data-native-method-card="dingtalk"] .kn-field-help');
+    if (dingtalkHelp) dingtalkHelp.textContent = '保存后写入原生钉钉转发配置。';
+
+    var phoneTestBtn = dialog.querySelector('[data-action="testForwardConfig"]');
+    if (phoneTestBtn) phoneTestBtn.textContent = '预览电话模板';
+    var phoneTarget = dialog.querySelector('[data-forward="callForwardTarget"]');
+    if (phoneTarget) {
+      phoneTarget.value = 'native';
+      var phoneTargetRow = phoneTarget.closest('.kn-input-row');
+      if (phoneTargetRow) phoneTargetRow.hidden = true;
+    }
+    var phoneStatus = dialog.querySelector('#kn-forward-call-card .kn-forward-status');
+    if (phoneStatus) phoneStatus.textContent = '配置保存在当前浏览器；关闭时事件和模板会自动禁用。';
+    var phoneTemplate = dialog.querySelector('[data-forward="callTemplate"]');
+    if (phoneTemplate && !dialog.querySelector('#kn-forward-call-preview')) {
+      var preview = document.createElement('div');
+      preview.id = 'kn-forward-call-preview';
+      preview.className = 'kn-forward-readonly-box plain kn-call-preview';
+      preview.hidden = true;
+      phoneTemplate.parentNode.insertBefore(preview, phoneTemplate.nextSibling);
+    }
   }
 
   function buildDialog() {
@@ -3029,6 +3247,8 @@
     var dialog = document.createElement('dialog');
     dialog.id = DIALOG_ID;
     dialog.innerHTML = '<div class="kn-dialog-content"><div class="kn-dialog-header"><div><div class="kn-dialog-title">界面设置</div><div class="kn-dialog-subtitle">安全布局：不移动第三方插件 div，不创建插件 Hub。这里集成导航分组、界面美化与背景、原生功能分类、消息转发和现代插件管理。</div></div><button type="button" class="kn-panel-btn" data-action="close">关闭</button></div><div class="kn-dialog-body"><div class="kn-settings-tabs"><button class="kn-settings-tab active" data-tab="layout" type="button">导航分组</button><button class="kn-settings-tab" data-tab="appearance" type="button">界面美化</button><button class="kn-settings-tab" data-tab="forward" type="button">消息转发</button><button class="kn-settings-tab" data-tab="plugins" type="button">插件功能</button><button class="kn-settings-tab" data-tab="about" type="button">关于</button></div><div id="kn-settings-panel-layout" class="kn-settings-panel active"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.74);font-weight:800"><span>导航分组与模块管理</span><span style="font-size:11px;color:rgba(255,255,255,.46);font-weight:500">点击项目循环移动；电脑端可拖拽</span></div><div id="kn-settings-board" class="kn-group-board"></div><div class="kn-note">当前版本采用原地显隐：第三方 div 面板不再被移动到其他容器，避免破坏原插件结构。</div><div class="kn-settings-actions"><button type="button" class="kn-panel-btn" data-action="reset">恢复默认分组</button></div></div><div id="kn-settings-panel-appearance" class="kn-settings-panel"><div class="kn-form-grid kn-appearance-grid"><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">主题与基础</div><div class="kn-input-row"><label>模式</label><select data-appearance="themeMode"><option value="dark">夜间模式</option><option value="light">日间模式</option><option value="auto">跟随系统</option></select></div><div class="kn-input-row"><label>强调色</label><div class="kn-color-control"><input type="color" data-appearance="accentColor" aria-label="选择强调色"><input type="text" class="kn-color-hex" data-appearance="accentColor" maxlength="9" placeholder="#4E92FF"></div></div><div class="kn-field-help">支持 HEX 颜色值，例如 #3B82F6；可直接复制或手动输入。</div><div class="kn-slider-row"><label>字体缩放</label><input type="range" min="88" max="116" data-appearance="fontScale"><span class="kn-slider-value" data-value-for="fontScale">--</span></div><div class="kn-slider-row"><label>动画强度</label><input type="range" min="0" max="2" data-appearance="animationLevel"><span class="kn-slider-value" data-value-for="animationLevel">--</span></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title-row"><div class="kn-form-title">视觉效果</div><div class="kn-inline-actions"><button type="button" class="kn-text-action" data-action="appearanceAllOn">全选</button><button type="button" class="kn-text-action" data-action="appearanceDefault">重置默认</button></div></div><div class="kn-visual-list"><label class="kn-check"><span>圆角卡片</span><input type="checkbox" data-appearance="enableRadius"></label><label class="kn-check"><span>悬浮阴影</span><input type="checkbox" data-appearance="enableShadow"></label><label class="kn-check"><span>胶囊按钮</span><input type="checkbox" data-appearance="enableCapsule"></label><label class="kn-check"><span>玻璃拟态</span><input type="checkbox" data-appearance="enableGlass"></label><label class="kn-check"><span>紧凑布局</span><input type="checkbox" data-appearance="enableCompact"></label><label class="kn-check"><span>动态悬停</span><input type="checkbox" data-appearance="enableHover"></label><label class="kn-check"><span>极简滚条</span><input type="checkbox" data-appearance="enableScrollbar"></label><label class="kn-check"><span>渐变标题</span><input type="checkbox" data-appearance="enableGradient"></label><label class="kn-check"><span>柔和分割线</span><input type="checkbox" data-appearance="enableSoftDivider"></label><label class="kn-check"><span>文字增强</span><input type="checkbox" data-appearance="enableReadableText"></label></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">渐变标题</div><div class="kn-field-help local">开启“渐变标题”后，这里配置标题的起止颜色。</div></div></div><div class="kn-inline-config" data-effect-config="enableGradient"><div class="kn-input-row"><label>起点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor1"><input type="text" class="kn-color-hex" data-appearance="gradColor1" maxlength="9"></div></div><div class="kn-input-row"><label>终点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor2"><input type="text" class="kn-color-hex" data-appearance="gradColor2" maxlength="9"></div></div></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">顶栏质感</div><div class="kn-field-help local">控制顶部栏模糊、透明度与紧凑状态。</div></div><button type="button" class="kn-panel-btn small-text" data-action="compact">切换紧凑顶栏</button></div><div class="kn-inline-config"><div class="kn-slider-row"><label>顶栏模糊</label><input type="range" min="8" max="40" data-appearance="headerBlur"><span class="kn-slider-value" data-value-for="headerBlur">--</span></div><div class="kn-slider-row"><label>顶栏透明度</label><input type="range" min="35" max="98" data-appearance="headerOpacity"><span class="kn-slider-value" data-value-for="headerOpacity">--</span></div></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">美化配置</div><div class="kn-field-help" style="margin:0 0 12px">这里只重置界面美化相关配置，不影响导航分组和插件面板归类。</div><div class="kn-settings-actions" style="margin-top:0;padding-top:0;border-top:0"><button type="button" class="kn-panel-btn" data-action="resetAppearance">恢复默认美化</button></div></div></div></div><div id="kn-settings-panel-background" class="kn-settings-panel"><div class="kn-form-grid kn-bg-card-row"><div class="kn-form-card full"><div class="kn-bg-toolbar"><div class="kn-form-title">首页背景图</div><label class="kn-check"><input type="checkbox" data-appearance="enableBackground">启用背景图</label></div><div class="kn-bg-mode-grid kn-bg-dependent" data-bg-scope="source"><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="preset" data-appearance="backgroundMode"><span><strong>使用预装背景</strong><span>从内置背景中选择，适合快速切换。</span></span></label><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="custom" data-appearance="backgroundMode"><span><strong>使用自定义 URL</strong><span>使用图片链接作为首页背景。</span></span></label></div><div class="kn-input-row kn-bg-dependent" data-bg-scope="preset"><label>预装背景</label><select data-appearance="backgroundPreset">' + presetOptions + '</select></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="preset">选择预装项后立即生效；“无背景”会保留背景系统但不显示图片。</div><div class="kn-input-row kn-bg-dependent" data-bg-scope="custom"><label>自定义 URL</label><div class="kn-input-with-action"><input type="text" data-appearance="backgroundImage" placeholder="粘贴 https://.../background.jpg"><button type="button" class="kn-icon-clear" data-action="clearBackgroundUrl" title="清空自定义 URL">×</button></div></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="custom">仅在选择“使用自定义 URL”时生效。建议使用 1920×1080 或更高分辨率图片。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景遮罩</div><div class="kn-slider-row"><label>暗度</label><input type="range" min="0" max="85" data-appearance="backgroundDim"><span class="kn-slider-value" data-value-for="backgroundDim">--</span></div><div class="kn-slider-row"><label>模糊</label><input type="range" min="0" max="30" data-appearance="backgroundBlur"><span class="kn-slider-value" data-value-for="backgroundBlur">--</span></div><div class="kn-field-help" style="margin:4px 0 0">暗度控制背景遮罩透明度；模糊用于降低图片细节干扰。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景质感</div><div class="kn-slider-row"><label>饱和度</label><input type="range" min="50" max="180" data-appearance="backgroundSaturate"><span class="kn-slider-value" data-value-for="backgroundSaturate">--</span></div><div class="kn-field-help" style="margin:4px 0 14px">饱和度用于控制背景颜色浓度，不影响页面组件本身。</div><button type="button" class="kn-panel-btn small-text" data-action="resetBackgroundSettings" style="margin-top:auto;align-self:flex-start">重置背景设置</button></div></div></div><div id="kn-settings-panel-forward" class="kn-settings-panel"><div class="kn-forward-page-head"><div class="kn-forward-head-left"><div class="kn-forward-title">消息转发</div><div class="kn-forward-desc">可读取并保存原生消息/电源转发配置；电话事件转发为本插件增强配置。</div></div><div class="kn-forward-head-actions"><span id="kn-native-forward-read-status" class="kn-forward-inline-status">未读取</span><button type="button" class="kn-google-btn primary" data-action="refreshNativeForwardConfig">读取配置</button><button type="button" class="kn-google-btn primary" data-action="saveNativeForwardConfig">保存原生配置</button><button type="button" class="kn-google-btn" data-action="testNativeForwardConfig">测试原生通道</button><button type="button" class="kn-google-btn" data-action="toggleForwardTemplates">消息模板</button><button type="button" class="kn-google-btn" data-action="openNativeSmsForward">打开原生界面</button></div></div><div class="kn-forward-grid modern"><section class="kn-forward-card native full"><div class="kn-form-title-row"><div><div class="kn-form-title">原生消息转发</div><div class="kn-field-help local">原生界面名称可能显示为“短信转发”，但实际包含短信转发和设备通电通知。本页可直接修改并保存原生配置。</div></div></div><div class="kn-native-control-grid"><label class="kn-check primary-switch"><span>启用消息转发</span><input id="kn-native-forward-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>启用电源通知</span><input id="kn-native-power-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>附加设备信息</span><input id="kn-native-forward-devinfo" type="checkbox"></label><div class="kn-input-row compact"><label>当前通道</label><select id="kn-native-forward-method-select"><option value="dingtalk">钉钉机器人</option><option value="smtp">SMTP 邮件</option><option value="curl">CURL 命令</option></select></div></div><div class="kn-forward-kv-grid compact-status"><div class="kn-forward-kv"><b>消息转发</b><span id="kn-native-forward-enabled">--</span></div><div class="kn-forward-kv"><b>电源通知</b><span id="kn-native-power-enabled">--</span></div><div class="kn-forward-kv"><b>当前方式</b><span id="kn-native-forward-method">--</span></div><div class="kn-forward-kv"><b>原始值</b><span id="kn-native-forward-method-raw">--</span></div><div class="kn-forward-kv full"><b>设备信息</b><span id="kn-native-forward-device-info">--</span></div></div></section><section class="kn-forward-card native" data-native-method-card="dingtalk"><div class="kn-form-title">钉钉配置</div><div class="kn-input-row compact"><label>Webhook</label><input id="kn-native-dingtalk-webhook" placeholder="https://oapi.dingtalk.com/robot/send?..." autocomplete="off"></div><div class="kn-input-row compact"><label>加密密钥</label><input id="kn-native-dingtalk-secret" placeholder="SEC... 可为空" autocomplete="off"></div><div class="kn-field-help">保存后会写入原生钉钉转发配置；测试原生通道会调用原生转发接口。</div></section><section class="kn-forward-card native" data-native-method-card="smtp"><div class="kn-form-title">SMTP 配置</div><div class="kn-native-mini-grid normalized"><div class="kn-input-row"><label>主机</label><input id="kn-native-smtp-host" placeholder="smtp.example.com"></div><div class="kn-input-row short"><label>端口</label><input id="kn-native-smtp-port" placeholder="465" inputmode="numeric"></div><div class="kn-input-row"><label>账号</label><input id="kn-native-smtp-user" placeholder="user@example.com"></div><div class="kn-input-row"><label>收件人</label><input id="kn-native-smtp-to" placeholder="to@example.com"></div><div class="kn-input-row full"><label>密码</label><input id="kn-native-smtp-pass" placeholder="SMTP 授权码 / 密码" type="password"></div></div></section><section class="kn-forward-card native" data-native-method-card="curl"><div class="kn-form-title">CURL 命令 / 模板</div><textarea id="kn-native-curl-text" class="kn-forward-textarea" placeholder="例如：curl -s -X POST ..."></textarea><div class="kn-field-help">CURL 通道会把这里的命令写入原生配置。</div></section><section id="kn-forward-template-card" class="kn-forward-card native full kn-forward-template-viewer" hidden><div class="kn-form-title-row"><div><div class="kn-form-title">消息转发信息模板</div><div class="kn-field-help local">当前通道：<span id="kn-native-template-channel">--</span>。这里展示短信、电源通知和附加设备信息的组成方式。</div></div><button type="button" class="kn-panel-btn small-text" data-action="toggleForwardTemplates">收起</button></div><div class="kn-template-grid"><div><b>短信模板</b><div id="kn-template-sms" class="kn-forward-readonly-box plain">尚未读取。</div></div><div><b>电源模板</b><div id="kn-template-power" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>附加设备信息</b><div id="kn-template-device" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>CURL 当前命令</b><div id="kn-template-curl-preview" class="kn-forward-readonly-box">尚未读取。</div></div></div></section><section id="kn-forward-call-card" class="kn-forward-card"><div class="kn-form-title">电话事件转发增强</div><label class="kn-check primary-switch"><span>启用电话事件转发</span><input type="checkbox" data-forward="enableCallForward"></label><div class="kn-forward-event-list"><label class="kn-check"><span>来电</span><input type="checkbox" data-forward="callIncoming"></label><label class="kn-check"><span>未接</span><input type="checkbox" data-forward="callMissed"></label><label class="kn-check"><span>接通</span><input type="checkbox" data-forward="callAnswered"></label><label class="kn-check"><span>挂断</span><input type="checkbox" data-forward="callEnded"></label></div><div class="kn-input-row"><label>转发目标</label><select data-forward="callForwardTarget"><option value="native">复用原生转发方式</option><option value="custom">独立电话转发配置</option></select></div><div class="kn-forward-status slim">关闭电话事件转发时，下方事件、模板和测试按钮会自动禁用。</div></section><section id="kn-forward-call-template-card" class="kn-forward-card"><div class="kn-form-title">电话消息模板</div><textarea class="kn-forward-textarea" data-forward="callTemplate" placeholder="例如：{event} | {number} | {time} | {duration}"></textarea><div class="kn-settings-actions local"><button type="button" class="kn-panel-btn primary" data-action="saveForwardConfig">保存电话转发</button><button type="button" class="kn-panel-btn" data-action="testForwardConfig">测试电话转发</button></div></section></div></div><div id="kn-settings-panel-plugins" class="kn-settings-panel"><div class="kn-plugin-manager-shell"><div class="kn-plugin-topbar kn-plugin-merged-head"><div class="kn-plugin-title-block"><div class="kn-plugin-title-line"><span class="kn-plugin-title">插件管理</span><span id="kn-plugin-status" class="kn-plugin-status">尚未读取插件列表。</span></div><div class="kn-plugin-desc">左侧选择与启停，右侧编辑名称和源码。保存后写入 custom head，并自动刷新页面载入新插件。</div><div class="kn-plugin-risk top">改动会写入 UFI-TOOLS custom head；修改前建议先导出备份。</div></div><div class="kn-plugin-head-right"><div class="kn-plugin-native-row"><span class="kn-native-group-label">原生</span><button type="button" class="kn-google-btn" data-action="openNativePluginFeature">插件管理</button><button type="button" class="kn-google-btn" data-action="openNativePluginStore">插件商店</button><button type="button" class="kn-google-btn" data-action="openNativePluginFiles">上传文件</button></div><div class="kn-plugin-actions" aria-label="插件全局操作"><button type="button" class="kn-plugin-tool-btn" data-plugin-action="refresh" title="重新读取插件列表"><span class="kn-tool-ico">↻</span><span class="kn-tool-text">读取</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="import" title="导入插件文件"><span class="kn-tool-ico">＋</span><span class="kn-tool-text">导入</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="export" title="导出当前插件备份"><span class="kn-tool-ico">⇩</span><span class="kn-tool-text">备份</span></button></div></div></div><input type="file" id="kn-plugin-import-file" accept=".txt,.js,.html,.htm" style="display:none"><div class="kn-plugin-layout"><aside class="kn-plugin-list-card"><div class="kn-plugin-list-head"><div class="kn-plugin-list-title-row"><div><strong>插件列表</strong><span id="kn-plugin-count">0 个插件</span></div><button type="button" id="kn-plugin-search-toggle" class="kn-plugin-search-toggle" title="搜索插件" aria-label="搜索插件">⌕</button></div><input id="kn-plugin-search" type="text" placeholder="搜索插件名称 / 源码"></div><div id="kn-plugin-list" class="kn-plugin-list"><div class="kn-plugin-empty">点击“重新读取”读取当前插件。</div></div></aside><section class="kn-plugin-editor-card"><div class="kn-plugin-editor-head"><div><strong>插件详情</strong><span id="kn-plugin-editor-state">未选择插件</span><div class="kn-plugin-editor-name-line"><span id="kn-plugin-editor-title-name" class="kn-plugin-editor-title-name">未选择插件</span><button type="button" class="kn-plugin-title-edit" data-plugin-action="beginRename" title="重命名插件" aria-label="重命名插件">' + knPluginActionIcon('edit') + '</button></div></div><div class="kn-plugin-editor-actions"><button type="button" class="kn-plugin-icon-action primary" data-plugin-action="applyEditor" title="保存插件" aria-label="保存插件">' + knPluginActionIcon('save') + '<span class="kn-action-text">保存插件</span></button><button type="button" class="kn-plugin-icon-action" data-plugin-action="copyCode" title="复制源码" aria-label="复制源码">' + knPluginActionIcon('copy') + '<span class="kn-action-text">复制源码</span></button><button type="button" class="kn-plugin-icon-action danger" data-plugin-action="deleteSelected" title="删除插件" aria-label="删除插件">' + knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span></button></div></div><div class="kn-plugin-editor-form"><div class="kn-plugin-field kn-plugin-name-field"><label>插件名称</label><input id="kn-plugin-editor-name" type="text" placeholder="选择插件后可重命名"></div><div class="kn-plugin-code-head"><label>源码内容</label><span>轻量编辑模式</span></div><div class="kn-code-editor-wrap"><div id="kn-plugin-editor-lines" class="kn-code-lines">1</div><div class="kn-code-layer"><pre id="kn-plugin-editor-highlight" class="kn-code-highlight" aria-hidden="true"></pre><textarea id="kn-plugin-editor-code" spellcheck="false" placeholder="选择插件后显示源码"></textarea></div></div></div></section></div></div></div><div id="kn-settings-panel-about" class="kn-settings-panel"><div class="kn-about-hero"><div class="kn-about-logo">G</div><div><div class="kn-about-title">UFI WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS / UFI / CPE 设备的桌面化增强控制台。核心原则：不移动第三方插件 div，不破坏原插件结构，只做安全的导航分组、原地显隐和界面增强。</div><div class="kn-about-tags"><span>Material UI</span><span>Safe Layout</span><span>UFI-TOOLS v4.x</span><span>2026 UI</span></div></div></div><div class="kn-about-grid"><div class="kn-about-card"><div class="kn-about-card-title">版本信息</div><div class="kn-about-kv"><b>当前版本</b><span id="kn-about-current-version">' + VERSION + '</span></div><div class="kn-about-kv"><b>GitHub 仓库</b><span>' + GITHUB_REPO + '</span></div><div class="kn-about-kv"><b>最新版本</b><span id="kn-about-latest-version">未检查</span></div><div class="kn-about-kv"><b>版本状态</b><span id="kn-about-version-state">点击下方按钮检查</span></div><div class="kn-about-actions"><button type="button" class="kn-google-btn primary" data-action="checkGithubVersion">检查 GitHub 版本</button><a class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">打开仓库</a><a class="kn-google-btn" href="' + GITHUB_ISSUES_URL + '" target="_blank" rel="noopener noreferrer">提交问题</a><button type="button" class="kn-google-btn" data-action="copy">导出配置</button></div><div id="kn-about-update-note" class="kn-about-update-note">将请求 GitHub Releases 最新版本；如果仓库没有 Release，会自动尝试 Tags。</div></div><div class="kn-about-card"><div class="kn-about-card-title">适配与策略</div><div class="kn-about-kv"><b>适配环境</b><span>UFI-TOOLS v4.x / 通用 UFI 设备</span></div><div class="kn-about-kv"><b>布局策略</b><span>安全原地显隐</span></div><div class="kn-about-kv"><b>插件原则</b><span>不迁移第三方 div</span></div><div class="kn-about-small">设置页采用 Google Material 风格重构：更明确的信息层级、更轻的卡片、更克制的蓝色强调和更好的小屏适配。</div></div><div class="kn-about-card"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 原生功能分类 · 消息转发设置 · 现代插件管理 · 原生插件备用入口 · 插件面板分组 · 日/夜间模式 · 预设背景 · 自定义背景 · 玻璃拟态 · 圆角阴影 · 胶囊按钮 · 渐变标题 · 紧凑布局 · 扩展工具箱</div></div><div class="kn-about-card"><div class="kn-about-card-title">项目信息</div><div class="kn-about-list">项目名称：UFI WebOS 控制台<br>作者：LceAn<br>定位：面向 UFI-TOOLS 的高级桌面化管理界面<br>愿景：让插件管理、网络管理和设备状态展示更清晰、更现代、更安全。</div></div></div></div></div><div class="kn-dialog-footer"><div class="kn-footer-right only"><button type="button" class="kn-panel-btn primary" data-action="done">完成</button></div></div></div>';
+
+    enhanceSettingsInteractionMarkup(dialog);
 
     if (isWebOSFeatureEnabled('nativeButtonMigration')) ensureFunctionCenterPanel(dialog);
     else restoreHomeFunctionListButtons();
@@ -6660,6 +6880,7 @@
     text.textContent = isLogin ? '已登录' : '未登录';
     btn.title = '账号：' + (isLogin ? '已登录' : '未登录') + '，点击展开账户菜单';
     btn.setAttribute('aria-label', '账号菜单，当前' + (isLogin ? '已登录' : '未登录'));
+    updateNativeForwardControls();
   }
 
   function closeHeaderLoginMenu() {
@@ -7618,39 +7839,149 @@
   function updateNavButtons() { Array.prototype.slice.call(document.querySelectorAll('.kn-nav-btn')).forEach(function (btn) { btn.classList.toggle('active', btn.getAttribute('data-group') === state.config.currentGroup); }); var header = document.getElementById(HEADER_ID); if (header) header.classList.toggle('compact', !!state.config.compactHeader); applyAppearance(); }
   function switchGroup(group) { if (!isValidGroup(group)) return; state.config.currentGroup = group; saveConfig(); updateNavButtons(); scheduleClassify(); }
 
-  function moveEntity(kind, key, target) {
-    if (kind === 'module') { if (!state.config.modules[key]) return; if (isValidGroup(target)) state.config.modules[key].group = target; }
-    else if (kind === 'panel') { if (!state.config.panels[key]) return; state.config.panels[key].group = target === 'hide' ? 'hide' : (isValidGroup(target) ? target : 'extensions'); }
-    saveConfig(); renderSettingsZones(); scheduleClassify();
+  function setLayoutMoveStatus(text, tone) {
+    var status = document.getElementById('kn-layout-move-status');
+    if (!status) return;
+    status.textContent = text;
+    status.className = tone || '';
   }
-  function cycleEntity(kind, key) { var current = kind === 'module' ? state.config.modules[key].group : state.config.panels[key].group; var seq = GROUP_ORDER.concat(['hide']); var idx = seq.indexOf(current); moveEntity(kind, key, seq[(idx + 1) % seq.length]); }
+
+  function moveEntity(kind, key, target) {
+    var entity = kind === 'module' ? state.config.modules[key] : state.config.panels[key];
+    if (!entity) return false;
+    if (kind === 'module' && !isValidGroup(target)) {
+      setLayoutMoveStatus('页面模块不能隐藏', 'error');
+      return false;
+    }
+    if (kind === 'panel' && target !== 'hide' && !isValidGroup(target)) {
+      setLayoutMoveStatus('目标分组无效', 'error');
+      return false;
+    }
+    if (entity.group === target) {
+      setLayoutMoveStatus((entity.name || key) + '已在当前分组', '');
+      return true;
+    }
+    entity.group = target;
+    saveConfig();
+    renderSettingsZones();
+    scheduleClassify();
+    var targetLabel = target === 'hide' ? '隐藏' : GROUPS[target].label;
+    setLayoutMoveStatus((entity.name || key) + ' 已移至' + targetLabel, 'ok');
+    return true;
+  }
   function encodeDrag(kind, key) { return DRAG_PREFIX + JSON.stringify({ kind: kind, key: key }); }
   function decodeDrag(e) { var payload = state.drag; try { var data = e.dataTransfer.getData('text/plain'); if (data && data.indexOf(DRAG_PREFIX) === 0) payload = JSON.parse(data.slice(DRAG_PREFIX.length)); } catch (err) {} return payload; }
-  function makeItem(kind, key, name, badgeText, missing) { var item = document.createElement('div'); item.className = 'kn-item' + (kind === 'panel' ? ' panel' : '') + (missing ? ' missing' : ''); item.draggable = true; item.innerHTML = '<span></span><span class="kn-badge"></span>'; item.children[0].textContent = name; item.children[1].textContent = missing ? (badgeText + '·未加载') : badgeText; item.onclick = function () { cycleEntity(kind, key); }; item.addEventListener('dragstart', function (e) { state.drag = { kind: kind, key: key }; try { e.dataTransfer.setData('text/plain', encodeDrag(kind, key)); } catch (err) {} item.style.opacity = '.35'; }); item.addEventListener('dragend', function () { state.drag = null; item.style.opacity = '1'; }); return item; }
+  function makeItem(kind, key, name, badgeText, missing) {
+    var item = document.createElement('div');
+    item.className = 'kn-item' + (kind === 'panel' ? ' panel' : '') + (missing ? ' missing' : '');
+
+    var main = document.createElement('div');
+    main.className = 'kn-item-main';
+    main.draggable = true;
+    main.title = '拖动到其他分组';
+    var handle = document.createElement('span');
+    handle.className = 'kn-drag-handle';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.textContent = '⋮';
+    var nameEl = document.createElement('span');
+    nameEl.className = 'kn-item-name';
+    nameEl.textContent = name;
+    var badge = document.createElement('span');
+    badge.className = 'kn-badge';
+    badge.textContent = missing ? (badgeText + '·未加载') : badgeText;
+    main.appendChild(handle);
+    main.appendChild(nameEl);
+    main.appendChild(badge);
+
+    var move = document.createElement('label');
+    move.className = 'kn-item-move';
+    var moveText = document.createElement('span');
+    moveText.textContent = '移动到';
+    var select = document.createElement('select');
+    select.setAttribute('aria-label', '将' + name + '移动到分组');
+    var targets = kind === 'panel' ? GROUP_ORDER.concat(['hide']) : GROUP_ORDER.slice();
+    var current = kind === 'module' ? state.config.modules[key].group : state.config.panels[key].group;
+    targets.forEach(function (target) {
+      var option = document.createElement('option');
+      option.value = target;
+      option.textContent = target === 'hide' ? '隐藏' : GROUPS[target].label;
+      option.selected = current === target;
+      select.appendChild(option);
+    });
+    select.addEventListener('click', function (e) { e.stopPropagation(); });
+    select.addEventListener('change', function (e) { e.stopPropagation(); moveEntity(kind, key, select.value); });
+    move.appendChild(moveText);
+    move.appendChild(select);
+    item.appendChild(main);
+    item.appendChild(move);
+
+    main.addEventListener('dragstart', function (e) {
+      state.drag = { kind: kind, key: key };
+      try { e.dataTransfer.setData('text/plain', encodeDrag(kind, key)); } catch (err) {}
+      item.style.opacity = '.35';
+    });
+    main.addEventListener('dragend', function () { state.drag = null; item.style.opacity = '1'; });
+    return item;
+  }
 
   function renderSettingsZones() {
     var board = document.getElementById('kn-settings-board');
     if (!board || !state.config) return;
     board.textContent = '';
     var zones = {};
+    var counts = {};
     GROUP_ORDER.concat(['hide']).forEach(function (g) {
       var meta = g === 'hide' ? { label: '隐藏', desc: '仅隐藏插件面板' } : GROUPS[g];
       var zone = document.createElement('section');
       zone.className = 'kn-group-zone' + (g === 'hide' ? ' kn-hidden-zone' : '');
-      zone.innerHTML = '<div class="kn-zone-head"><div class="kn-zone-name">' + meta.label + '</div><div class="kn-zone-desc">' + meta.desc + '</div></div>';
-      zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('drag-over'); });
-      zone.addEventListener('dragleave', function () { zone.classList.remove('drag-over'); });
-      zone.addEventListener('drop', function (e) { e.preventDefault(); zone.classList.remove('drag-over'); var p = decodeDrag(e); if (p) moveEntity(p.kind, p.key, g); });
-      board.appendChild(zone); zones[g] = zone;
+      zone.setAttribute('data-zone', g);
+      zone.innerHTML = '<div class="kn-zone-head"><div class="kn-zone-copy"><div class="kn-zone-name">' + meta.label + '</div><div class="kn-zone-desc">' + meta.desc + '</div></div><span class="kn-zone-count">0 项</span></div>';
+      zone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        var invalid = g === 'hide' && state.drag && state.drag.kind === 'module';
+        zone.classList.toggle('drag-over', !invalid);
+        zone.classList.toggle('drag-invalid', !!invalid);
+      });
+      zone.addEventListener('dragleave', function () { zone.classList.remove('drag-over', 'drag-invalid'); });
+      zone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        zone.classList.remove('drag-over', 'drag-invalid');
+        var p = decodeDrag(e);
+        if (p) moveEntity(p.kind, p.key, g);
+      });
+      board.appendChild(zone);
+      zones[g] = zone;
+      counts[g] = 0;
     });
-    Object.keys(state.config.modules).forEach(function (key) { var m = state.config.modules[key]; (zones[m.group] || zones.tools).appendChild(makeItem('module', key, m.name, '页面', false)); });
-    Object.keys(state.config.panels).forEach(function (id) { var p = state.config.panels[id]; var missing = !getPanelNode(id); (zones[p.group] || zones.extensions).appendChild(makeItem('panel', id, p.name || id, '插件面板', missing)); });
-    Object.keys(zones).forEach(function (g) { if (zones[g].children.length <= 1) { var tip = document.createElement('div'); tip.className = 'kn-empty-tip'; tip.textContent = '暂无项目'; zones[g].appendChild(tip); } });
+    Object.keys(state.config.modules).forEach(function (key) {
+      var m = state.config.modules[key];
+      var group = zones[m.group] ? m.group : 'tools';
+      zones[group].appendChild(makeItem('module', key, m.name, '页面', false));
+      counts[group] += 1;
+    });
+    Object.keys(state.config.panels).forEach(function (id) {
+      var p = state.config.panels[id];
+      var group = zones[p.group] ? p.group : 'extensions';
+      var missing = !getPanelNode(id);
+      zones[group].appendChild(makeItem('panel', id, p.name || id, '插件面板', missing));
+      counts[group] += 1;
+    });
+    Object.keys(zones).forEach(function (g) {
+      var count = counts[g] || 0;
+      var countEl = zones[g].querySelector('.kn-zone-count');
+      if (countEl) countEl.textContent = count + ' 项';
+      if (!count) {
+        var tip = document.createElement('div');
+        tip.className = 'kn-empty-tip';
+        tip.textContent = '暂无项目';
+        zones[g].appendChild(tip);
+      }
+    });
   }
 
   function openSettingsDialog() { var d = document.getElementById(DIALOG_ID); if (!d) return; mergeBackgroundSettingsIntoAppearance(d); renderSettingsZones(); bindAppearanceControls(); ensureAppearanceLanguageControl(d); if (typeof d.showModal === 'function' && !d.open) d.showModal(); }
   function closeSettingsDialog() { var d = document.getElementById(DIALOG_ID); if (d && typeof d.close === 'function' && d.open) d.close(); }
-  function resetLayout() { if (!confirm('确认恢复默认分组吗？')) return; var oldAppearance = clone(state.config.appearance); state.config = normalizeConfig(null); state.config.appearance = oldAppearance; saveConfig(); renderSettingsZones(); updateNavButtons(); scheduleClassify(); }
+  function resetLayout() { if (!confirm('确认恢复默认分组吗？')) return; var oldAppearance = clone(state.config.appearance); state.config = normalizeConfig(null); state.config.appearance = oldAppearance; saveConfig(); renderSettingsZones(); updateNavButtons(); scheduleClassify(); setLayoutMoveStatus('已恢复默认分组', 'ok'); }
   function exportConfig() { var text = JSON.stringify(state.config, null, 2); try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text); if (typeof createToast === 'function') createToast('配置已复制', 'pink'); return; } } catch (err) {} console.log('[KanoWebOS] config:', text); prompt('复制配置', text); }
   function destroy() { try { closePhoneSmsModal(); } catch (e) {} try { closeNetworkDiagnostics(); } catch (e) {} try { if (window.__KANO_WEBOS_TOOLBOX_CAPTURE_HANDLER__) window.__KANO_WEBOS_TOOLBOX_CAPTURE_HANDLER__ = null; } catch (e) {} if (state.observer) state.observer.disconnect(); if (state.toolboxObserver) state.toolboxObserver.disconnect(); if (state.timer) clearInterval(state.timer); if (state.raf) cancelAnimationFrame(state.raf); if (state.headerResizeHandler) window.removeEventListener('resize', state.headerResizeHandler); cleanupOldUI(); }
 
