@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.12.0-webos-network-diagnostics';
+  var VERSION = '26.12.1-phone-entry-fallback';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
@@ -6156,7 +6156,13 @@
       return t === '电话与短信' || t.indexOf('电话与短信') !== -1 || t.indexOf('拨号') !== -1 && t.indexOf('短信') !== -1;
     });
     if (btn && !btn.closest('#' + HOME_DASHBOARD_ID)) { try { btn.click(); return; } catch (e2) {} }
-    showPhoneSmsMissingDialog();
+    try {
+      openHomePhoneSms();
+    } catch (e3) {
+      console.warn('[KanoWebOS] 内置电话与短信面板打开失败:', e3);
+      homeToast('电话与短信面板打开失败，请刷新页面后重试', 'red');
+      showPhoneSmsMissingDialog();
+    }
   }
 
   function getExternalOperatorInfoPlugin() {
