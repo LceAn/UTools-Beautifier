@@ -3,7 +3,7 @@
   'use strict';
 
   var TITLE = '运营商信息';
-  var VERSION = '1.0.0-official-sms-query';
+  var VERSION = '1.0.1-base64-latest-receipt';
   var STYLE_ID = 'kano-operator-info-style';
   var MODAL_ID = 'kano-operator-info-modal';
   var BUTTON_ID = 'kano-operator-info-button';
@@ -16,6 +16,8 @@
     provider: 'unknown',
     replies: [],
     parsed: {},
+    repliesLoaded: false,
+    repliesBusy: false,
     busy: false,
     pollTimer: null,
     pollDeadline: 0,
@@ -263,10 +265,40 @@
       try {
         var decoded = '';
         for (var i = 0; i < raw.length; i += 4) decoded += String.fromCharCode(parseInt(raw.slice(i, i + 4), 16));
-        if (clean(decoded)) return decoded;
+        if (isReadableSmsContent(decoded)) return decoded;
+      } catch (e) {}
+    }
+    var base64 = raw.replace(/\s+/g, '');
+    if (base64.length >= 12 && base64.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
+      try {
+        if (typeof decodeBase64 === 'function') {
+          var helperDecoded = decodeBase64(base64);
+          if (isReadableSmsContent(helperDecoded)) return helperDecoded;
+        }
+      } catch (e) {}
+      try {
+        var binary = atob(base64);
+        var percent = '';
+        for (var j = 0; j < binary.length; j += 1) {
+          percent += '%' + ('00' + binary.charCodeAt(j).toString(16)).slice(-2);
+        }
+        var utf8Decoded = decodeURIComponent(percent);
+        if (isReadableSmsContent(utf8Decoded)) return utf8Decoded;
+      } catch (e) {}
+      try {
+        var latinDecoded = atob(base64);
+        if (isReadableSmsContent(latinDecoded)) return latinDecoded;
       } catch (e) {}
     }
     return raw;
+  }
+
+  function isReadableSmsContent(value) {
+    var text = String(value == null ? '' : value);
+    if (!clean(text) || /\uFFFD/.test(text)) return false;
+    var controls = text.match(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g);
+    if (controls && controls.length > Math.max(1, text.length * 0.02)) return false;
+    return /[\u3400-\u9FFF\uF900-\uFAFFA-Za-z0-9]/.test(text);
   }
 
   function firstMatch(text, patterns) {
@@ -279,28 +311,35 @@
 
   function formatDataValue(match) {
     if (!match) return '';
-    return clean(match[1] + ' ' + String(match[2] || '').toUpperCase());
+    var parts = String(match[1] || '').match(/\d+(?:\.\d+)?\s*(?:GB|MB|KB|TB|G|M|K|T)/gi) || [];
+    return parts.map(function (part) {
+      return part.replace(/\s+/g, '').replace(/[A-Za-z]+$/, function (unit) { return unit.toUpperCase(); });
+    }).join(' ');
+  }
+
+  function hasParsedCarrierData(parsed) {
+    var keys = ['balance', 'dataRemaining', 'dataTotal', 'dataUsed', 'voiceRemaining', 'smsRemaining', 'planName', 'expiry'];
+    return keys.some(function (key) { return clean(parsed && parsed[key]); });
   }
 
   function parseCarrierSms(text) {
     var raw = String(text || '').replace(/\r/g, '').trim();
+    var dataAmount = '(?:\\d+(?:\\.\\d+)?\\s*(?:GB|MB|KB|TB|G|M|K|T)\\s*){1,2}';
     var balance = firstMatch(raw, [
       /(?:账户余额|当前余额|话费余额|余额|话费)[^\d\-]{0,12}(-?\d+(?:\.\d+)?)\s*(?:元|￥)?/i,
       /(-?\d+(?:\.\d+)?)\s*元[^。；;，,\n]{0,20}(?:余额|话费)/i
     ]);
     var dataRemaining = firstMatch(raw, [
-      /(?:剩余流量|流量剩余|国内流量剩余|通用流量剩余|可用流量|流量余量)[^\d]{0,24}(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)/i,
-      /(?:剩余|可用|余量)[^。；;，,\n]{0,24}?(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)[^。；;，,\n]{0,24}?(?:流量)/i,
-      /(?:流量)[^。；;，,\n]{0,24}?(?:剩余|可用|余量)[^\d]{0,24}(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)/i
+      new RegExp('(?:剩余流量|流量剩余|国内流量剩余|通用流量剩余|可用流量|流量余量|剩余|可用|余量)[^\\d]{0,24}(' + dataAmount + ')', 'i'),
+      new RegExp('(?:流量)[^。；;，,\\n]{0,24}?(?:剩余|可用|余量)[^\\d]{0,24}(' + dataAmount + ')', 'i')
     ]);
     var dataTotal = firstMatch(raw, [
-      /(?:总流量|套餐流量|流量总量)[^\d]{0,24}(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)/i,
-      /(?:共|总计)[^\d]{0,12}(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)[^。；;，,\n]{0,24}(?:流量)/i
+      new RegExp('(?:总流量|套餐流量|流量总量|共|总计)[^\\d]{0,24}(' + dataAmount + ')', 'i')
     ]);
     var dataUsed = firstMatch(raw, [
-      /(?:已用流量|流量已用|已使用流量)[^\d]{0,24}(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)/i,
-      /(?:已用|已使用)[^。；;，,\n]{0,24}?(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|G|M|K|T)[^。；;，,\n]{0,24}?(?:流量)/i
+      new RegExp('(?:现已使用|已用流量|流量已用|已使用流量|已用|已使用)[^\\d]{0,24}(' + dataAmount + ')', 'i')
     ]);
+    var dataExhausted = /(?:流量|流量包|加油包)[^。；;\n]{0,80}(?:已经用尽|已用尽|已经耗尽|已耗尽|已经使用完|已使用完)/.test(raw);
     var voice = firstMatch(raw, [
       /(?:语音剩余|剩余语音|通话剩余|剩余通话|语音余量|通话时长剩余)[^\d]{0,24}(\d+)\s*(?:分钟|分|min|mins)?/i,
       /(?:语音|通话|分钟)[^。；;，,\n]{0,24}?(?:剩余|可用|余量)[^\d]{0,24}(\d+)\s*(?:分钟|分|min|mins)?/i
@@ -315,28 +354,42 @@
     var expiry = firstMatch(raw, [
       /(?:有效期|到期(?:时间|日期)?|失效(?:时间|日期)?)\s*(?:至|到|为|：|:)?\s*((?:20)?\d{2}[年\/.\-]\d{1,2}[月\/.\-]\d{1,2}日?)/i
     ]);
+    var queryTime = firstMatch(raw, [
+      /截至\s*((?:20)?\d{2}年\d{1,2}月\d{1,2}日(?:\d{1,2}时\d{1,2}分(?:\d{1,2}秒)?)?)/i
+    ]);
 
     return {
       balance: balance ? balance[1] + ' 元' : '',
-      dataRemaining: formatDataValue(dataRemaining),
+      dataRemaining: dataExhausted ? '0 MB' : formatDataValue(dataRemaining),
       dataTotal: formatDataValue(dataTotal),
       dataUsed: formatDataValue(dataUsed),
       voiceRemaining: voice ? voice[1] + ' 分钟' : '',
       smsRemaining: sms ? sms[1] + ' 条' : '',
       planName: plan ? clean(plan[1]) : '',
       expiry: expiry ? clean(expiry[1]) : '',
+      queryTime: queryTime ? clean(queryTime[1]) : '',
+      status: dataExhausted ? '流量包已用尽' : '',
       raw: raw
     };
   }
 
   function parseReplies(replies) {
-    var incoming = (replies || []).filter(function (reply) { return reply.direction === 'in'; }).slice(0, 5);
-    return parseCarrierSms(incoming.map(function (reply) { return reply.content; }).join('\n'));
+    var incoming = (replies || []).filter(function (reply) { return reply.direction === 'in'; });
+    for (var i = 0; i < incoming.length; i += 1) {
+      var parsed = parseCarrierSms(incoming[i].content);
+      if (hasParsedCarrierData(parsed)) {
+        parsed.sourceDate = incoming[i].date || '';
+        parsed.sourceNumber = incoming[i].number || '';
+        parsed.sourceId = incoming[i].id || '';
+        return parsed;
+      }
+    }
+    return {};
   }
 
   function formatSmsDate(value) {
     var raw = clean(value);
-    var zte = raw.match(/^(\d{2});(\d{2});(\d{2});(\d{2});(\d{2});(\d{2})(?:;[^;]+)?$/);
+    var zte = raw.match(/^(\d{2})[;,](\d{2})[;,](\d{2})[;,](\d{2})[;,](\d{2})[;,](\d{2})(?:[;,][^;,]+)?$/);
     if (zte) return '20' + zte[1] + '-' + zte[2] + '-' + zte[3] + ' ' + zte[4] + ':' + zte[5];
     var date = new Date(raw);
     if (/[T/:\-]/.test(raw) && !Number.isNaN(date.getTime())) {
@@ -384,17 +437,29 @@
     if (!provider.service) {
       state.replies = [];
       state.parsed = {};
+      state.repliesLoaded = true;
+      state.repliesBusy = false;
       renderParsed();
       renderReplies();
       if (manual) toast('请先选择运营商', 'red');
       return [];
     }
+    state.repliesBusy = true;
+    renderParsed();
     try {
       var result = await fetchSmsInfo(0, 300);
       state.replies = normalizeReplies(result, provider.service).slice(0, 20);
       state.parsed = parseReplies(state.replies);
+      state.repliesLoaded = true;
       renderParsed();
       renderReplies();
+      if (hasParsedCarrierData(state.parsed)) {
+        setStatus('已读取 ' + provider.service + ' 最近官方回执' + (state.parsed.status ? '：' + state.parsed.status : ''), 'success');
+      } else if (state.replies.length) {
+        setStatus('已读取官方回执，但暂未识别其中的查询结果', 'error');
+      } else {
+        setStatus('暂无 ' + provider.service + ' 官方短信回执', 'idle');
+      }
       if (manual) toast('已刷新 ' + provider.service + ' 短信回复', 'green');
       return state.replies;
     } catch (error) {
@@ -402,6 +467,9 @@
       setStatus(error.message || '短信读取失败', 'error');
       if (manual) toast(error.message || '短信读取失败', 'red');
       return [];
+    } finally {
+      state.repliesBusy = false;
+      renderParsed();
     }
   }
 
@@ -553,9 +621,19 @@
     var box = document.getElementById('kano-operator-parsed');
     if (!box) return;
     var parsed = state.parsed || {};
+    var source = document.getElementById('kano-operator-result-source');
+    if (source) {
+      if (state.repliesBusy) source.textContent = '正在读取最近官方回执';
+      else if (parsed.queryTime) source.textContent = '官方结果截至 ' + parsed.queryTime;
+      else if (parsed.sourceDate) source.textContent = '最近回执 ' + parsed.sourceDate;
+      else if (state.repliesLoaded && state.replies.length) source.textContent = '已读取回执，暂未识别结果';
+      else if (state.repliesLoaded) source.textContent = '暂无官方回执';
+      else source.textContent = '等待读取官方回执';
+    }
     var dataDetail = [];
     if (parsed.dataUsed) dataDetail.push('已用 ' + parsed.dataUsed);
     if (parsed.dataTotal) dataDetail.push('总量 ' + parsed.dataTotal);
+    if (parsed.status) dataDetail.push(parsed.status);
     var items = [
       { label: '话费余额', value: parsed.balance, detail: '运营商回执' },
       { label: '剩余流量', value: parsed.dataRemaining, detail: dataDetail.join(' · ') || '运营商回执' },
@@ -566,7 +644,8 @@
     ];
     box.innerHTML = items.map(function (item) {
       var available = clean(item.value);
-      return '<div class="kano-operator-result' + (available ? ' available' : '') + '"><span>' + escapeHTML(item.label) + '</span><b title="' + escapeHTML(available || '未解析') + '">' + escapeHTML(available || '--') + '</b><small>' + escapeHTML(item.detail) + '</small></div>';
+      var fallback = hasParsedCarrierData(parsed) ? '本条未提供' : (state.repliesLoaded && state.replies.length ? '未识别' : '--');
+      return '<div class="kano-operator-result' + (available ? ' available' : '') + '"><span>' + escapeHTML(item.label) + '</span><b title="' + escapeHTML(available || fallback) + '">' + escapeHTML(available || fallback) + '</b><small>' + escapeHTML(item.detail) + '</small></div>';
     }).join('');
   }
 
@@ -676,7 +755,7 @@
       '<section class="kano-operator-panel" role="dialog" aria-modal="true" aria-labelledby="kano-operator-title">' +
         '<header class="kano-operator-head"><div class="kano-operator-head-left"><div class="kano-operator-mark" aria-hidden="true">◎</div><div class="kano-operator-heading"><h2 id="kano-operator-title">运营商信息</h2><p>SIM 识别与官方短信查询</p></div></div><div class="kano-operator-head-actions"><button type="button" class="kano-operator-icon-btn" data-operator-action="refresh" title="刷新" aria-label="刷新">↻</button><button type="button" class="kano-operator-icon-btn" data-operator-action="close" title="关闭" aria-label="关闭">×</button></div></header>' +
         '<div class="kano-operator-body"><aside class="kano-operator-sidebar"><div id="kano-operator-badge" class="kano-operator-badge unknown">未识别</div><div class="kano-operator-provider-row"><label for="kano-operator-provider">运营商选择</label><select id="kano-operator-provider"><option value="auto">自动识别</option><option value="mobile">中国移动</option><option value="unicom">中国联通</option><option value="telecom">中国电信</option><option value="broadcast">中国广电</option></select></div><div id="kano-operator-identity" class="kano-operator-identity"></div></aside>' +
-        '<main class="kano-operator-main"><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询结果</b><span>自动解析最近回执</span></div><div id="kano-operator-parsed" class="kano-operator-results"></div></section><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方短信查询</b><span>发送前需要确认</span></div><div id="kano-operator-query-actions" class="kano-operator-query-actions"></div></section><section class="kano-operator-section"><div id="kano-operator-status" class="kano-operator-status idle">等待刷新</div></section><section class="kano-operator-replies-section"><div class="kano-operator-section-head"><b>查询回复</b><button type="button" class="kano-operator-icon-btn" data-operator-action="replies" title="刷新回复" aria-label="刷新回复">↻</button></div><div id="kano-operator-replies" class="kano-operator-replies"></div></section></main></div>' +
+        '<main class="kano-operator-main"><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询结果</b><span id="kano-operator-result-source">等待读取官方回执</span></div><div id="kano-operator-parsed" class="kano-operator-results"></div></section><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方短信查询</b><span>发送前需要确认</span></div><div id="kano-operator-query-actions" class="kano-operator-query-actions"></div></section><section class="kano-operator-section"><div id="kano-operator-status" class="kano-operator-status idle">等待刷新</div></section><section class="kano-operator-replies-section"><div class="kano-operator-section-head"><b>查询回复</b><button type="button" class="kano-operator-icon-btn" data-operator-action="replies" title="刷新回复" aria-label="刷新回复">↻</button></div><div id="kano-operator-replies" class="kano-operator-replies"></div></section></main></div>' +
         '<footer class="kano-operator-footer"><span>查询指令由运营商服务号码处理，不上传 SIM 信息。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
       '</section>';
     modal.addEventListener('click', function (event) { if (event.target === modal) close(); });
@@ -732,6 +811,7 @@
       state.escHandler = function (event) { if (event.key === 'Escape') close(); };
       document.addEventListener('keydown', state.escHandler);
     }
+    if (!state.repliesLoaded) state.repliesBusy = true;
     renderAll();
     try { await refresh(false); } catch (e) {}
   }
