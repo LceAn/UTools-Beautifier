@@ -67,13 +67,14 @@
 
 #### 中国广电自动查询
 
-中国广电 `10099` 的短信菜单在当前实卡上会返回，但继续回复 `1` 或 `2` 会被官方判定为无效指令，因此插件已停用这个入口。自动查询需要一个与 UFI-TOOLS 浏览器互通的自托管代理，例如 [10099-Tracker](https://github.com/BiancoCat/10099-Tracker)：
+中国广电 `10099` 的短信菜单在当前实卡上会返回，但继续回复 `1` 或 `2` 会被官方判定为无效指令，因此插件已停用这个入口。仓库已集成 [10099-Tracker 本地服务](10099-Tracker/README.md)，可直接用 Python 运行，也保留 Docker Compose 部署方式：
 
-1. 在代理端配置从中国广电微信小程序抓取的登录请求，并以局域网地址启动服务。
-2. 在插件“本地查询 API”中填写 `http://局域网地址:8000/traffic?details=1` 并保存。
-3. 插件读取 `total_gb`、`used_gb`、`balance_gb`、`updated_at` 和可选的 `details`，登录失效时会明确提示在代理端更新配置。
+1. 进入 `10099-Tracker`，运行 `./run-native.sh`；装有 Docker 时也可运行 `docker compose up -d --build`。
+2. 打开 `http://127.0.0.1:8000/`，输入首次启动生成的管理令牌，粘贴中国广电小程序 `qryUserRes` 请求的完整 cURL。
+3. 在插件“本地查询 API”中填写 `http://127.0.0.1:8000/traffic?details=1` 并保存；跨设备使用时将地址换成本机局域网 IP。
+4. 插件读取 `total_gb`、`used_gb`、`balance_gb`、`updated_at` 和可选的 `details`，登录失效时会明确提示在代理端更新配置。
 
-代理必须允许 UFI-TOOLS 页面的跨域 GET 请求。不要把抓包得到的登录态直接写进插件或提交到仓库。
+服务沿用了上游 MIT 许可的官方请求与流量解析逻辑，并额外隐藏配置回显、保护管理接口。不要把抓包得到的登录态直接写进插件或提交到仓库。
 
 ---
 
@@ -106,6 +107,7 @@ UTools-Beautifier/
 ├── UTools-Beautifier-V1.0.1.js   # 插件收纳管理插件
 ├── 电话与短信_V1.3.3.js          # 拨号盘 + 短信会话插件
 ├── 运营商信息_V1.0.0.js         # SIM 识别 + 官方短信查询
+├── 10099-Tracker/               # 中国广电官方流量本地代理
 ├── CHANGELOG.md                  # 更新日志
 ├── README.md                     # 本文件
 └── LICENSE                       # MIT License

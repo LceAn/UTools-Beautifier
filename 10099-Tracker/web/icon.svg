@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Traffic">
+  <rect width="64" height="64" rx="14" fill="#1864ab"/>
+  <path d="M17 42h30" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M20 34c3-9 12-15 22-11" fill="none" stroke="#8ce1c1" stroke-width="5" stroke-linecap="round"/>
+  <path d="M25 42l14-18" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="25" cy="42" r="5" fill="#8ce1c1"/>
+</svg>

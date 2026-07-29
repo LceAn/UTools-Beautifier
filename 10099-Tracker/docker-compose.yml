@@ -1,0 +1,22 @@
+name: traffic-query
+
+services:
+  traffic-api:
+    build: .
+    container_name: traffic-api
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      TZ: Asia/Shanghai
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      TRAFFIC_CONFIG_FILE: /app/data/config.json
+      TRAFFIC_TOKEN_FILE: /app/data/admin_token
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

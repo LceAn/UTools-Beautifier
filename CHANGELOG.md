@@ -4,6 +4,19 @@
 
 ---
 
+## [10099 Tracker 本地服务] - 2026-07-29
+
+### 新增
+
+- **官方接口代理** — 将 `10099-Tracker` 的 `qryUserRes` 请求和流量资源汇总逻辑集成到仓库，与运营商信息插件的 `/traffic?details=1` 协议直接兼容
+- **双部署方式** — 同时提供 Docker Compose 与 macOS/Linux 原生 Python 启动脚本；未安装 Docker 时也能运行
+- **抓包配置页** — 支持粘贴完整 cURL，自动提取 `Session`、`Access`、`User-Agent` 和加密 `data`
+
+### 安全
+
+- **配置脱敏** — 管理 API 不再把完整登录态返回浏览器，敏感配置仅写入本机 `data/config.json`
+- **管理令牌** — 配置读取与 cURL 更新接口需要管理令牌，公开的插件接口只返回流量查询结果
+
 ## [Web重构 v26.13.0] - 2026-07-29
 
 版本标识：`26.13.0-settings-center`

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>广电流量服务</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f3f5f7;
+      --surface: #ffffff;
+      --surface-soft: #f8fafb;
+      --text: #18212b;
+      --muted: #64717e;
+      --line: #d8e0e7;
+      --primary: #1769aa;
+      --primary-hover: #11578f;
+      --success: #087f5b;
+      --success-bg: #edfaf5;
+      --danger: #b42318;
+      --danger-bg: #fff3f2;
+      --warning: #8a5a00;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    button, input, textarea { font: inherit; letter-spacing: 0; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    .topbar { border-bottom: 1px solid var(--line); background: var(--surface); }
+    .wrap { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
+    .topbar-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand img { width: 34px; height: 34px; flex: 0 0 auto; }
+    .brand h1 { margin: 0; font-size: 18px; line-height: 1.2; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .status-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface-soft); font-size: 12px; white-space: nowrap; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa5af; }
+    .status-pill.ready .status-dot { background: #1a9b6c; }
+    .status-pill.error .status-dot { background: #d64545; }
+
+    main { padding: 20px 0 36px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(300px, .82fr); gap: 16px; align-items: start; }
+    .stack { display: grid; gap: 16px; }
+    section { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+    .section-head { min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+    .section-head h2 { margin: 0; font-size: 14px; }
+    .section-head span { color: var(--muted); font-size: 11px; }
+    .section-body { padding: 16px; }
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    input, textarea { width: 100%; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface); outline: none; }
+    input { height: 40px; padding: 0 10px; }
+    textarea { min-height: 190px; padding: 10px; resize: vertical; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 14%, transparent); }
+    .input-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 6px; padding: 0 13px; color: var(--text); background: var(--surface); font-weight: 650; }
+    .button:hover { background: var(--surface-soft); }
+    .button.primary { border-color: var(--primary); color: #fff; background: var(--primary); }
+    .button.primary:hover { background: var(--primary-hover); }
+    .button.full { width: 100%; }
+
+    .notice { min-height: 40px; display: flex; align-items: center; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); background: var(--surface-soft); overflow-wrap: anywhere; }
+    .notice.success { border-color: #96d8c1; color: var(--success); background: var(--success-bg); }
+    .notice.error { border-color: #efb1ad; color: var(--danger); background: var(--danger-bg); }
+    .kv { margin: 0; }
+    .kv > div { min-height: 38px; display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+    .kv > div:last-child { border-bottom: 0; }
+    .kv dt { color: var(--muted); font-size: 12px; }
+    .kv dd { min-width: 0; margin: 0; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+    .endpoint { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+    .endpoint code { min-width: 0; display: flex; align-items: center; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    pre { min-height: 168px; max-height: 330px; margin: 0; padding: 12px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--surface-soft); white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .security { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #10151b; --surface: #171d24; --surface-soft: #12181e; --text: #edf2f6; --muted: #9aa8b5; --line: #303943; --primary: #338bd0; --primary-hover: #2879b9; --success: #7bd8b6; --success-bg: #102a22; --danger: #ffaaa4; --danger-bg: #301817; }
+    }
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 20px, 1080px); }
+      .topbar-inner { min-height: 70px; }
+      .grid { grid-template-columns: 1fr; }
+      .status-pill { padding: 0 8px; }
+      .status-label { display: none; }
+      .endpoint { grid-template-columns: 1fr; }
+      .endpoint .button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <img src="/icon.svg" alt="">
+        <div><h1>广电流量服务</h1><p>10099 官方小程序接口代理</p></div>
+      </div>
+      <div id="serviceStatus" class="status-pill"><span class="status-dot"></span><span class="status-label">正在检测</span></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid">
+      <div class="stack">
+        <section>
+          <div class="section-head"><h2>请求配置</h2><span id="configUpdated">未读取</span></div>
+          <div class="section-body">
+            <div class="field">
+              <label for="adminToken">管理令牌</label>
+              <div class="input-row">
+                <input id="adminToken" type="password" autocomplete="current-password" placeholder="data/admin_token 中的令牌">
+                <button id="unlock" class="button" type="button">验证</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="curlText">小程序查询请求 cURL</label>
+              <textarea id="curlText" spellcheck="false" placeholder="curl 'https://wx.10099.com.cn/contact-web/api/busi/qryUserRes' ..."></textarea>
+            </div>
+            <div class="actions">
+              <button id="saveCurl" class="button primary" type="button" disabled>解析并保存</button>
+              <button id="clearCurl" class="button" type="button">清空</button>
+            </div>
+            <p class="security">敏感字段只写入本机 data/config.json；页面仅显示脱敏状态。</p>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head"><h2>操作状态</h2><span>最近一次操作</span></div>
+          <div class="section-body"><div id="notice" class="notice">等待验证管理令牌。</div></div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section>
+          <div class="section-head"><h2>服务状态</h2><button id="refresh" class="button" type="button">刷新</button></div>
+          <div class="section-body">
+            <dl class="kv">
+              <div><dt>请求配置</dt><dd id="configured">--</dd></div>
+              <div><dt>Session</dt><dd id="session">--</dd></div>
+              <div><dt>Access</dt><dd id="access">--</dd></div>
+              <div><dt>加密数据</dt><dd id="payload">--</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head"><h2>插件接口</h2><span>运营商信息插件</span></div>
+          <div class="section-body">
+            <div class="endpoint"><code id="endpoint"></code><button id="copyEndpoint" class="button" type="button">复制</button></div>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head"><h2>官方查询结果</h2><button id="query" class="button primary" type="button">查询</button></div>
+          <div class="section-body"><pre id="result">暂无数据。</pre></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const fields = {
+      token: $("#adminToken"), curl: $("#curlText"), notice: $("#notice"), result: $("#result"),
+      configured: $("#configured"), session: $("#session"), access: $("#access"), payload: $("#payload"),
+      updated: $("#configUpdated"), service: $("#serviceStatus"), endpoint: $("#endpoint")
+    };
+    let token = sessionStorage.getItem("trafficAdminToken") || "";
+    fields.token.value = token;
+    fields.endpoint.textContent = `${location.origin}/traffic?details=1`;
+
+    function setNotice(message, type = "") {
+      fields.notice.textContent = message;
+      fields.notice.className = `notice ${type}`.trim();
+    }
+
+    function busy(button, value, text) {
+      button.disabled = value;
+      if (!button.dataset.label) button.dataset.label = button.textContent;
+      button.textContent = value ? text : button.dataset.label;
+    }
+
+    async function request(path, options = {}, admin = false) {
+      const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+      if (admin) headers["X-Admin-Token"] = token;
+      const response = await fetch(path, { ...options, headers, cache: "no-store" });
+      let payload = {};
+      try { payload = await response.json(); } catch (_) {}
+      if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+      return payload;
+    }
+
+    function renderConfig(config) {
+      fields.configured.textContent = config.configured ? "已配置" : "未配置";
+      fields.session.textContent = config.session || "未设置";
+      fields.access.textContent = config.access || "未设置";
+      fields.payload.textContent = config.payload ? "已保存" : "未设置";
+      fields.updated.textContent = config.updated_at || "尚未保存";
+      $("#saveCurl").disabled = false;
+    }
+
+    async function checkHealth() {
+      try {
+        const payload = await request("/health");
+        fields.service.className = `status-pill ${payload.configured ? "ready" : ""}`.trim();
+        fields.service.querySelector(".status-label").textContent = payload.configured ? "服务正常" : "等待配置";
+      } catch (error) {
+        fields.service.className = "status-pill error";
+        fields.service.querySelector(".status-label").textContent = "服务异常";
+      }
+    }
+
+    async function loadConfig(showSuccess = false) {
+      if (!token) {
+        setNotice("请输入服务启动时显示的管理令牌。", "error");
+        return;
+      }
+      try {
+        const payload = await request("/api/config", {}, true);
+        renderConfig(payload.config);
+        sessionStorage.setItem("trafficAdminToken", token);
+        if (showSuccess) setNotice("管理令牌验证成功。", "success");
+      } catch (error) {
+        $("#saveCurl").disabled = true;
+        setNotice(error.message, "error");
+        throw error;
+      }
+    }
+
+    $("#unlock").onclick = async () => {
+      token = fields.token.value.trim();
+      await loadConfig(true).catch(() => {});
+    };
+    $("#refresh").onclick = () => loadConfig(true).catch(() => {});
+    $("#clearCurl").onclick = () => { fields.curl.value = ""; fields.curl.focus(); };
+    $("#saveCurl").onclick = async (event) => {
+      const button = event.currentTarget;
+      if (!fields.curl.value.trim()) { setNotice("请先粘贴完整 cURL。", "error"); return; }
+      busy(button, true, "正在保存");
+      try {
+        const payload = await request("/api/extract-curl", { method: "POST", body: JSON.stringify({ curl: fields.curl.value }) }, true);
+        renderConfig(payload.config);
+        fields.curl.value = "";
+        setNotice("请求配置已保存，可以查询官方流量。", "success");
+        await checkHealth();
+      } catch (error) { setNotice(error.message, "error"); }
+      finally { busy(button, false); }
+    };
+    $("#query").onclick = async (event) => {
+      const button = event.currentTarget;
+      busy(button, true, "正在查询");
+      fields.result.textContent = "正在连接中国广电官方接口...";
+      try {
+        const payload = await request("/traffic?details=1");
+        fields.result.textContent = JSON.stringify(payload, null, 2);
+        setNotice("官方流量查询成功。", "success");
+      } catch (error) {
+        fields.result.textContent = error.message;
+        setNotice(error.message, "error");
+      } finally { busy(button, false); }
+    };
+    $("#copyEndpoint").onclick = async () => {
+      try { await navigator.clipboard.writeText(fields.endpoint.textContent); setNotice("插件接口已复制。", "success"); }
+      catch (_) { setNotice("浏览器未允许读取剪贴板，请手动选择接口地址。", "error"); }
+    };
+
+    checkHealth();
+    if (token) loadConfig(false).catch(() => {});
+  </script>
+</body>
+</html>
