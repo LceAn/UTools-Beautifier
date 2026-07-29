@@ -3,7 +3,7 @@
   'use strict';
 
   var TITLE = '运营商信息';
-  var VERSION = '1.0.1-base64-latest-receipt';
+  var VERSION = '1.1.0-official-channel-fallback';
   var STYLE_ID = 'kano-operator-info-style';
   var MODAL_ID = 'kano-operator-info-modal';
   var BUTTON_ID = 'kano-operator-info-button';
@@ -31,6 +31,7 @@
       shortName: '移动',
       service: '10086',
       className: 'mobile',
+      officialUrl: 'https://www.10086.cn/',
       commands: [
         { id: 'traffic', label: '查询流量', code: 'CXLL' },
         { id: 'balance', label: '查询余额', code: 'YE' }
@@ -41,6 +42,7 @@
       shortName: '联通',
       service: '10010',
       className: 'unicom',
+      officialUrl: 'https://www.10010.com/',
       commands: [
         { id: 'traffic', label: '查询流量', code: 'CXLL' },
         { id: 'balance', label: '查询余额', code: 'CXYE' }
@@ -51,6 +53,7 @@
       shortName: '电信',
       service: '10001',
       className: 'telecom',
+      officialUrl: 'https://www.189.cn/',
       commands: [
         { id: 'traffic', label: '查询流量', code: '108' },
         { id: 'balance', label: '查询余额', code: '102' }
@@ -61,13 +64,17 @@
       shortName: '广电',
       service: '10099',
       className: 'broadcast',
-      commands: []
+      officialUrl: 'https://www.10099.com.cn/',
+      commands: [
+        { id: 'menu', label: '查询服务菜单', code: '10099', hint: '已验证可用' }
+      ]
     },
     unknown: {
       name: '未识别运营商',
       shortName: '未识别',
       service: '',
       className: 'unknown',
+      officialUrl: '',
       commands: []
     }
   };
@@ -322,6 +329,18 @@
     return keys.some(function (key) { return clean(parsed && parsed[key]); });
   }
 
+  function classifyOfficialReply(text) {
+    var raw = clean(text);
+    if (!raw) return null;
+    if (/(?:发送的)?指令.{0,12}(?:有误|不存在|错误|无效)|无法识别.{0,8}指令|未识别.{0,8}指令/.test(raw)) {
+      return { kind: 'rejected', status: '运营商未接受该指令' };
+    }
+    if (/回复下列序号.{0,80}(?:查询服务|办理服务)|(?:查询服务|办理服务).{0,80}回复.{0,8}序号/.test(raw)) {
+      return { kind: 'menu', status: '已收到官方服务菜单，请按短信提示继续操作' };
+    }
+    return null;
+  }
+
   function parseCarrierSms(text) {
     var raw = String(text || '').replace(/\r/g, '').trim();
     var dataAmount = '(?:\\d+(?:\\.\\d+)?\\s*(?:GB|MB|KB|TB|G|M|K|T)\\s*){1,2}';
@@ -377,10 +396,15 @@
     var incoming = (replies || []).filter(function (reply) { return reply.direction === 'in'; });
     for (var i = 0; i < incoming.length; i += 1) {
       var parsed = parseCarrierSms(incoming[i].content);
-      if (hasParsedCarrierData(parsed)) {
+      var classification = classifyOfficialReply(incoming[i].content);
+      if (classification || hasParsedCarrierData(parsed)) {
         parsed.sourceDate = incoming[i].date || '';
         parsed.sourceNumber = incoming[i].number || '';
         parsed.sourceId = incoming[i].id || '';
+        if (classification) {
+          parsed.replyKind = classification.kind;
+          parsed.status = classification.status;
+        }
         return parsed;
       }
     }
@@ -453,14 +477,18 @@
       state.repliesLoaded = true;
       renderParsed();
       renderReplies();
-      if (hasParsedCarrierData(state.parsed)) {
+      if (state.parsed.replyKind === 'rejected') {
+        setStatus('运营商未接受该指令，请改用服务菜单或官方营业厅', 'error');
+      } else if (state.parsed.replyKind === 'menu') {
+        setStatus(state.parsed.status, 'success');
+      } else if (hasParsedCarrierData(state.parsed)) {
         setStatus('已读取 ' + provider.service + ' 最近官方回执' + (state.parsed.status ? '：' + state.parsed.status : ''), 'success');
       } else if (state.replies.length) {
         setStatus('已读取官方回执，但暂未识别其中的查询结果', 'error');
       } else {
         setStatus('暂无 ' + provider.service + ' 官方短信回执', 'idle');
       }
-      if (manual) toast('已刷新 ' + provider.service + ' 短信回复', 'green');
+      if (manual) toast(state.parsed.replyKind === 'rejected' ? '已刷新，最近查询指令未被接受' : '已刷新 ' + provider.service + ' 短信回复', state.parsed.replyKind === 'rejected' ? 'red' : 'green');
       return state.replies;
     } catch (error) {
       if (error.code === 'AUTH_REQUIRED') showNativeLogin();
@@ -527,8 +555,12 @@
       var fresh = replies.find(function (item) { return item.direction === 'in' && existingIds.indexOf(item.id) === -1; });
       if (fresh) {
         stopReplyPolling();
-        setStatus('已收到运营商回复', 'success');
-        toast('已收到运营商查询回复', 'green');
+        if (state.parsed.replyKind === 'rejected') {
+          setStatus('运营商未接受该指令，请改用服务菜单或官方营业厅', 'error');
+          toast('运营商未接受该查询指令', 'red');
+        } else {
+          toast(state.parsed.replyKind === 'menu' ? '已收到运营商服务菜单' : '已收到运营商查询回复', 'green');
+        }
       }
     }, POLL_INTERVAL);
   }
@@ -571,6 +603,20 @@
     element.textContent = text;
   }
 
+  function openOfficialHall() {
+    var provider = PROVIDERS[state.provider] || PROVIDERS.unknown;
+    if (!provider.officialUrl) {
+      toast('请先选择运营商', 'red');
+      return;
+    }
+    try {
+      window.open(provider.officialUrl, '_blank', 'noopener,noreferrer');
+      setStatus('已在新标签打开' + provider.name + '官方营业厅', 'success');
+    } catch (error) {
+      setStatus('官方营业厅打开失败，请检查浏览器弹窗设置', 'error');
+    }
+  }
+
   function renderIdentity() {
     var box = document.getElementById('kano-operator-identity');
     if (!box) return;
@@ -605,16 +651,26 @@
     var box = document.getElementById('kano-operator-query-actions');
     if (!box) return;
     var provider = PROVIDERS[state.provider] || PROVIDERS.unknown;
-    if (!provider.commands.length) {
-      box.innerHTML = '<div class="kano-operator-empty">' + (state.provider === 'broadcast' ? '中国广电的短信指令存在地区差异，当前仅提供本地识别与状态展示。' : '自动识别未完成，请手动选择运营商。') + '</div>';
+    if (!provider.commands.length && !provider.officialUrl) {
+      box.innerHTML = '<div class="kano-operator-empty">自动识别未完成，请手动选择运营商。</div>';
       return;
     }
-    box.innerHTML = provider.commands.map(function (command) {
-      return '<button type="button" class="kano-operator-query-btn" data-operator-query="' + command.id + '"' + (state.busy ? ' disabled' : '') + '><span>' + escapeHTML(command.label) + '</span><small>' + escapeHTML(provider.service + ' / ' + command.code) + '</small></button>';
-    }).join('');
+    var actions = provider.commands.map(function (command) {
+      var detail = provider.service + ' / ' + command.code + (command.hint ? ' · ' + command.hint : '');
+      return '<button type="button" class="kano-operator-query-btn" data-operator-query="' + command.id + '"' + (state.busy ? ' disabled' : '') + '><span>' + escapeHTML(command.label) + '</span><small>' + escapeHTML(detail) + '</small></button>';
+    });
+    if (provider.officialUrl) {
+      actions.push('<button type="button" class="kano-operator-query-btn official" data-operator-official><span>官方营业厅</span><small>网页查询 / 新标签打开</small></button>');
+    }
+    if (state.provider === 'broadcast') {
+      actions.push('<div class="kano-operator-channel-note">广电短信指令存在地区差异；当前设备已验证发送 10099 可获取官方服务菜单。</div>');
+    }
+    box.innerHTML = actions.join('');
     Array.prototype.slice.call(box.querySelectorAll('[data-operator-query]')).forEach(function (button) {
       button.onclick = function () { sendQuery(button.getAttribute('data-operator-query')); };
     });
+    var officialButton = box.querySelector('[data-operator-official]');
+    if (officialButton) officialButton.onclick = openOfficialHall;
   }
 
   function renderParsed() {
@@ -624,6 +680,8 @@
     var source = document.getElementById('kano-operator-result-source');
     if (source) {
       if (state.repliesBusy) source.textContent = '正在读取最近官方回执';
+      else if (parsed.replyKind === 'rejected') source.textContent = '最近官方回执：指令未被接受';
+      else if (parsed.replyKind === 'menu') source.textContent = '最近官方回执：服务菜单';
       else if (parsed.queryTime) source.textContent = '官方结果截至 ' + parsed.queryTime;
       else if (parsed.sourceDate) source.textContent = '最近回执 ' + parsed.sourceDate;
       else if (state.repliesLoaded && state.replies.length) source.textContent = '已读取回执，暂未识别结果';
@@ -644,7 +702,7 @@
     ];
     box.innerHTML = items.map(function (item) {
       var available = clean(item.value);
-      var fallback = hasParsedCarrierData(parsed) ? '本条未提供' : (state.repliesLoaded && state.replies.length ? '未识别' : '--');
+      var fallback = hasParsedCarrierData(parsed) || parsed.replyKind ? '本条未提供' : (state.repliesLoaded && state.replies.length ? '未识别' : '--');
       return '<div class="kano-operator-result' + (available ? ' available' : '') + '"><span>' + escapeHTML(item.label) + '</span><b title="' + escapeHTML(available || fallback) + '">' + escapeHTML(available || fallback) + '</b><small>' + escapeHTML(item.detail) + '</small></div>';
     }).join('');
   }
@@ -735,7 +793,7 @@
       '#' + MODAL_ID + ' .kano-operator-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}' +
       '#' + MODAL_ID + ' .kano-operator-result{min-width:0;display:grid;grid-template-rows:auto 24px auto;gap:3px;padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:8px;background:rgba(0,0,0,.13)}#' + MODAL_ID + ' .kano-operator-result.available{border-color:rgba(99,164,255,.20);background:rgba(99,164,255,.07)}#' + MODAL_ID + ' .kano-operator-result span,#' + MODAL_ID + ' .kano-operator-result small{font-size:9px;color:var(--ko-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#' + MODAL_ID + ' .kano-operator-result b{min-width:0;font-size:14px;line-height:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '#' + MODAL_ID + ' .kano-operator-query-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}' +
-      '#' + MODAL_ID + ' .kano-operator-query-btn{min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border-radius:10px;border:1px solid rgba(99,164,255,.24);background:rgba(99,164,255,.10);color:var(--ko-text);cursor:pointer;text-align:left}#' + MODAL_ID + ' .kano-operator-query-btn:hover{background:rgba(99,164,255,.16)}#' + MODAL_ID + ' .kano-operator-query-btn:disabled{opacity:.45;cursor:not-allowed}#' + MODAL_ID + ' .kano-operator-query-btn span{font-size:13px;font-weight:850}#' + MODAL_ID + ' .kano-operator-query-btn small{font-size:10px;color:var(--ko-muted)}' +
+      '#' + MODAL_ID + ' .kano-operator-query-btn{min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border-radius:8px;border:1px solid rgba(99,164,255,.24);background:rgba(99,164,255,.10);color:var(--ko-text);cursor:pointer;text-align:left}#' + MODAL_ID + ' .kano-operator-query-btn:hover{background:rgba(99,164,255,.16)}#' + MODAL_ID + ' .kano-operator-query-btn:disabled{opacity:.45;cursor:not-allowed}#' + MODAL_ID + ' .kano-operator-query-btn.official{border-color:rgba(75,190,126,.28);background:rgba(75,190,126,.09)}#' + MODAL_ID + ' .kano-operator-query-btn.official:hover{background:rgba(75,190,126,.15)}#' + MODAL_ID + ' .kano-operator-query-btn span{font-size:13px;font-weight:850}#' + MODAL_ID + ' .kano-operator-query-btn small{font-size:10px;color:var(--ko-muted);text-align:right}#' + MODAL_ID + ' .kano-operator-channel-note{grid-column:1/-1;padding:8px 10px;border-left:2px solid rgba(75,190,126,.45);font-size:10px;line-height:1.55;color:var(--ko-muted)}' +
       '#' + MODAL_ID + ' .kano-operator-status{min-height:38px;display:flex;align-items:center;padding:0 12px;border-radius:8px;border:1px solid var(--ko-border);background:rgba(255,255,255,.035);font-size:11px;color:var(--ko-muted)}#' + MODAL_ID + ' .kano-operator-status.success{color:#bceec9;border-color:rgba(57,210,121,.26);background:rgba(57,210,121,.08)}#' + MODAL_ID + ' .kano-operator-status.error{color:#ffd0d3;border-color:rgba(255,95,104,.26);background:rgba(255,95,104,.08)}#' + MODAL_ID + ' .kano-operator-status.loading{color:#cde2ff;border-color:rgba(99,164,255,.28);background:rgba(99,164,255,.08)}' +
       '#' + MODAL_ID + ' .kano-operator-replies-section{min-height:0;display:flex;flex-direction:column;padding:16px}#' + MODAL_ID + ' .kano-operator-replies{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}' +
       '#' + MODAL_ID + ' .kano-operator-reply{margin:0;padding:11px 12px;border-radius:9px;border:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.16)}#' + MODAL_ID + ' .kano-operator-reply.out{opacity:.68}#' + MODAL_ID + ' .kano-operator-reply-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}#' + MODAL_ID + ' .kano-operator-reply-head>div{display:flex;align-items:center;gap:7px;min-width:0}#' + MODAL_ID + ' .kano-operator-reply-head b{font-size:11px;color:#a9ccff}#' + MODAL_ID + ' .kano-operator-reply-head em{padding:2px 5px;border-radius:4px;background:rgba(255,255,255,.06);font-size:9px;font-style:normal;color:var(--ko-muted)}#' + MODAL_ID + ' .kano-operator-reply-head span{font-size:10px;color:var(--ko-muted)}#' + MODAL_ID + ' .kano-operator-reply-body{font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-word}' +
@@ -753,10 +811,10 @@
     modal.id = MODAL_ID;
     modal.innerHTML = '' +
       '<section class="kano-operator-panel" role="dialog" aria-modal="true" aria-labelledby="kano-operator-title">' +
-        '<header class="kano-operator-head"><div class="kano-operator-head-left"><div class="kano-operator-mark" aria-hidden="true">◎</div><div class="kano-operator-heading"><h2 id="kano-operator-title">运营商信息</h2><p>SIM 识别与官方短信查询</p></div></div><div class="kano-operator-head-actions"><button type="button" class="kano-operator-icon-btn" data-operator-action="refresh" title="刷新" aria-label="刷新">↻</button><button type="button" class="kano-operator-icon-btn" data-operator-action="close" title="关闭" aria-label="关闭">×</button></div></header>' +
+        '<header class="kano-operator-head"><div class="kano-operator-head-left"><div class="kano-operator-mark" aria-hidden="true">◎</div><div class="kano-operator-heading"><h2 id="kano-operator-title">运营商信息</h2><p>SIM 识别与官方查询渠道</p></div></div><div class="kano-operator-head-actions"><button type="button" class="kano-operator-icon-btn" data-operator-action="refresh" title="刷新" aria-label="刷新">↻</button><button type="button" class="kano-operator-icon-btn" data-operator-action="close" title="关闭" aria-label="关闭">×</button></div></header>' +
         '<div class="kano-operator-body"><aside class="kano-operator-sidebar"><div id="kano-operator-badge" class="kano-operator-badge unknown">未识别</div><div class="kano-operator-provider-row"><label for="kano-operator-provider">运营商选择</label><select id="kano-operator-provider"><option value="auto">自动识别</option><option value="mobile">中国移动</option><option value="unicom">中国联通</option><option value="telecom">中国电信</option><option value="broadcast">中国广电</option></select></div><div id="kano-operator-identity" class="kano-operator-identity"></div></aside>' +
-        '<main class="kano-operator-main"><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询结果</b><span id="kano-operator-result-source">等待读取官方回执</span></div><div id="kano-operator-parsed" class="kano-operator-results"></div></section><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方短信查询</b><span>发送前需要确认</span></div><div id="kano-operator-query-actions" class="kano-operator-query-actions"></div></section><section class="kano-operator-section"><div id="kano-operator-status" class="kano-operator-status idle">等待刷新</div></section><section class="kano-operator-replies-section"><div class="kano-operator-section-head"><b>查询回复</b><button type="button" class="kano-operator-icon-btn" data-operator-action="replies" title="刷新回复" aria-label="刷新回复">↻</button></div><div id="kano-operator-replies" class="kano-operator-replies"></div></section></main></div>' +
-        '<footer class="kano-operator-footer"><span>查询指令由运营商服务号码处理，不上传 SIM 信息。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
+        '<main class="kano-operator-main"><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询结果</b><span id="kano-operator-result-source">等待读取官方回执</span></div><div id="kano-operator-parsed" class="kano-operator-results"></div></section><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询渠道</b><span>短信发送前需要确认</span></div><div id="kano-operator-query-actions" class="kano-operator-query-actions"></div></section><section class="kano-operator-section"><div id="kano-operator-status" class="kano-operator-status idle">等待刷新</div></section><section class="kano-operator-replies-section"><div class="kano-operator-section-head"><b>查询回复</b><button type="button" class="kano-operator-icon-btn" data-operator-action="replies" title="刷新回复" aria-label="刷新回复">↻</button></div><div id="kano-operator-replies" class="kano-operator-replies"></div></section></main></div>' +
+        '<footer class="kano-operator-footer"><span>短信由运营商服务号码处理；官方网页在新标签打开。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
       '</section>';
     modal.addEventListener('click', function (event) { if (event.target === modal) close(); });
     document.body.appendChild(modal);
