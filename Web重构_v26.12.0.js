@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.12.1-phone-entry-fallback';
+  var VERSION = '26.13.0-settings-center';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
@@ -192,6 +192,7 @@
     cfg[key] = value !== false;
     saveWebOSConfig(cfg);
     applyWebOSFeatureFlags();
+    if (key === 'nativeButtonMigration') updateFunctionCenterSettingsEntry(cfg[key]);
     syncWebOSSettingsControls();
   }
 
@@ -212,6 +213,7 @@
     }
     saveWebOSConfig(cfg);
     applyWebOSFeatureFlags();
+    updateFunctionCenterSettingsEntry(cfg.nativeButtonMigration);
     syncWebOSSettingsControls();
   }
 
@@ -3172,6 +3174,191 @@
     document.head.appendChild(style);
   }
 
+  function enhanceSettingsShell(dialog) {
+    if (!dialog || dialog.__kn_settings_shell_ready__) return;
+    var body = dialog.querySelector('.kn-dialog-body');
+    var tabs = dialog.querySelector('.kn-settings-tabs');
+    if (!body || !tabs) return;
+    dialog.__kn_settings_shell_ready__ = true;
+
+    var title = dialog.querySelector('.kn-dialog-title');
+    if (title) title.textContent = '设置中心';
+    var subtitle = dialog.querySelector('.kn-dialog-subtitle');
+    if (subtitle) subtitle.textContent = 'UFI-TOOLS / F50';
+    var aboutLogo = dialog.querySelector('.kn-about-logo');
+    if (aboutLogo) aboutLogo.textContent = 'F50';
+    var aboutTitle = dialog.querySelector('.kn-about-title');
+    if (aboutTitle) aboutTitle.textContent = 'F50 WebOS 控制台';
+    var aboutDesc = dialog.querySelector('.kn-about-desc');
+    if (aboutDesc) aboutDesc.textContent = 'UFI-TOOLS 的本地控制台增强插件，由 LceAn 维护。';
+    var aboutTags = dialog.querySelector('.kn-about-tags');
+    if (aboutTags) aboutTags.innerHTML = '<span>WebOS</span><span>UFI-TOOLS v4.x</span><span>' + VERSION + '</span>';
+    var aboutStrategy = dialog.querySelector('.kn-about-small');
+    if (aboutStrategy) aboutStrategy.textContent = '设置中心采用统一导航、单一内容滚动区和响应式布局。';
+    var forwardRead = dialog.querySelector('[data-action="refreshNativeForwardConfig"]');
+    if (forwardRead) forwardRead.classList.remove('primary');
+    var close = dialog.querySelector('.kn-dialog-header [data-action="close"]');
+    if (close) {
+      close.textContent = '×';
+      close.classList.add('kn-dialog-close');
+      close.setAttribute('aria-label', '关闭设置');
+      close.title = '关闭设置';
+    }
+
+    var nav = document.createElement('aside');
+    nav.className = 'kn-settings-nav';
+    nav.innerHTML = '<div class="kn-settings-nav-title">设置</div><div class="kn-settings-nav-caption">F50 控制台</div>';
+    var tabLabels = { layout: '导航与页面', functions: '功能中心', appearance: '外观与背景', forward: '消息转发', plugins: '插件管理', webos: '兼容性', about: '关于' };
+    ['layout', 'functions', 'appearance', 'forward', 'plugins', 'webos', 'about'].forEach(function (key) {
+      var tab = tabs.querySelector('[data-tab="' + key + '"]');
+      if (!tab) return;
+      tab.textContent = tabLabels[key] || tab.textContent;
+      tabs.appendChild(tab);
+    });
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', '设置分类');
+    nav.appendChild(tabs);
+    var mobileSelect = document.createElement('select');
+    mobileSelect.className = 'kn-settings-mobile-select';
+    mobileSelect.setAttribute('aria-label', '设置分类');
+    Array.prototype.slice.call(tabs.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', btn.classList.contains('active') ? 'true' : 'false');
+      var option = document.createElement('option');
+      option.value = btn.getAttribute('data-tab');
+      option.textContent = btn.textContent;
+      mobileSelect.appendChild(option);
+    });
+    mobileSelect.onchange = function () { switchSettingsTab(mobileSelect.value); };
+    nav.appendChild(mobileSelect);
+    body.insertBefore(nav, body.firstChild);
+
+    var stage = document.createElement('main');
+    stage.className = 'kn-settings-stage';
+    var panels = Array.prototype.slice.call(body.children || []).filter(function (item) { return item.classList && item.classList.contains('kn-settings-panel'); });
+    var order = ['layout', 'functions', 'appearance', 'forward', 'plugins', 'webos', 'about'];
+    order.forEach(function (key) {
+      var panel = panels.filter(function (item) { return item.id === 'kn-settings-panel-' + key; })[0];
+      if (panel) { stage.appendChild(panel); panels.splice(panels.indexOf(panel), 1); }
+    });
+    panels.forEach(function (panel) { stage.appendChild(panel); });
+    body.appendChild(stage);
+    var done = dialog.querySelector('.kn-dialog-footer [data-action="done"]');
+    if (done) done.textContent = '完成';
+    dialog.setAttribute('data-settings-tab', 'layout');
+    mobileSelect.value = 'layout';
+  }
+
+  function syncSettingsMobileSelect(dialog) {
+    if (!dialog) return;
+    var select = dialog.querySelector('.kn-settings-mobile-select');
+    var tabs = dialog.querySelector('.kn-settings-tabs');
+    if (!select || !tabs) return;
+    var active = dialog.getAttribute('data-settings-tab') || 'layout';
+    select.innerHTML = '';
+    Array.prototype.slice.call(tabs.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
+      var option = document.createElement('option');
+      option.value = btn.getAttribute('data-tab');
+      option.textContent = btn.textContent;
+      select.appendChild(option);
+    });
+    select.value = active;
+  }
+
+  function updateFunctionCenterSettingsEntry(enabled) {
+    var dialog = document.getElementById(DIALOG_ID);
+    if (!dialog) return;
+    var tabs = dialog.querySelector('.kn-settings-tabs');
+    var tab = tabs && tabs.querySelector('[data-tab="functions"]');
+    var panel = dialog.querySelector('#kn-settings-panel-functions');
+    if (enabled) {
+      if (!panel) ensureFunctionCenterPanel(dialog);
+      syncSettingsMobileSelect(dialog);
+      return;
+    }
+    if (tab) tab.remove();
+    if (panel) panel.remove();
+    if (dialog.getAttribute('data-settings-tab') === 'functions') switchSettingsTab('layout');
+    syncSettingsMobileSelect(dialog);
+  }
+
+  function injectSettingsExperienceCSS() {
+    if (document.getElementById('kano-webos-settings-experience-style')) return;
+    var style = document.createElement('style');
+    style.id = 'kano-webos-settings-experience-style';
+    style.textContent = '' +
+      '#' + DIALOG_ID + '{width:min(1180px,calc(100vw - 32px));max-width:none;max-height:none;padding:0;border:0;background:transparent;color:#e8eaed}' +
+      '#' + DIALOG_ID + '::backdrop{background:rgba(7,10,14,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}' +
+      '#' + DIALOG_ID + ' .kn-dialog-content{width:100%;height:min(840px,calc(100dvh - 32px));min-height:560px;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;border-radius:16px;background:#15181e!important;border:1px solid rgba(232,234,237,.12);box-shadow:0 26px 80px rgba(0,0,0,.50);color:#e8eaed}' +
+      '#' + DIALOG_ID + ' .kn-dialog-header{min-height:72px;padding:16px 20px;display:flex;align-items:center;gap:16px;background:#171a20;border-bottom:1px solid rgba(232,234,237,.10)}' +
+      '#' + DIALOG_ID + ' .kn-dialog-title{margin:0 0 3px;font-size:20px;font-weight:800;letter-spacing:0;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-dialog-subtitle{font-size:11px;line-height:1.4;color:#8f98a6;max-width:none}' +
+      '#' + DIALOG_ID + ' .kn-dialog-close{flex:0 0 34px!important;width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;padding:0!important;border-radius:8px!important;font-size:22px!important;line-height:1!important;font-weight:400!important;color:#bdc1c6!important;background:transparent!important;border-color:transparent!important}' +
+      '#' + DIALOG_ID + ' .kn-dialog-close:hover{color:#f1f3f4!important;background:#252a32!important;border-color:rgba(232,234,237,.12)!important}' +
+      '#' + DIALOG_ID + ' .kn-dialog-body{min-height:0;display:grid;grid-template-columns:188px minmax(0,1fr);gap:0;padding:0;overflow:hidden;background:#15181e}' +
+      '#' + DIALOG_ID + ' .kn-settings-nav{min-width:0;display:flex;flex-direction:column;padding:18px 10px 16px;background:#111419;border-right:1px solid rgba(232,234,237,.09)}' +
+      '#' + DIALOG_ID + ' .kn-settings-nav-title{padding:0 10px;color:#f1f3f4;font-size:13px;font-weight:800}' +
+      '#' + DIALOG_ID + ' .kn-settings-nav-caption{padding:4px 10px 14px;color:#707987;font-size:10px}' +
+      '#' + DIALOG_ID + ' .kn-settings-tabs{display:flex;flex-direction:column;gap:3px;margin:0;padding:0;background:transparent;border:0;border-radius:0}' +
+      '#' + DIALOG_ID + ' .kn-settings-tab{width:100%;min-height:40px;padding:0 10px;display:flex;align-items:center;text-align:left;border:1px solid transparent;border-radius:8px!important;background:transparent;color:#9aa0a6;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}' +
+      '#' + DIALOG_ID + ' .kn-settings-tab:hover{background:#20242b;color:#e8eaed}' +
+      '#' + DIALOG_ID + ' .kn-settings-tab.active{background:#24364e;border-color:rgba(138,180,248,.20);color:#d3e3fd}' +
+      '#' + DIALOG_ID + ' .kn-settings-mobile-select{display:none}' +
+      '#' + DIALOG_ID + ' .kn-settings-stage{min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px 22px 24px;scroll-behavior:smooth;overscroll-behavior:contain}' +
+      '#' + DIALOG_ID + ' .kn-settings-panel{min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-settings-panel.active{display:block}' +
+      '#' + DIALOG_ID + '.kn-settings-plugin-active .kn-settings-stage{overflow:hidden}' +
+      '#' + DIALOG_ID + ' .kn-dialog-footer{min-height:58px;padding:10px 20px;display:flex;align-items:center;justify-content:flex-end;background:#111419;border-top:1px solid rgba(232,234,237,.09)}' +
+      '#' + DIALOG_ID + ' .kn-footer-right.only{margin:0}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn,#' + DIALOG_ID + ' .kn-google-btn{min-height:34px;padding:0 12px;border-radius:8px!important;font-size:12px;font-weight:700;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn.primary,#' + DIALOG_ID + ' .kn-google-btn.primary{background:#3d78c8;border-color:#4d8de1;color:#fff}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn:hover,#' + DIALOG_ID + ' .kn-google-btn:hover{transform:none;background:#293039;border-color:rgba(138,180,248,.40)}' +
+      '#' + DIALOG_ID + ' .kn-panel-btn.primary:hover,#' + DIALOG_ID + ' .kn-google-btn.primary:hover{background:#4b88dc}' +
+      '#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-form-grid,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-plugin-grid{gap:12px}' +
+      '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card,#' + DIALOG_ID + ' .kn-about-hero,#' + DIALOG_ID + ' .kn-forward-card,#' + DIALOG_ID + ' .kn-webos-setting-card{border-radius:8px!important;box-shadow:none}' +
+      '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card{padding:14px;background:#1b1f26!important;border-color:rgba(232,234,237,.10)!important}' +
+      '#' + DIALOG_ID + ' .kn-about-hero{padding:16px;margin-bottom:12px;background:#1b2737!important;border-color:rgba(138,180,248,.18)!important}' +
+      '#' + DIALOG_ID + ' .kn-about-logo{border-radius:10px}' +
+      '#' + DIALOG_ID + ' .kn-form-title,#' + DIALOG_ID + ' .kn-about-card-title{font-size:14px;font-weight:800}' +
+      '#' + DIALOG_ID + ' .kn-input-row{margin:10px 0}' +
+      '#' + DIALOG_ID + ' .kn-input-row input[type="text"],#' + DIALOG_ID + ' .kn-input-row input[type="number"],#' + DIALOG_ID + ' .kn-input-row input[type="password"],#' + DIALOG_ID + ' .kn-input-row select{min-height:36px;border-radius:6px;background:#111419;border-color:rgba(232,234,237,.14)}' +
+      '#' + DIALOG_ID + ' .kn-check{border-radius:6px}' +
+      '#' + DIALOG_ID + ' .kn-settings-actions{gap:8px}' +
+      '#' + DIALOG_ID + ' .kn-layout-page-head{min-height:34px;margin-bottom:12px}' +
+      '#' + DIALOG_ID + ' #kn-layout-move-status{font-size:11px}' +
+      '#' + DIALOG_ID + ' .kn-function-center-shell{min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-function-center-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(232,234,237,.09)}' +
+      '#' + DIALOG_ID + ' .kn-function-center-title{font-size:18px;font-weight:800;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-function-center-desc{margin-top:3px;font-size:11px;color:#7f8794}' +
+      '#' + DIALOG_ID + ' .kn-fc-category-nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}' +
+      '#' + DIALOG_ID + ' .kn-fc-category-btn{min-height:30px;padding:0 9px;border:1px solid rgba(232,234,237,.10);border-radius:6px;background:#1b1f26;color:#9aa0a6;font-size:11px;font-weight:700;cursor:pointer}' +
+      '#' + DIALOG_ID + ' .kn-fc-category-btn:hover{color:#e8eaed;background:#252b34}' +
+      '#' + DIALOG_ID + ' .kn-fc-category-btn.active{color:#d3e3fd;background:#24364e;border-color:rgba(138,180,248,.28)}' +
+      '#' + DIALOG_ID + ' .kn-fc-category-panel{display:none}' +
+      '#' + DIALOG_ID + ' .kn-fc-category-panel.active{display:block}' +
+      '#' + DIALOG_ID + ' .kn-fc-direct-panel,#' + DIALOG_ID + ' .kn-fc-direct-shell{height:auto;min-height:0;overflow:visible}' +
+      '#' + DIALOG_ID + ' .kn-fc-head{border-radius:8px;padding:12px;background:#1b1f26;border-color:rgba(232,234,237,.10)}' +
+      '#' + DIALOG_ID + ' .kn-fc-body{overflow:visible}' +
+      '#' + DIALOG_ID + ' .kn-fc-card{border-radius:8px;background:#1b1f26;border-color:rgba(232,234,237,.10)}' +
+      '#' + DIALOG_ID + ' .kn-fc-native-btn,#' + DIALOG_ID + ' .kn-fc-native-direct{border-radius:6px}' +
+      '#' + DIALOG_ID + ' .kn-forward-page-head{border-radius:8px;padding:14px;margin-bottom:12px}' +
+      '#' + DIALOG_ID + ' .kn-forward-card{padding:14px}' +
+      '#' + DIALOG_ID + ' .kn-native-control-grid .kn-input-row.compact{grid-template-columns:70px minmax(0,1fr);min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-native-control-grid .kn-input-row.compact select{min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-plugin-manager-shell{gap:10px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-topbar,#' + DIALOG_ID + ' .kn-plugin-layout{border-radius:8px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-layout{grid-template-columns:300px minmax(0,1fr)}' +
+      '#' + DIALOG_ID + ' .kn-plugin-row{border-radius:6px}' +
+      '#' + DIALOG_ID + ' .kn-plugin-tool-btn,#' + DIALOG_ID + ' .kn-plugin-icon-action{border-radius:6px}' +
+      '#' + DIALOG_ID + ' .kn-webos-settings-grid{gap:12px}' +
+      '#' + DIALOG_ID + ' .kn-webos-setting-card{padding:14px;background:#1b1f26;border-color:rgba(232,234,237,.10)}' +
+      '.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-content{background:#f7f9fc!important;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-header,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-footer{background:#fff}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-body{background:#f7f9fc}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav{background:#eef2f7;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav-title,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-title{color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab:hover{background:#e3eaf3;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab.active,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-category-btn.active{background:#d9e8fb;color:#174a88}.kn-theme-light #' + DIALOG_ID + ' .kn-form-card,.kn-theme-light #' + DIALOG_ID + ' .kn-about-card,.kn-theme-light #' + DIALOG_ID + ' .kn-group-zone,.kn-theme-light #' + DIALOG_ID + ' .kn-forward-card,.kn-theme-light #' + DIALOG_ID + ' .kn-webos-setting-card{background:#fff!important;border-color:rgba(23,32,51,.10)!important}.kn-theme-light #' + DIALOG_ID + ' .kn-fc-card,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-head,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-topbar,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-layout{background:#fff;border-color:rgba(23,32,51,.10)}' +
+      '@media(max-width:820px){#' + DIALOG_ID + '{width:calc(100vw - 16px)}#' + DIALOG_ID + ' .kn-dialog-content{height:calc(100dvh - 16px);min-height:0;border-radius:12px}#' + DIALOG_ID + ' .kn-dialog-header{min-height:64px;padding:13px 14px;flex-direction:row!important;align-items:center!important;justify-content:space-between!important}#' + DIALOG_ID + ' .kn-dialog-title{font-size:18px}#' + DIALOG_ID + ' .kn-dialog-body{display:flex;flex-direction:column}#' + DIALOG_ID + ' .kn-settings-nav{display:block;padding:10px 12px 8px;border-right:0;border-bottom:1px solid rgba(232,234,237,.09)}#' + DIALOG_ID + ' .kn-settings-nav-title,#' + DIALOG_ID + ' .kn-settings-nav-caption{display:none}#' + DIALOG_ID + ' .kn-settings-tabs{display:none!important}#' + DIALOG_ID + ' .kn-settings-mobile-select{display:block!important;width:100%;height:38px;border:1px solid rgba(232,234,237,.14);border-radius:6px;background:#1b1f26;color:#e8eaed;padding:0 10px;font-size:12px}#' + DIALOG_ID + ' .kn-settings-stage{padding:14px 12px 18px}#' + DIALOG_ID + ' .kn-dialog-footer{min-height:52px;padding:8px 12px}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-form-grid,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-forward-grid.modern{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-group-zone.full,#' + DIALOG_ID + ' .kn-form-card.full{grid-column:auto}#' + DIALOG_ID + ' .kn-function-center-head{align-items:stretch;flex-direction:column;gap:10px}#' + DIALOG_ID + ' .kn-fc-category-nav{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}#' + DIALOG_ID + ' .kn-fc-category-btn{flex:0 0 auto}#' + DIALOG_ID + ' .kn-fc-body{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-layout{grid-template-columns:1fr;overflow:auto}#' + DIALOG_ID + ' .kn-plugin-list-card{min-height:220px;max-height:34vh;border-right:0;border-bottom:1px solid rgba(232,234,237,.08)}#' + DIALOG_ID + ' .kn-plugin-editor-card{min-height:420px}#' + DIALOG_ID + ' .kn-native-control-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-template-grid{grid-template-columns:1fr}}' +
+      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-input-row,#' + DIALOG_ID + ' .kn-input-row.compact{grid-template-columns:1fr;gap:5px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-forward-head-actions{align-items:stretch}#' + DIALOG_ID + ' .kn-forward-head-actions .kn-google-btn{flex:1 1 auto}#' + DIALOG_ID + ' .kn-plugin-editor-actions{gap:5px}#' + DIALOG_ID + ' .kn-plugin-editor-actions .kn-plugin-icon-action{width:36px!important;min-width:36px!important}}' +
+      '@media(max-width:820px){#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{display:flex!important;flex-direction:column!important;gap:4px!important;grid-template-columns:none!important;grid-template-areas:none!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-line{height:auto!important;min-height:24px!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:6px!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-desc{grid-area:auto!important;white-space:normal!important;display:block!important;line-height:1.35!important;margin:0!important}}';
+    document.head.appendChild(style);
+  }
+
   function enhanceSettingsInteractionMarkup(dialog) {
     var layoutPanel = dialog.querySelector('#kn-settings-panel-layout');
     var layoutHead = layoutPanel && layoutPanel.firstElementChild;
@@ -3315,11 +3502,13 @@
       applyAppearance();
     };
     ensureWebOSSettingsPanel(dialog);
+    enhanceSettingsShell(dialog);
     Array.prototype.slice.call(dialog.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
       btn.onclick = function () { switchSettingsTab(btn.getAttribute('data-tab')); };
     });
     ensureAppearanceLanguageControl(dialog);
     document.body.appendChild(dialog);
+    switchSettingsTab('layout');
   }
 
 
@@ -3964,19 +4153,15 @@
         var old = tabs.querySelector('[data-tab="' + staleTab + '"]');
         if (old) old.remove();
       });
-      var oldTab = tabs.querySelector('[data-tab="functions"]');
-      if (oldTab) oldTab.remove();
       var layoutTab = tabs.querySelector('[data-tab="layout"]');
-      var insertBefore = layoutTab ? layoutTab.nextSibling : tabs.firstChild;
-      FUNCTION_CENTER_GROUPS.forEach(function (g) {
-        if (tabs.querySelector('[data-tab="fc-' + g.key + '"]')) return;
+      if (!tabs.querySelector('[data-tab="functions"]')) {
         var btn = document.createElement('button');
         btn.className = 'kn-settings-tab';
         btn.type = 'button';
-        btn.setAttribute('data-tab', 'fc-' + g.key);
-        btn.textContent = g.label;
-        tabs.insertBefore(btn, insertBefore);
-      });
+        btn.setAttribute('data-tab', 'functions');
+        btn.textContent = '功能中心';
+        tabs.insertBefore(btn, layoutTab ? layoutTab.nextSibling : tabs.firstChild);
+      }
       Array.prototype.slice.call(tabs.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
         if (btn.__kn_fc_tab_bound__) return;
         btn.__kn_fc_tab_bound__ = true;
@@ -3991,15 +4176,31 @@
     var layoutPanel = dialog.querySelector('#kn-settings-panel-layout');
     var parent = layoutPanel && layoutPanel.parentNode ? layoutPanel.parentNode : dialog.querySelector('.kn-dialog-body');
     var ref = layoutPanel ? layoutPanel.nextSibling : (parent ? parent.firstChild : null);
+    var functionPanel = document.createElement('div');
+    functionPanel.id = 'kn-settings-panel-functions';
+    functionPanel.className = 'kn-settings-panel kn-function-center-page';
+    functionPanel.innerHTML = '<div class="kn-function-center-shell"><div class="kn-function-center-head"><div><div class="kn-function-center-title">功能中心</div><div class="kn-function-center-desc">原生功能入口</div></div><div class="kn-fc-category-nav" role="tablist" aria-label="功能分类"></div></div><div class="kn-fc-category-stage"></div></div>';
+    if (parent) parent.insertBefore(functionPanel, ref);
+    var categoryNav = functionPanel.querySelector('.kn-fc-category-nav');
+    var categoryStage = functionPanel.querySelector('.kn-fc-category-stage');
     FUNCTION_CENTER_GROUPS.forEach(function (g) {
       var id = 'kn-settings-panel-fc-' + g.key;
-      if (dialog.querySelector('#' + id)) return;
       var panel = document.createElement('div');
       panel.id = id;
-      panel.className = 'kn-settings-panel kn-fc-direct-panel';
+      panel.className = 'kn-fc-category-panel kn-fc-direct-panel';
       panel.setAttribute('data-fc-panel', g.key);
       panel.innerHTML = '<div class="kn-fc-direct-shell"><div class="kn-fc-head"><div><div class="kn-fc-title">' + knEsc(g.label) + '</div><div class="kn-fc-desc">' + knEsc(g.desc) + ' 原生首页按钮已隐藏，统一从这里进入。</div></div><input class="kn-fc-search" type="text" placeholder="搜索本分类原生按钮"><button type="button" class="kn-google-btn" data-action="refreshFunctionCenter" data-fc-refresh="' + g.key + '">重新汇总</button></div><div class="kn-fc-body"><section class="kn-fc-card"><div class="kn-fc-card-title"><span>原生按钮</span><span class="kn-fc-native-count">0</span></div><div class="kn-fc-native-grid"></div></section><aside class="kn-fc-card"><div class="kn-fc-card-title"><span>加工菜单</span></div><div class="kn-fc-enhanced"></div></aside></div></div>';
-      if (parent) parent.insertBefore(panel, ref);
+      if (categoryStage) categoryStage.appendChild(panel);
+      if (categoryNav) {
+        var categoryBtn = document.createElement('button');
+        categoryBtn.type = 'button';
+        categoryBtn.className = 'kn-fc-category-btn';
+        categoryBtn.setAttribute('role', 'tab');
+        categoryBtn.setAttribute('data-fc-category', g.key);
+        categoryBtn.textContent = g.label;
+        categoryBtn.onclick = function () { switchSettingsTab('fc-' + g.key); };
+        categoryNav.appendChild(categoryBtn);
+      }
       var search = panel.querySelector('.kn-fc-search');
       if (search) search.oninput = function () { functionCenterState.search = search.value || ''; renderFunctionCenterGroupPanel(g.key); };
       var refresh = panel.querySelector('[data-fc-refresh]');
@@ -4007,6 +4208,7 @@
     });
 
     FUNCTION_CENTER_GROUPS.forEach(function (g) { renderFunctionCenterGroupPanel(g.key); });
+    activateFunctionCenterCategory(functionCenterState.active, dialog);
   }
 
   function renderFunctionCenter() {
@@ -4386,18 +4588,50 @@
     }
   }
 
-  function switchSettingsTab(tab) {
-    if (tab === 'plugins' && !knPluginManager.loaded) setTimeout(knPluginRefresh, 30);
-    if (tab && tab.indexOf('fc-') === 0) {
-      functionCenterState.active = tab.slice(3);
-      setTimeout(function () { renderFunctionCenterGroupPanel(functionCenterState.active); }, 30);
-    }
-    Array.prototype.slice.call(document.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+  function activateFunctionCenterCategory(key, dialog) {
+    dialog = dialog || document.getElementById(DIALOG_ID);
+    if (!dialog) return;
+    var valid = FUNCTION_CENTER_GROUPS.some(function (group) { return group.key === key; });
+    if (!valid) key = FUNCTION_CENTER_GROUPS[0].key;
+    functionCenterState.active = key;
+    Array.prototype.slice.call(dialog.querySelectorAll('[data-fc-category]')).forEach(function (btn) {
+      var active = btn.getAttribute('data-fc-category') === key;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.tabIndex = active ? 0 : -1;
     });
-    Array.prototype.slice.call(document.querySelectorAll('.kn-settings-panel')).forEach(function (panel) {
+    Array.prototype.slice.call(dialog.querySelectorAll('.kn-fc-category-panel')).forEach(function (panel) {
+      panel.classList.toggle('active', panel.getAttribute('data-fc-panel') === key);
+    });
+    setTimeout(function () { renderFunctionCenterGroupPanel(key); }, 30);
+  }
+
+  function switchSettingsTab(tab) {
+    var dialog = document.getElementById(DIALOG_ID);
+    if (!dialog) return;
+    if (tab && tab.indexOf('fc-') === 0) {
+      activateFunctionCenterCategory(tab.slice(3), dialog);
+      tab = 'functions';
+    } else if (tab === 'functions') {
+      activateFunctionCenterCategory(functionCenterState.active, dialog);
+    }
+    if (tab === 'plugins' && !knPluginManager.loaded) setTimeout(knPluginRefresh, 30);
+    var previousTab = dialog.getAttribute('data-settings-tab') || '';
+    dialog.setAttribute('data-settings-tab', tab);
+    dialog.classList.toggle('kn-settings-plugin-active', tab === 'plugins');
+    Array.prototype.slice.call(dialog.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
+      var active = btn.getAttribute('data-tab') === tab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.tabIndex = active ? 0 : -1;
+    });
+    Array.prototype.slice.call(dialog.querySelectorAll('.kn-settings-panel')).forEach(function (panel) {
       panel.classList.toggle('active', panel.id === 'kn-settings-panel-' + tab);
     });
+    var mobileSelect = dialog.querySelector('.kn-settings-mobile-select');
+    if (mobileSelect && mobileSelect.value !== tab) mobileSelect.value = tab;
+    var stage = dialog.querySelector('.kn-settings-stage');
+    if (stage && previousTab && previousTab !== tab) stage.scrollTop = 0;
   }
 
   function formatAppearanceValue(key, value) {
@@ -8014,6 +8248,7 @@
     state.headerResizeHandler = function () { adaptHeaderActionDisplay(); positionHeaderNetworkPopover(); };
     window.addEventListener('resize', state.headerResizeHandler);
     buildDialog();
+    injectSettingsExperienceCSS();
     grabTopElements();
     applyAppearance();
     refreshHeaderNetworkInfo(false);
