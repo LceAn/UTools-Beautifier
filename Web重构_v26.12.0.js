@@ -2,10 +2,15 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.13.0-settings-center';
+  var VERSION = '26.14.0-github-updates';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
+  var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.12.0.js';
+  var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v2';
+  var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
+  var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
   var PHONE_SMS_PLUGIN_URL = GITHUB_REPO_URL;
   var OPERATOR_INFO_PLUGIN_URL = GITHUB_REPO_URL;
   var EXTERNAL_KANO_PHONE_SMS = (window.KanoPhoneSMS && typeof window.KanoPhoneSMS.open === 'function') ? window.KanoPhoneSMS : null;
@@ -1511,88 +1516,156 @@
 
 
   function normalizeVersionTag(value) {
-    return String(value || '').trim().replace(/^v/i, '').replace(/^[^0-9]*/, '').trim();
+    var match = String(value || '').trim().match(/(?:\d+\.){1,3}\d+/);
+    return match ? match[0] : '';
   }
 
   function compareVersionTags(a, b) {
-    var aa = normalizeVersionTag(a).split(/[^0-9A-Za-z]+/).filter(Boolean);
-    var bb = normalizeVersionTag(b).split(/[^0-9A-Za-z]+/).filter(Boolean);
-    var len = Math.max(aa.length, bb.length);
-    for (var i = 0; i < len; i += 1) {
-      var x = aa[i] || '0';
-      var y = bb[i] || '0';
-      var nx = Number(x);
-      var ny = Number(y);
-      if (!Number.isNaN(nx) && !Number.isNaN(ny)) {
-        if (nx > ny) return 1;
-        if (nx < ny) return -1;
-      } else {
-        var cmp = String(x).localeCompare(String(y));
-        if (cmp !== 0) return cmp > 0 ? 1 : -1;
-      }
+    var normalizedA = normalizeVersionTag(a);
+    var normalizedB = normalizeVersionTag(b);
+    if (!normalizedA || !normalizedB) return 0;
+    var aa = normalizedA.split('.').map(Number);
+    var bb = normalizedB.split('.').map(Number);
+    for (var i = 0; i < 4; i += 1) {
+      var x = Number(aa[i] || 0);
+      var y = Number(bb[i] || 0);
+      if (x > y) return 1;
+      if (x < y) return -1;
     }
     return 0;
   }
 
-  function setGithubVersionUI(stateText, latestText, noteText, stateClass) {
+  function readGithubCache() {
+    try {
+      var raw = localStorage.getItem(GITHUB_CACHE_KEY);
+      var cached = raw ? JSON.parse(raw) : null;
+      return cached && cached.info && cached.fetchedAt ? cached : null;
+    } catch (e) { return null; }
+  }
+
+  function saveGithubCache(info) {
+    try { localStorage.setItem(GITHUB_CACHE_KEY, JSON.stringify({ info: info, fetchedAt: Date.now() })); } catch (e) {}
+  }
+
+  function formatGithubCheckedAt(timestamp) {
+    if (!timestamp) return '未检查';
+    try { return new Date(timestamp).toLocaleString('zh-CN', { hour12: false }); }
+    catch (e) { return '已检查'; }
+  }
+
+  function setGithubVersionUI(stateText, latestText, noteText, stateClass, info) {
     var latest = document.getElementById('kn-about-latest-version');
     var state = document.getElementById('kn-about-version-state');
     var note = document.getElementById('kn-about-update-note');
+    var stars = document.getElementById('kn-about-stars');
+    var branch = document.getElementById('kn-about-branch');
+    var checked = document.getElementById('kn-about-checked');
+    var updateLink = document.getElementById('kn-about-update-link');
     if (latest && latestText != null) latest.textContent = latestText;
     if (state) {
       state.textContent = stateText || '';
       state.className = stateClass ? 'kn-version-state ' + stateClass : 'kn-version-state';
     }
+    if (stars && info && info.stars != null) stars.textContent = Number(info.stars).toLocaleString('zh-CN');
+    if (branch && info && info.branch) branch.textContent = info.branch;
+    if (checked && info && info.fetchedAt) checked.textContent = formatGithubCheckedAt(info.fetchedAt);
+    if (updateLink && info && info.url) {
+      updateLink.href = info.url;
+      updateLink.hidden = false;
+    }
     if (note && noteText != null) note.innerHTML = noteText;
   }
 
-  async function fetchGithubLatestVersion() {
-    var releaseUrl = 'https://api.github.com/repos/' + GITHUB_REPO + '/releases/latest?t=' + Date.now();
-    var releaseRes = await fetch(releaseUrl, { headers: { Accept: 'application/vnd.github+json' } });
-    if (releaseRes.ok) {
-      var releaseData = await releaseRes.json();
-      if (releaseData && releaseData.tag_name) {
-        return { tag: releaseData.tag_name, url: releaseData.html_url || GITHUB_REPO_URL + '/releases/latest', source: 'Release' };
-      }
-    }
-
-    var tagsUrl = 'https://api.github.com/repos/' + GITHUB_REPO + '/tags?per_page=1&t=' + Date.now();
-    var tagsRes = await fetch(tagsUrl, { headers: { Accept: 'application/vnd.github+json' } });
-    if (!tagsRes.ok) throw new Error('GitHub Releases / Tags 均读取失败');
-    var tags = await tagsRes.json();
-    if (Array.isArray(tags) && tags[0] && tags[0].name) {
-      return { tag: tags[0].name, url: GITHUB_REPO_URL + '/tags', source: 'Tag' };
-    }
-    throw new Error('仓库没有可用的 Release 或 Tag');
+  function setGithubCheckError(message, cached) {
+    var info = cached && cached.info ? Object.assign({}, cached.info, { fetchedAt: cached.fetchedAt }) : null;
+    var note = '暂时无法连接 GitHub：' + knEsc(message || '网络请求失败') + '。';
+    if (info) note += '已保留上次读取的版本结果。';
+    setGithubVersionUI(info ? '使用上次结果' : '检查失败', info ? info.tag : '读取失败', note, info ? 'warn' : 'error', info);
+    renderHomeUpdateNotice(info, info ? compareVersionTags(info.tag, VERSION) : 0);
   }
 
-  async function checkGithubVersion() {
-    var btn = document.querySelector('[data-action="checkGithubVersion"]');
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = '正在检查…';
-    }
-    setGithubVersionUI('正在连接 GitHub', '读取中…', '正在请求 GitHub 最新 Release；如果没有 Release，会回退检查 Tags。', 'checking');
+  async function fetchGithubLatestVersion() {
+    var apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO;
+    var repoRes = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+    if (!repoRes.ok) throw new Error('GitHub 仓库信息读取失败（HTTP ' + repoRes.status + '）');
+    var repo = await repoRes.json();
+    var branch = repo.default_branch || 'main';
+    var sourcePath = GITHUB_SOURCE_PATH.split('/').map(encodeURIComponent).join('/');
+    var sourceUrl = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/' + encodeURIComponent(branch) + '/' + sourcePath;
+    var sourceRes = await fetch(sourceUrl, { cache: 'no-store' });
+    if (!sourceRes.ok) throw new Error('默认分支中的 WebOS 源码读取失败（HTTP ' + sourceRes.status + '）');
+    var sourceText = await sourceRes.text();
+    var versionMatch = sourceText.match(/var\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (!versionMatch || !versionMatch[1]) throw new Error('未在 GitHub WebOS 源码中找到 VERSION');
+    return {
+      tag: versionMatch[1],
+      url: GITHUB_REPO_URL + '/blob/' + encodeURIComponent(branch) + '/' + sourcePath,
+      source: 'WebOS 源码',
+      branch: branch,
+      stars: Number(repo.stargazers_count || 0),
+      pushedAt: repo.pushed_at || repo.updated_at || '',
+      fetchedAt: Date.now()
+    };
+  }
 
-    try {
-      var info = await fetchGithubLatestVersion();
-      var cmp = compareVersionTags(info.tag, VERSION);
-      var link = '<a href="' + escapeHTML(info.url) + '" target="_blank" rel="noopener noreferrer">查看 ' + escapeHTML(info.source) + '</a>';
-      if (cmp > 0) {
-        setGithubVersionUI('发现新版本', info.tag, '当前版本：' + escapeHTML(VERSION) + '。GitHub 最新版本：' + escapeHTML(info.tag) + '。' + link, 'new');
-      } else if (cmp === 0) {
-        setGithubVersionUI('当前已是最新版本', info.tag, '当前版本与 GitHub 最新 ' + escapeHTML(info.source) + ' 一致。' + link, 'ok');
-      } else {
-        setGithubVersionUI('当前版本高于仓库版本', info.tag, '本地版本：' + escapeHTML(VERSION) + '。仓库最新：' + escapeHTML(info.tag) + '。可能是本地开发版或仓库尚未发布新版。' + link, 'warn');
-      }
-    } catch (err) {
-      setGithubVersionUI('检查失败', '读取失败', '无法读取 GitHub 版本：' + escapeHTML(err && err.message ? err.message : String(err)) + '。请确认设备网络或仓库 Release / Tag 配置。', 'error');
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = '检查 GitHub 版本';
-      }
+  function renderHomeUpdateNotice(info, comparison) {
+    var notice = document.getElementById('kn-home-update-notice');
+    if (!notice) return;
+    var dismissed = '';
+    try { dismissed = localStorage.getItem(GITHUB_UPDATE_DISMISS_KEY) || ''; } catch (e) {}
+    if (!info || comparison <= 0 || dismissed === info.tag) {
+      notice.hidden = true;
+      return;
     }
+    var version = document.getElementById('kn-home-update-version');
+    var link = document.getElementById('kn-home-update-link');
+    var close = document.getElementById('kn-home-update-close');
+    if (version) version.textContent = 'GitHub 已有更新：' + info.tag;
+    if (link) {
+      link.href = info.url || GITHUB_REPO_URL;
+    }
+    if (close) close.onclick = function () {
+      try { localStorage.setItem(GITHUB_UPDATE_DISMISS_KEY, info.tag); } catch (e) {}
+      notice.hidden = true;
+    };
+    notice.hidden = false;
+  }
+
+  var githubCheckPromise = null;
+  async function checkGithubVersion(options) {
+    options = options && typeof options === 'object' ? options : { force: true };
+    var btn = document.querySelector('[data-action="checkGithubVersion"]');
+    var cached = readGithubCache();
+    var cacheFresh = cached && Date.now() - Number(cached.fetchedAt) < GITHUB_CACHE_TTL;
+    if (!options.force && cacheFresh) {
+      var cachedInfo = Object.assign({}, cached.info, { fetchedAt: cached.fetchedAt });
+      var cachedComparison = compareVersionTags(cachedInfo.tag, VERSION);
+      setGithubVersionUI(cachedComparison > 0 ? '发现新版本' : (cachedComparison === 0 ? '当前已是最新版本' : '当前版本高于仓库版本'), cachedInfo.tag, '使用缓存的 GitHub 版本结果；上次检查：' + knEsc(formatGithubCheckedAt(cached.fetchedAt)) + '。', cachedComparison > 0 ? 'new' : (cachedComparison === 0 ? 'ok' : 'warn'), cachedInfo);
+      renderHomeUpdateNotice(cachedInfo, cachedComparison);
+      return cachedInfo;
+    }
+    if (githubCheckPromise) return githubCheckPromise;
+    if (btn) { btn.disabled = true; btn.textContent = '正在检查…'; }
+    if (!options.quiet) setGithubVersionUI('正在连接 GitHub', '读取中…', '正在读取默认分支中的 WebOS 源码版本和仓库 Stars。', 'checking');
+    githubCheckPromise = fetchGithubLatestVersion().then(function (info) {
+      saveGithubCache(info);
+      var comparison = compareVersionTags(info.tag, VERSION);
+      var link = '<a href="' + knEsc(info.url) + '" target="_blank" rel="noopener noreferrer">查看源码</a>';
+      var note;
+      if (comparison > 0) note = '当前版本：' + knEsc(VERSION) + '。GitHub 最新版本：' + knEsc(info.tag) + '。' + link;
+      else if (comparison === 0) note = '当前版本与 GitHub 默认分支中的 WebOS 源码一致。' + link;
+      else note = '本地版本：' + knEsc(VERSION) + '。仓库版本：' + knEsc(info.tag) + '。本地可能是开发版。' + link;
+      setGithubVersionUI(comparison > 0 ? '发现新版本' : (comparison === 0 ? '当前已是最新版本' : '当前版本高于仓库版本'), info.tag, note, comparison > 0 ? 'new' : (comparison === 0 ? 'ok' : 'warn'), info);
+      renderHomeUpdateNotice(info, comparison);
+      return info;
+    }).catch(function (err) {
+      setGithubCheckError(err && err.message ? err.message : String(err), cached);
+      return cached ? Object.assign({}, cached.info, { fetchedAt: cached.fetchedAt }) : null;
+    }).finally(function () {
+      githubCheckPromise = null;
+      if (btn) { btn.disabled = false; btn.textContent = '立即检查'; }
+    });
+    return githubCheckPromise;
   }
 
 
@@ -3319,7 +3392,26 @@
       '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card{padding:14px;background:#1b1f26!important;border-color:rgba(232,234,237,.10)!important}' +
       '#' + DIALOG_ID + ' .kn-about-hero{padding:16px;margin-bottom:12px;background:#1b2737!important;border-color:rgba(138,180,248,.18)!important}' +
       '#' + DIALOG_ID + ' .kn-about-logo{border-radius:10px}' +
+      '#' + DIALOG_ID + ' .kn-about-hero-copy{min-width:0}' +
       '#' + DIALOG_ID + ' .kn-form-title,#' + DIALOG_ID + ' .kn-about-card-title{font-size:14px;font-weight:800}' +
+      '#' + DIALOG_ID + ' .kn-about-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}' +
+      '#' + DIALOG_ID + ' .kn-about-card.full{grid-column:1/-1}' +
+      '#' + DIALOG_ID + ' .kn-about-card-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}' +
+      '#' + DIALOG_ID + ' .kn-about-card-title-row .kn-about-card-title{margin:0}' +
+      '#' + DIALOG_ID + ' .kn-about-version-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}' +
+      '#' + DIALOG_ID + ' .kn-about-kv{min-width:0;align-items:center}' +
+      '#' + DIALOG_ID + ' .kn-about-kv span{min-width:0;max-width:68%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-version-state{min-height:26px;display:inline-flex;align-items:center;padding:0 9px;border-radius:999px;border:1px solid rgba(232,234,237,.12);background:#15191f;color:#9aa0a6;font-size:10px;font-weight:800;white-space:nowrap}' +
+      '#' + DIALOG_ID + ' .kn-version-state.checking{color:#aecbfa;border-color:rgba(138,180,248,.24);background:rgba(138,180,248,.08)}' +
+      '#' + DIALOG_ID + ' .kn-version-state.ok{color:#81c995;border-color:rgba(129,201,149,.24);background:rgba(52,168,83,.08)}' +
+      '#' + DIALOG_ID + ' .kn-version-state.new{color:#fdd663;border-color:rgba(253,214,99,.26);background:rgba(251,188,4,.08)}' +
+      '#' + DIALOG_ID + ' .kn-version-state.warn{color:#fdd663;border-color:rgba(253,214,99,.20);background:rgba(251,188,4,.06)}' +
+      '#' + DIALOG_ID + ' .kn-version-state.error{color:#f28b82;border-color:rgba(242,139,130,.24);background:rgba(234,67,53,.08)}' +
+      '#' + DIALOG_ID + ' .kn-about-support-row{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border-radius:8px;background:#15191f;border:1px solid rgba(232,234,237,.09)}' +
+      '#' + DIALOG_ID + ' .kn-about-support-row>div{min-width:0;display:flex;flex-direction:column}' +
+      '#' + DIALOG_ID + ' .kn-about-support-row b{font-size:26px;line-height:1;color:#f1f3f4;font-variant-numeric:tabular-nums}' +
+      '#' + DIALOG_ID + ' .kn-about-support-row span{margin-top:6px;color:#8f98a6;font-size:10px;font-weight:700}' +
+      '#' + DIALOG_ID + ' #kn-about-update-link[hidden]{display:none!important}' +
       '#' + DIALOG_ID + ' .kn-input-row{margin:10px 0}' +
       '#' + DIALOG_ID + ' .kn-input-row input[type="text"],#' + DIALOG_ID + ' .kn-input-row input[type="number"],#' + DIALOG_ID + ' .kn-input-row input[type="password"],#' + DIALOG_ID + ' .kn-input-row select{min-height:36px;border-radius:6px;background:#111419;border-color:rgba(232,234,237,.14)}' +
       '#' + DIALOG_ID + ' .kn-check{border-radius:6px}' +
@@ -3352,7 +3444,8 @@
       '#' + DIALOG_ID + ' .kn-plugin-tool-btn,#' + DIALOG_ID + ' .kn-plugin-icon-action{border-radius:6px}' +
       '#' + DIALOG_ID + ' .kn-webos-settings-grid{gap:12px}' +
       '#' + DIALOG_ID + ' .kn-webos-setting-card{padding:14px;background:#1b1f26;border-color:rgba(232,234,237,.10)}' +
-      '.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-content{background:#f7f9fc!important;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-header,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-footer{background:#fff}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-body{background:#f7f9fc}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav{background:#eef2f7;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav-title,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-title{color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab:hover{background:#e3eaf3;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab.active,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-category-btn.active{background:#d9e8fb;color:#174a88}.kn-theme-light #' + DIALOG_ID + ' .kn-form-card,.kn-theme-light #' + DIALOG_ID + ' .kn-about-card,.kn-theme-light #' + DIALOG_ID + ' .kn-group-zone,.kn-theme-light #' + DIALOG_ID + ' .kn-forward-card,.kn-theme-light #' + DIALOG_ID + ' .kn-webos-setting-card{background:#fff!important;border-color:rgba(23,32,51,.10)!important}.kn-theme-light #' + DIALOG_ID + ' .kn-fc-card,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-head,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-topbar,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-layout{background:#fff;border-color:rgba(23,32,51,.10)}' +
+      '.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-content{background:#f7f9fc!important;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-header,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-footer{background:#fff}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-body{background:#f7f9fc}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav{background:#eef2f7;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav-title,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-title{color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab:hover{background:#e3eaf3;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab.active,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-category-btn.active{background:#d9e8fb;color:#174a88}.kn-theme-light #' + DIALOG_ID + ' .kn-form-card,.kn-theme-light #' + DIALOG_ID + ' .kn-about-card,.kn-theme-light #' + DIALOG_ID + ' .kn-group-zone,.kn-theme-light #' + DIALOG_ID + ' .kn-forward-card,.kn-theme-light #' + DIALOG_ID + ' .kn-webos-setting-card{background:#fff!important;border-color:rgba(23,32,51,.10)!important}.kn-theme-light #' + DIALOG_ID + ' .kn-fc-card,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-head,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-topbar,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-layout{background:#fff;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-about-support-row,.kn-theme-light #' + DIALOG_ID + ' .kn-version-state{background:#f7f9fc;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-about-support-row b{color:#172033}' +
+      '@media(max-width:680px){#' + DIALOG_ID + ' .kn-about-version-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-about-card-title-row{align-items:flex-start;flex-direction:column}#' + DIALOG_ID + ' .kn-about-support-row{align-items:stretch;flex-direction:column}#' + DIALOG_ID + ' .kn-about-support-row .kn-google-btn{width:100%}#' + DIALOG_ID + ' .kn-about-kv span{max-width:100%}}' +
       '@media(max-width:820px){#' + DIALOG_ID + '{width:calc(100vw - 16px)}#' + DIALOG_ID + ' .kn-dialog-content{height:calc(100dvh - 16px);min-height:0;border-radius:12px}#' + DIALOG_ID + ' .kn-dialog-header{min-height:64px;padding:13px 14px;flex-direction:row!important;align-items:center!important;justify-content:space-between!important}#' + DIALOG_ID + ' .kn-dialog-title{font-size:18px}#' + DIALOG_ID + ' .kn-dialog-body{display:flex;flex-direction:column}#' + DIALOG_ID + ' .kn-settings-nav{display:block;padding:10px 12px 8px;border-right:0;border-bottom:1px solid rgba(232,234,237,.09)}#' + DIALOG_ID + ' .kn-settings-nav-title,#' + DIALOG_ID + ' .kn-settings-nav-caption{display:none}#' + DIALOG_ID + ' .kn-settings-tabs{display:none!important}#' + DIALOG_ID + ' .kn-settings-mobile-select{display:block!important;width:100%;height:38px;border:1px solid rgba(232,234,237,.14);border-radius:6px;background:#1b1f26;color:#e8eaed;padding:0 10px;font-size:12px}#' + DIALOG_ID + ' .kn-settings-stage{padding:14px 12px 18px}#' + DIALOG_ID + ' .kn-dialog-footer{min-height:52px;padding:8px 12px}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-form-grid,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-forward-grid.modern{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-group-zone.full,#' + DIALOG_ID + ' .kn-form-card.full{grid-column:auto}#' + DIALOG_ID + ' .kn-function-center-head{align-items:stretch;flex-direction:column;gap:10px}#' + DIALOG_ID + ' .kn-fc-category-nav{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}#' + DIALOG_ID + ' .kn-fc-category-btn{flex:0 0 auto}#' + DIALOG_ID + ' .kn-fc-body{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-layout{grid-template-columns:1fr;overflow:auto}#' + DIALOG_ID + ' .kn-plugin-list-card{min-height:220px;max-height:34vh;border-right:0;border-bottom:1px solid rgba(232,234,237,.08)}#' + DIALOG_ID + ' .kn-plugin-editor-card{min-height:420px}#' + DIALOG_ID + ' .kn-native-control-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-template-grid{grid-template-columns:1fr}}' +
       '@media(max-width:520px){#' + DIALOG_ID + ' .kn-input-row,#' + DIALOG_ID + ' .kn-input-row.compact{grid-template-columns:1fr;gap:5px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-forward-head-actions{align-items:stretch}#' + DIALOG_ID + ' .kn-forward-head-actions .kn-google-btn{flex:1 1 auto}#' + DIALOG_ID + ' .kn-plugin-editor-actions{gap:5px}#' + DIALOG_ID + ' .kn-plugin-editor-actions .kn-plugin-icon-action{width:36px!important;min-width:36px!important}}' +
       '@media(max-width:820px){#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{display:flex!important;flex-direction:column!important;gap:4px!important;grid-template-columns:none!important;grid-template-areas:none!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-line{height:auto!important;min-height:24px!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:6px!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-desc{grid-area:auto!important;white-space:normal!important;display:block!important;line-height:1.35!important;margin:0!important}}';
@@ -3426,6 +3519,21 @@
     }
   }
 
+  function enhanceAboutPanel(dialog) {
+    var panel = dialog && dialog.querySelector('#kn-settings-panel-about');
+    if (!panel) return;
+    panel.innerHTML = [
+      '<div class="kn-about-hero"><div class="kn-about-logo">F50</div><div class="kn-about-hero-copy"><div class="kn-about-title">F50 WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS 的本地控制台增强插件。这里集中查看版本、更新状态、仓库支持和当前适配策略。</div><div class="kn-about-tags"><span>WebOS</span><span>UFI-TOOLS v4.x</span><span>' + knEsc(VERSION) + '</span></div></div></div>',
+      '<div class="kn-about-grid">',
+        '<section class="kn-about-card kn-about-version-card full"><div class="kn-about-card-title-row"><div class="kn-about-card-title">版本与更新</div><span id="kn-about-version-state" class="kn-version-state idle">尚未检查</span></div><div class="kn-about-version-grid"><div class="kn-about-kv"><b>当前版本</b><span id="kn-about-current-version">' + knEsc(VERSION) + '</span></div><div class="kn-about-kv"><b>GitHub 版本</b><span id="kn-about-latest-version">未检查</span></div><div class="kn-about-kv"><b>更新分支</b><span id="kn-about-branch">--</span></div><div class="kn-about-kv"><b>上次检查</b><span id="kn-about-checked">未检查</span></div></div><div class="kn-about-actions"><button type="button" class="kn-google-btn primary" data-action="checkGithubVersion">立即检查</button><a id="kn-about-update-link" class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer" hidden>查看源码</a><a class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">打开仓库</a></div><div id="kn-about-update-note" class="kn-about-update-note">打开“关于”时会自动读取 GitHub；结果缓存 6 小时，网络不可用时保留上次结果。</div></section>',
+        '<section class="kn-about-card kn-about-support-card"><div class="kn-about-card-title">支持项目</div><div class="kn-about-support-row"><div><b id="kn-about-stars">--</b><span>GitHub Stars</span></div><a class="kn-google-btn primary" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">给仓库点 Star</a></div><div class="kn-about-small">点击后会打开 GitHub 仓库页面，请在页面右上角手动点击 Star。浏览器插件不会代替你操作账号。</div><div class="kn-about-actions"><a class="kn-google-btn" href="' + GITHUB_STARGAZERS_URL + '" target="_blank" rel="noopener noreferrer">查看支持者</a><a class="kn-google-btn" href="' + GITHUB_ISSUES_URL + '" target="_blank" rel="noopener noreferrer">提交问题</a></div></section>',
+        '<section class="kn-about-card"><div class="kn-about-card-title">项目资料</div><div class="kn-about-kv"><b>仓库</b><span>' + knEsc(GITHUB_REPO) + '</span></div><div class="kn-about-kv"><b>作者</b><span>LceAn</span></div><div class="kn-about-kv"><b>许可</b><span>MIT License</span></div><div class="kn-about-kv"><b>更新源</b><span>GitHub 默认分支</span></div></section>',
+        '<section class="kn-about-card"><div class="kn-about-card-title">适配策略</div><div class="kn-about-kv"><b>布局方式</b><span>原地显隐，不搬运第三方面板</span></div><div class="kn-about-kv"><b>移动端</b><span>下拉设置导航与单列内容</span></div><div class="kn-about-kv"><b>更新提醒</b><span>仅发现新版本时显示</span></div><div class="kn-about-small">版本检查只读取公开仓库信息，不上传设备口令、密码、短信和插件配置。</div></section>',
+        '<section class="kn-about-card full"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 原生功能分类 · 消息转发设置 · 插件管理 · 兼容性开关 · 日/夜间模式 · 背景系统 · 网络诊断 · CPU 核心明细 · 电话与短信 · 运营商信息</div></section>',
+      '</div>'
+    ].join('');
+  }
+
   function buildDialog() {
     var presetOptions = Object.keys(BACKGROUND_PRESETS).map(function (key) {
       return '<option value="' + key + '">' + BACKGROUND_PRESETS[key].label + '</option>';
@@ -3435,6 +3543,7 @@
     dialog.id = DIALOG_ID;
     dialog.innerHTML = '<div class="kn-dialog-content"><div class="kn-dialog-header"><div><div class="kn-dialog-title">界面设置</div><div class="kn-dialog-subtitle">安全布局：不移动第三方插件 div，不创建插件 Hub。这里集成导航分组、界面美化与背景、原生功能分类、消息转发和现代插件管理。</div></div><button type="button" class="kn-panel-btn" data-action="close">关闭</button></div><div class="kn-dialog-body"><div class="kn-settings-tabs"><button class="kn-settings-tab active" data-tab="layout" type="button">导航分组</button><button class="kn-settings-tab" data-tab="appearance" type="button">界面美化</button><button class="kn-settings-tab" data-tab="forward" type="button">消息转发</button><button class="kn-settings-tab" data-tab="plugins" type="button">插件功能</button><button class="kn-settings-tab" data-tab="about" type="button">关于</button></div><div id="kn-settings-panel-layout" class="kn-settings-panel active"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.74);font-weight:800"><span>导航分组与模块管理</span><span style="font-size:11px;color:rgba(255,255,255,.46);font-weight:500">点击项目循环移动；电脑端可拖拽</span></div><div id="kn-settings-board" class="kn-group-board"></div><div class="kn-note">当前版本采用原地显隐：第三方 div 面板不再被移动到其他容器，避免破坏原插件结构。</div><div class="kn-settings-actions"><button type="button" class="kn-panel-btn" data-action="reset">恢复默认分组</button></div></div><div id="kn-settings-panel-appearance" class="kn-settings-panel"><div class="kn-form-grid kn-appearance-grid"><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">主题与基础</div><div class="kn-input-row"><label>模式</label><select data-appearance="themeMode"><option value="dark">夜间模式</option><option value="light">日间模式</option><option value="auto">跟随系统</option></select></div><div class="kn-input-row"><label>强调色</label><div class="kn-color-control"><input type="color" data-appearance="accentColor" aria-label="选择强调色"><input type="text" class="kn-color-hex" data-appearance="accentColor" maxlength="9" placeholder="#4E92FF"></div></div><div class="kn-field-help">支持 HEX 颜色值，例如 #3B82F6；可直接复制或手动输入。</div><div class="kn-slider-row"><label>字体缩放</label><input type="range" min="88" max="116" data-appearance="fontScale"><span class="kn-slider-value" data-value-for="fontScale">--</span></div><div class="kn-slider-row"><label>动画强度</label><input type="range" min="0" max="2" data-appearance="animationLevel"><span class="kn-slider-value" data-value-for="animationLevel">--</span></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title-row"><div class="kn-form-title">视觉效果</div><div class="kn-inline-actions"><button type="button" class="kn-text-action" data-action="appearanceAllOn">全选</button><button type="button" class="kn-text-action" data-action="appearanceDefault">重置默认</button></div></div><div class="kn-visual-list"><label class="kn-check"><span>圆角卡片</span><input type="checkbox" data-appearance="enableRadius"></label><label class="kn-check"><span>悬浮阴影</span><input type="checkbox" data-appearance="enableShadow"></label><label class="kn-check"><span>胶囊按钮</span><input type="checkbox" data-appearance="enableCapsule"></label><label class="kn-check"><span>玻璃拟态</span><input type="checkbox" data-appearance="enableGlass"></label><label class="kn-check"><span>紧凑布局</span><input type="checkbox" data-appearance="enableCompact"></label><label class="kn-check"><span>动态悬停</span><input type="checkbox" data-appearance="enableHover"></label><label class="kn-check"><span>极简滚条</span><input type="checkbox" data-appearance="enableScrollbar"></label><label class="kn-check"><span>渐变标题</span><input type="checkbox" data-appearance="enableGradient"></label><label class="kn-check"><span>柔和分割线</span><input type="checkbox" data-appearance="enableSoftDivider"></label><label class="kn-check"><span>文字增强</span><input type="checkbox" data-appearance="enableReadableText"></label></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">渐变标题</div><div class="kn-field-help local">开启“渐变标题”后，这里配置标题的起止颜色。</div></div></div><div class="kn-inline-config" data-effect-config="enableGradient"><div class="kn-input-row"><label>起点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor1"><input type="text" class="kn-color-hex" data-appearance="gradColor1" maxlength="9"></div></div><div class="kn-input-row"><label>终点颜色</label><div class="kn-color-control"><input type="color" data-appearance="gradColor2"><input type="text" class="kn-color-hex" data-appearance="gradColor2" maxlength="9"></div></div></div></div><div class="kn-form-card full kn-appearance-card kn-collapse-card"><div class="kn-form-title-row"><div><div class="kn-form-title compact">顶栏质感</div><div class="kn-field-help local">控制顶部栏模糊、透明度与紧凑状态。</div></div><button type="button" class="kn-panel-btn small-text" data-action="compact">切换紧凑顶栏</button></div><div class="kn-inline-config"><div class="kn-slider-row"><label>顶栏模糊</label><input type="range" min="8" max="40" data-appearance="headerBlur"><span class="kn-slider-value" data-value-for="headerBlur">--</span></div><div class="kn-slider-row"><label>顶栏透明度</label><input type="range" min="35" max="98" data-appearance="headerOpacity"><span class="kn-slider-value" data-value-for="headerOpacity">--</span></div></div></div><div class="kn-form-card full kn-appearance-card"><div class="kn-form-title">美化配置</div><div class="kn-field-help" style="margin:0 0 12px">这里只重置界面美化相关配置，不影响导航分组和插件面板归类。</div><div class="kn-settings-actions" style="margin-top:0;padding-top:0;border-top:0"><button type="button" class="kn-panel-btn" data-action="resetAppearance">恢复默认美化</button></div></div></div></div><div id="kn-settings-panel-background" class="kn-settings-panel"><div class="kn-form-grid kn-bg-card-row"><div class="kn-form-card full"><div class="kn-bg-toolbar"><div class="kn-form-title">首页背景图</div><label class="kn-check"><input type="checkbox" data-appearance="enableBackground">启用背景图</label></div><div class="kn-bg-mode-grid kn-bg-dependent" data-bg-scope="source"><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="preset" data-appearance="backgroundMode"><span><strong>使用预装背景</strong><span>从内置背景中选择，适合快速切换。</span></span></label><label class="kn-bg-mode-option"><input type="radio" name="kn-bg-mode" value="custom" data-appearance="backgroundMode"><span><strong>使用自定义 URL</strong><span>使用图片链接作为首页背景。</span></span></label></div><div class="kn-input-row kn-bg-dependent" data-bg-scope="preset"><label>预装背景</label><select data-appearance="backgroundPreset">' + presetOptions + '</select></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="preset">选择预装项后立即生效；“无背景”会保留背景系统但不显示图片。</div><div class="kn-input-row kn-bg-dependent" data-bg-scope="custom"><label>自定义 URL</label><div class="kn-input-with-action"><input type="text" data-appearance="backgroundImage" placeholder="粘贴 https://.../background.jpg"><button type="button" class="kn-icon-clear" data-action="clearBackgroundUrl" title="清空自定义 URL">×</button></div></div><div class="kn-field-help kn-bg-dependent" data-bg-scope="custom">仅在选择“使用自定义 URL”时生效。建议使用 1920×1080 或更高分辨率图片。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景遮罩</div><div class="kn-slider-row"><label>暗度</label><input type="range" min="0" max="85" data-appearance="backgroundDim"><span class="kn-slider-value" data-value-for="backgroundDim">--</span></div><div class="kn-slider-row"><label>模糊</label><input type="range" min="0" max="30" data-appearance="backgroundBlur"><span class="kn-slider-value" data-value-for="backgroundBlur">--</span></div><div class="kn-field-help" style="margin:4px 0 0">暗度控制背景遮罩透明度；模糊用于降低图片细节干扰。</div></div><div class="kn-form-card kn-bg-card kn-bg-dependent" data-bg-scope="effect"><div class="kn-form-title">背景质感</div><div class="kn-slider-row"><label>饱和度</label><input type="range" min="50" max="180" data-appearance="backgroundSaturate"><span class="kn-slider-value" data-value-for="backgroundSaturate">--</span></div><div class="kn-field-help" style="margin:4px 0 14px">饱和度用于控制背景颜色浓度，不影响页面组件本身。</div><button type="button" class="kn-panel-btn small-text" data-action="resetBackgroundSettings" style="margin-top:auto;align-self:flex-start">重置背景设置</button></div></div></div><div id="kn-settings-panel-forward" class="kn-settings-panel"><div class="kn-forward-page-head"><div class="kn-forward-head-left"><div class="kn-forward-title">消息转发</div><div class="kn-forward-desc">可读取并保存原生消息/电源转发配置；电话事件转发为本插件增强配置。</div></div><div class="kn-forward-head-actions"><span id="kn-native-forward-read-status" class="kn-forward-inline-status">未读取</span><button type="button" class="kn-google-btn primary" data-action="refreshNativeForwardConfig">读取配置</button><button type="button" class="kn-google-btn primary" data-action="saveNativeForwardConfig">保存原生配置</button><button type="button" class="kn-google-btn" data-action="testNativeForwardConfig">测试原生通道</button><button type="button" class="kn-google-btn" data-action="toggleForwardTemplates">消息模板</button><button type="button" class="kn-google-btn" data-action="openNativeSmsForward">打开原生界面</button></div></div><div class="kn-forward-grid modern"><section class="kn-forward-card native full"><div class="kn-form-title-row"><div><div class="kn-form-title">原生消息转发</div><div class="kn-field-help local">原生界面名称可能显示为“短信转发”，但实际包含短信转发和设备通电通知。本页可直接修改并保存原生配置。</div></div></div><div class="kn-native-control-grid"><label class="kn-check primary-switch"><span>启用消息转发</span><input id="kn-native-forward-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>启用电源通知</span><input id="kn-native-power-enable" type="checkbox"></label><label class="kn-check primary-switch"><span>附加设备信息</span><input id="kn-native-forward-devinfo" type="checkbox"></label><div class="kn-input-row compact"><label>当前通道</label><select id="kn-native-forward-method-select"><option value="dingtalk">钉钉机器人</option><option value="smtp">SMTP 邮件</option><option value="curl">CURL 命令</option></select></div></div><div class="kn-forward-kv-grid compact-status"><div class="kn-forward-kv"><b>消息转发</b><span id="kn-native-forward-enabled">--</span></div><div class="kn-forward-kv"><b>电源通知</b><span id="kn-native-power-enabled">--</span></div><div class="kn-forward-kv"><b>当前方式</b><span id="kn-native-forward-method">--</span></div><div class="kn-forward-kv"><b>原始值</b><span id="kn-native-forward-method-raw">--</span></div><div class="kn-forward-kv full"><b>设备信息</b><span id="kn-native-forward-device-info">--</span></div></div></section><section class="kn-forward-card native" data-native-method-card="dingtalk"><div class="kn-form-title">钉钉配置</div><div class="kn-input-row compact"><label>Webhook</label><input id="kn-native-dingtalk-webhook" placeholder="https://oapi.dingtalk.com/robot/send?..." autocomplete="off"></div><div class="kn-input-row compact"><label>加密密钥</label><input id="kn-native-dingtalk-secret" placeholder="SEC... 可为空" autocomplete="off"></div><div class="kn-field-help">保存后会写入原生钉钉转发配置；测试原生通道会调用原生转发接口。</div></section><section class="kn-forward-card native" data-native-method-card="smtp"><div class="kn-form-title">SMTP 配置</div><div class="kn-native-mini-grid normalized"><div class="kn-input-row"><label>主机</label><input id="kn-native-smtp-host" placeholder="smtp.example.com"></div><div class="kn-input-row short"><label>端口</label><input id="kn-native-smtp-port" placeholder="465" inputmode="numeric"></div><div class="kn-input-row"><label>账号</label><input id="kn-native-smtp-user" placeholder="user@example.com"></div><div class="kn-input-row"><label>收件人</label><input id="kn-native-smtp-to" placeholder="to@example.com"></div><div class="kn-input-row full"><label>密码</label><input id="kn-native-smtp-pass" placeholder="SMTP 授权码 / 密码" type="password"></div></div></section><section class="kn-forward-card native" data-native-method-card="curl"><div class="kn-form-title">CURL 命令 / 模板</div><textarea id="kn-native-curl-text" class="kn-forward-textarea" placeholder="例如：curl -s -X POST ..."></textarea><div class="kn-field-help">CURL 通道会把这里的命令写入原生配置。</div></section><section id="kn-forward-template-card" class="kn-forward-card native full kn-forward-template-viewer" hidden><div class="kn-form-title-row"><div><div class="kn-form-title">消息转发信息模板</div><div class="kn-field-help local">当前通道：<span id="kn-native-template-channel">--</span>。这里展示短信、电源通知和附加设备信息的组成方式。</div></div><button type="button" class="kn-panel-btn small-text" data-action="toggleForwardTemplates">收起</button></div><div class="kn-template-grid"><div><b>短信模板</b><div id="kn-template-sms" class="kn-forward-readonly-box plain">尚未读取。</div></div><div><b>电源模板</b><div id="kn-template-power" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>附加设备信息</b><div id="kn-template-device" class="kn-forward-readonly-box plain">尚未读取。</div></div><div class="full"><b>CURL 当前命令</b><div id="kn-template-curl-preview" class="kn-forward-readonly-box">尚未读取。</div></div></div></section><section id="kn-forward-call-card" class="kn-forward-card"><div class="kn-form-title">电话事件转发增强</div><label class="kn-check primary-switch"><span>启用电话事件转发</span><input type="checkbox" data-forward="enableCallForward"></label><div class="kn-forward-event-list"><label class="kn-check"><span>来电</span><input type="checkbox" data-forward="callIncoming"></label><label class="kn-check"><span>未接</span><input type="checkbox" data-forward="callMissed"></label><label class="kn-check"><span>接通</span><input type="checkbox" data-forward="callAnswered"></label><label class="kn-check"><span>挂断</span><input type="checkbox" data-forward="callEnded"></label></div><div class="kn-input-row"><label>转发目标</label><select data-forward="callForwardTarget"><option value="native">复用原生转发方式</option><option value="custom">独立电话转发配置</option></select></div><div class="kn-forward-status slim">关闭电话事件转发时，下方事件、模板和测试按钮会自动禁用。</div></section><section id="kn-forward-call-template-card" class="kn-forward-card"><div class="kn-form-title">电话消息模板</div><textarea class="kn-forward-textarea" data-forward="callTemplate" placeholder="例如：{event} | {number} | {time} | {duration}"></textarea><div class="kn-settings-actions local"><button type="button" class="kn-panel-btn primary" data-action="saveForwardConfig">保存电话转发</button><button type="button" class="kn-panel-btn" data-action="testForwardConfig">测试电话转发</button></div></section></div></div><div id="kn-settings-panel-plugins" class="kn-settings-panel"><div class="kn-plugin-manager-shell"><div class="kn-plugin-topbar kn-plugin-merged-head"><div class="kn-plugin-title-block"><div class="kn-plugin-title-line"><span class="kn-plugin-title">插件管理</span><span id="kn-plugin-status" class="kn-plugin-status">尚未读取插件列表。</span></div><div class="kn-plugin-desc">左侧选择与启停，右侧编辑名称和源码。保存后写入 custom head，并自动刷新页面载入新插件。</div><div class="kn-plugin-risk top">改动会写入 UFI-TOOLS custom head；修改前建议先导出备份。</div></div><div class="kn-plugin-head-right"><div class="kn-plugin-native-row"><span class="kn-native-group-label">原生</span><button type="button" class="kn-google-btn" data-action="openNativePluginFeature">插件管理</button><button type="button" class="kn-google-btn" data-action="openNativePluginStore">插件商店</button><button type="button" class="kn-google-btn" data-action="openNativePluginFiles">上传文件</button></div><div class="kn-plugin-actions" aria-label="插件全局操作"><button type="button" class="kn-plugin-tool-btn" data-plugin-action="refresh" title="重新读取插件列表"><span class="kn-tool-ico">↻</span><span class="kn-tool-text">读取</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="import" title="导入插件文件"><span class="kn-tool-ico">＋</span><span class="kn-tool-text">导入</span></button><button type="button" class="kn-plugin-tool-btn" data-plugin-action="export" title="导出当前插件备份"><span class="kn-tool-ico">⇩</span><span class="kn-tool-text">备份</span></button></div></div></div><input type="file" id="kn-plugin-import-file" accept=".txt,.js,.html,.htm" style="display:none"><div class="kn-plugin-layout"><aside class="kn-plugin-list-card"><div class="kn-plugin-list-head"><div class="kn-plugin-list-title-row"><div><strong>插件列表</strong><span id="kn-plugin-count">0 个插件</span></div><button type="button" id="kn-plugin-search-toggle" class="kn-plugin-search-toggle" title="搜索插件" aria-label="搜索插件">⌕</button></div><input id="kn-plugin-search" type="text" placeholder="搜索插件名称 / 源码"></div><div id="kn-plugin-list" class="kn-plugin-list"><div class="kn-plugin-empty">点击“重新读取”读取当前插件。</div></div></aside><section class="kn-plugin-editor-card"><div class="kn-plugin-editor-head"><div><strong>插件详情</strong><span id="kn-plugin-editor-state">未选择插件</span><div class="kn-plugin-editor-name-line"><span id="kn-plugin-editor-title-name" class="kn-plugin-editor-title-name">未选择插件</span><button type="button" class="kn-plugin-title-edit" data-plugin-action="beginRename" title="重命名插件" aria-label="重命名插件">' + knPluginActionIcon('edit') + '</button></div></div><div class="kn-plugin-editor-actions"><button type="button" class="kn-plugin-icon-action primary" data-plugin-action="applyEditor" title="保存插件" aria-label="保存插件">' + knPluginActionIcon('save') + '<span class="kn-action-text">保存插件</span></button><button type="button" class="kn-plugin-icon-action" data-plugin-action="copyCode" title="复制源码" aria-label="复制源码">' + knPluginActionIcon('copy') + '<span class="kn-action-text">复制源码</span></button><button type="button" class="kn-plugin-icon-action danger" data-plugin-action="deleteSelected" title="删除插件" aria-label="删除插件">' + knPluginActionIcon('trash') + '<span class="kn-action-text">删除插件</span></button></div></div><div class="kn-plugin-editor-form"><div class="kn-plugin-field kn-plugin-name-field"><label>插件名称</label><input id="kn-plugin-editor-name" type="text" placeholder="选择插件后可重命名"></div><div class="kn-plugin-code-head"><label>源码内容</label><span>轻量编辑模式</span></div><div class="kn-code-editor-wrap"><div id="kn-plugin-editor-lines" class="kn-code-lines">1</div><div class="kn-code-layer"><pre id="kn-plugin-editor-highlight" class="kn-code-highlight" aria-hidden="true"></pre><textarea id="kn-plugin-editor-code" spellcheck="false" placeholder="选择插件后显示源码"></textarea></div></div></div></section></div></div></div><div id="kn-settings-panel-about" class="kn-settings-panel"><div class="kn-about-hero"><div class="kn-about-logo">G</div><div><div class="kn-about-title">UFI WebOS 控制台</div><div class="kn-about-desc">面向 UFI-TOOLS / UFI / CPE 设备的桌面化增强控制台。核心原则：不移动第三方插件 div，不破坏原插件结构，只做安全的导航分组、原地显隐和界面增强。</div><div class="kn-about-tags"><span>Material UI</span><span>Safe Layout</span><span>UFI-TOOLS v4.x</span><span>2026 UI</span></div></div></div><div class="kn-about-grid"><div class="kn-about-card"><div class="kn-about-card-title">版本信息</div><div class="kn-about-kv"><b>当前版本</b><span id="kn-about-current-version">' + VERSION + '</span></div><div class="kn-about-kv"><b>GitHub 仓库</b><span>' + GITHUB_REPO + '</span></div><div class="kn-about-kv"><b>最新版本</b><span id="kn-about-latest-version">未检查</span></div><div class="kn-about-kv"><b>版本状态</b><span id="kn-about-version-state">点击下方按钮检查</span></div><div class="kn-about-actions"><button type="button" class="kn-google-btn primary" data-action="checkGithubVersion">检查 GitHub 版本</button><a class="kn-google-btn" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">打开仓库</a><a class="kn-google-btn" href="' + GITHUB_ISSUES_URL + '" target="_blank" rel="noopener noreferrer">提交问题</a><button type="button" class="kn-google-btn" data-action="copy">导出配置</button></div><div id="kn-about-update-note" class="kn-about-update-note">将请求 GitHub Releases 最新版本；如果仓库没有 Release，会自动尝试 Tags。</div></div><div class="kn-about-card"><div class="kn-about-card-title">适配与策略</div><div class="kn-about-kv"><b>适配环境</b><span>UFI-TOOLS v4.x / 通用 UFI 设备</span></div><div class="kn-about-kv"><b>布局策略</b><span>安全原地显隐</span></div><div class="kn-about-kv"><b>插件原则</b><span>不迁移第三方 div</span></div><div class="kn-about-small">设置页采用 Google Material 风格重构：更明确的信息层级、更轻的卡片、更克制的蓝色强调和更好的小屏适配。</div></div><div class="kn-about-card"><div class="kn-about-card-title">当前能力</div><div class="kn-about-list">导航分页 · 原生功能分类 · 消息转发设置 · 现代插件管理 · 原生插件备用入口 · 插件面板分组 · 日/夜间模式 · 预设背景 · 自定义背景 · 玻璃拟态 · 圆角阴影 · 胶囊按钮 · 渐变标题 · 紧凑布局 · 扩展工具箱</div></div><div class="kn-about-card"><div class="kn-about-card-title">项目信息</div><div class="kn-about-list">项目名称：UFI WebOS 控制台<br>作者：LceAn<br>定位：面向 UFI-TOOLS 的高级桌面化管理界面<br>愿景：让插件管理、网络管理和设备状态展示更清晰、更现代、更安全。</div></div></div></div></div><div class="kn-dialog-footer"><div class="kn-footer-right only"><button type="button" class="kn-panel-btn primary" data-action="done">完成</button></div></div></div>';
 
+    enhanceAboutPanel(dialog);
     enhanceSettingsInteractionMarkup(dialog);
 
     if (isWebOSFeatureEnabled('nativeButtonMigration')) ensureFunctionCenterPanel(dialog);
@@ -3452,7 +3561,7 @@
     var appearanceDefaultBtn = dialog.querySelector('[data-action="appearanceDefault"]');
     if (appearanceDefaultBtn) appearanceDefaultBtn.onclick = function () { Object.keys(DEFAULT_APPEARANCE).forEach(function (key) { if (key.indexOf('enable') === 0 || key === 'gradColor1' || key === 'gradColor2' || key === 'headerBlur' || key === 'headerOpacity' || key === 'accentColor' || key === 'fontScale' || key === 'animationLevel' || key === 'themeMode') state.config.appearance[key] = DEFAULT_APPEARANCE[key]; }); saveConfig(); bindAppearanceControls(); applyAppearance(); };
     var checkGithubBtn = dialog.querySelector('[data-action="checkGithubVersion"]');
-    if (checkGithubBtn) checkGithubBtn.onclick = checkGithubVersion;
+    if (checkGithubBtn) checkGithubBtn.onclick = function () { checkGithubVersion({ force: true }); };
     var nativePluginBtn = dialog.querySelector('[data-action="openNativePluginFeature"]');
     if (nativePluginBtn) nativePluginBtn.onclick = openNativePluginFeature;
     var nativePluginAddBtn = dialog.querySelector('[data-action="openNativePluginAdd"]');
@@ -4616,6 +4725,7 @@
       activateFunctionCenterCategory(functionCenterState.active, dialog);
     }
     if (tab === 'plugins' && !knPluginManager.loaded) setTimeout(knPluginRefresh, 30);
+    if (tab === 'about') setTimeout(function () { checkGithubVersion({ quiet: true }); }, 30);
     var previousTab = dialog.getAttribute('data-settings-tab') || '';
     dialog.setAttribute('data-settings-tab', tab);
     dialog.classList.toggle('kn-settings-plugin-active', tab === 'plugins');
@@ -5168,6 +5278,15 @@
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-toggle{height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:rgba(255,255,255,.72);font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap;}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-toggle.is-on{background:rgba(57,210,121,.15);border-color:rgba(134,239,172,.28);color:rgba(225,255,235,.96);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-time{width:100%;font-size:10.5px;color:var(--home-muted-2);text-align:right;}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-notice{min-height:38px;display:flex;align-items:center;gap:10px;margin:-2px 0 12px;padding:7px 8px 7px 11px;border-radius:10px;border:1px solid rgba(247,201,72,.20);background:rgba(247,201,72,.065);color:rgba(255,246,214,.92);}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-notice[hidden]{display:none!important}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-icon{width:22px;height:22px;flex:0 0 22px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;background:rgba(247,201,72,.12);font-size:13px;font-weight:950}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy{min-width:0;flex:1;display:flex;align-items:baseline;gap:8px}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy b{font-size:11px;font-weight:900;white-space:nowrap}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy span{min-width:0;font-size:10.5px;color:var(--home-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-actions{display:flex;align-items:center;gap:4px}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-link,#'+ HOME_DASHBOARD_ID + ' .kn-home-update-close{height:26px;min-height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(247,201,72,.18);background:rgba(255,255,255,.045);color:inherit;text-decoration:none;font-size:10px;font-weight:850;cursor:pointer}' +
+      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-link{padding:0 9px}#'+ HOME_DASHBOARD_ID + ' .kn-home-update-close{width:26px;padding:0;font-size:15px}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat{min-width:0;padding:14px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);}' +
       '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-label{font-size:11px;color:var(--home-muted);font-weight:780;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
@@ -5293,8 +5412,9 @@
       '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-card,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-dash-card,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-details-wrap{background:rgba(255,255,255,.58)!important;border-color:rgba(34,50,80,.08)!important;box-shadow:0 14px 36px rgba(34,50,80,.10),inset 0 1px 0 rgba(255,255,255,.58)!important;}' +
       '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-stat,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-kpi,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-detail,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-item{background:rgba(255,255,255,.48)!important;border-color:rgba(34,50,80,.08)!important;}' +
       '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-title,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-stat-value,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-value,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-dash-title{color:#172033!important;}' +
+      '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-update-notice{color:#765600;background:rgba(247,201,72,.13);border-color:rgba(138,99,0,.14)}' +
       '@media(max-width:1180px){#'+ HOME_DASHBOARD_ID + '{width:min(100% - 28px,1120px);}#'+ HOME_DASHBOARD_ID + ' .kn-home-left-column,#'+ HOME_DASHBOARD_ID + ' .kn-home-network-card{grid-column:span 12;}#'+ HOME_DASHBOARD_ID + ' .kn-home-left-column{grid-template-rows:auto auto;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card{min-height:120px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-network-card{grid-row:auto;}#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-grid{grid-template-columns:1fr;}}' +
-      '@media(max-width:760px){#'+ HOME_DASHBOARD_ID + '{width:calc(100% - 18px);margin-bottom:16px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-card-head{flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-controls{width:100%;justify-content:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh{flex:1;}#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{grid-template-columns:repeat(2,minmax(0,1fr));}#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-row,#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-row{grid-template-columns:1fr;gap:6px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-value{text-align:left;}#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip{min-width:118px;flex-basis:118px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock{align-items:flex-start;flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-body{align-items:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card .kn-home-rocket-actions{justify-content:flex-start;}}' +
+      '@media(max-width:760px){#'+ HOME_DASHBOARD_ID + '{width:calc(100% - 18px);margin-bottom:16px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-card-head{flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-controls{width:100%;justify-content:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh{flex:1;}#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy{align-items:flex-start;flex-direction:column;gap:1px}#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy span{white-space:normal}#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{grid-template-columns:repeat(2,minmax(0,1fr));}#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-row,#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-row{grid-template-columns:1fr;gap:6px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-value{text-align:left;}#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip{min-width:118px;flex-basis:118px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock{align-items:flex-start;flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-body{align-items:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card .kn-home-rocket-actions{justify-content:flex-start;}}' +
       '@media(max-width:520px){#'+ HOME_DASHBOARD_ID + '{width:calc(100% - 12px);}#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-title{font-size:18px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-duplex{flex-direction:column;align-items:stretch;}#'+ HOME_DASHBOARD_ID + ' .kn-home-rx,#'+ HOME_DASHBOARD_ID + ' .kn-home-tx{font-size:20px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-grid{padding-left:10px;padding-right:10px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip{min-width:112px;flex-basis:112px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-dl>div{grid-template-columns:76px minmax(0,1fr);}#'+ HOME_DASHBOARD_ID + ' .kn-home-action-row{display:grid;grid-template-columns:1fr;width:100%;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-body{flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card .kn-home-rocket-actions{width:100%;justify-content:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action{flex:1 1 120px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-primary-action,#'+ HOME_DASHBOARD_ID + ' .kn-home-secondary-action{width:100%;}}';
     document.head.appendChild(style);
   }
@@ -5314,6 +5434,7 @@
             '</div>',
             '<div class="kn-home-refresh-controls"><button type="button" class="kn-home-refresh" data-home-action="refresh">刷新状态</button><select class="kn-home-refresh-select" data-home-refresh-interval><option value="5000">5 秒</option><option value="10000">10 秒</option><option value="30000">30 秒</option><option value="60000">60 秒</option></select><button type="button" class="kn-home-refresh-toggle" data-home-auto-refresh>自动刷新：关</button><div class="kn-home-refresh-time" id="kn-home-refresh-time">未刷新</div></div>',
           '</div>',
+          '<div id="kn-home-update-notice" class="kn-home-update-notice" hidden><span class="kn-home-update-icon" aria-hidden="true">↑</span><div class="kn-home-update-copy"><b>发现新版本</b><span id="kn-home-update-version">GitHub 已有更新</span></div><div class="kn-home-update-actions"><a id="kn-home-update-link" class="kn-home-update-link" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">查看</a><button id="kn-home-update-close" class="kn-home-update-close" type="button" title="暂不提醒" aria-label="暂不提醒">×</button></div></div>',
           '<div class="kn-home-status-grid">',
             '<div class="kn-home-stat"><div class="kn-home-stat-label">运行状态</div><div id="kn-home-modem" class="kn-home-stat-value">--</div><div id="kn-home-uptime" class="kn-home-stat-sub">运行时长读取中</div></div>',
             '<div class="kn-home-stat"><div class="kn-home-stat-label">网络状态 / 信号</div><div id="kn-home-network" class="kn-home-stat-value">--</div><div id="kn-home-phone-line" class="kn-home-stat-sub kn-home-phone-line" title="点击复制手机号">手机号读取中</div><div id="kn-home-signal" class="kn-home-stat-sub">信号 --</div></div>',
@@ -8253,6 +8374,7 @@
     applyAppearance();
     refreshHeaderNetworkInfo(false);
     refreshHomeDashboardStatus(false);
+    setTimeout(function () { checkGithubVersion({ quiet: true }); }, 1800);
     state.timer = setInterval(function () { grabTopElements(); refreshHeaderNetworkInfo(false); refreshHomeDashboardStatus(false); applyToolboxRouting(); if (isWebOSFeatureEnabled('nativeButtonMigration')) hideHomeFunctionListButtons(); else restoreHomeFunctionListButtons(); scheduleClassify(); }, 1200);
     state.observer = new MutationObserver(scheduleClassify);
     state.observer.observe(container, { childList: true, subtree: true });
