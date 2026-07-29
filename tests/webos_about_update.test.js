@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.12.0.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.0.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function normalizeVersionTag');
 const end = source.indexOf('  var FORWARD_CONFIG_KEY');
@@ -42,7 +42,7 @@ const sandbox = {
   VERSION: '26.14.0-github-updates',
   GITHUB_REPO: 'LceAn/UTools-Beautifier',
   GITHUB_REPO_URL: 'https://github.com/LceAn/UTools-Beautifier',
-  GITHUB_SOURCE_PATH: 'Web重构_v26.12.0.js',
+  GITHUB_SOURCE_PATH: 'Web重构_v26.14.0.js',
   GITHUB_CACHE_KEY: 'test-github-cache',
   GITHUB_UPDATE_DISMISS_KEY: 'test-update-dismissed',
   GITHUB_CACHE_TTL: 6 * 60 * 60 * 1000,

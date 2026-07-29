@@ -12,11 +12,19 @@
 
 ---
 
+## 当前发布
+
+**Web 重构 v26.14.0**（内部标识：`26.14.0-github-updates`）是当前最新版本，已包含设置中心、运营商信息、电话与短信入口、10099 本地查询代理，以及关于页的 GitHub 版本与 Star 状态检查。
+
+- [下载最新 Web 重构插件](Web重构_v26.14.0.js)
+- [查看更新日志](CHANGELOG.md)
+- [给仓库点 Star](https://github.com/LceAn/UTools-Beautifier/stargazers)
+
 ## 📦 插件列表
 
 本仓库包含 4 个已上线插件，均可通过 UTools 页面「插件功能 → 增加插件」导入：
 
-### 1. Web 重构 `Web重构_v26.12.0.js`（内部版本 v26.14.0）
+### 1. Web 重构 `Web重构_v26.14.0.js`
 
 控制台 UI 全面重构，将原始页面升级为类操作系统的多分组导航体验。
 
@@ -104,7 +112,7 @@
 
 ```
 UTools-Beautifier/
-├── Web重构_v26.12.0.js           # 控制台全面重构插件（最新）
+├── Web重构_v26.14.0.js           # 控制台全面重构插件（最新）
 ├── UTools-Beautifier-V1.0.1.js   # 插件收纳管理插件
 ├── 电话与短信_V1.3.3.js          # 拨号盘 + 短信会话插件
 ├── 运营商信息_V1.0.0.js         # SIM 识别 + 官方短信查询
@@ -128,9 +136,10 @@ MIT — Copyright © 2026 LceAn
 - `LICENSE`
 - `README.md`
 - `UTools-Beautifier-V1.0.1.js`
-- `Web重构_v26.12.0.js`
+- `Web重构_v26.14.0.js`
 - `电话与短信_V1.3.3.js`
 - `运营商信息_V1.0.0.js`
+- `10099-Tracker/`（中国广电本地查询代理）
 
 <!-- repo-readme-standard:v1 -->
 ## 仓库维护信息
