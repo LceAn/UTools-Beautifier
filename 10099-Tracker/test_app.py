@@ -6,6 +6,18 @@ from unittest import mock
 import app
 
 
+class FakeResponse:
+    def __init__(self, json_data=None, text=""):
+        self.json_data = json_data
+        self.text = text
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self.json_data
+
+
 class TrackerTests(unittest.TestCase):
     def test_parse_curl(self):
         parsed = app.parse_curl(
@@ -74,6 +86,29 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(result["balance_gb"], 1.5)
         self.assertEqual(result["used_gb"], 0.5)
         self.assertEqual(len(result["details"]), 1)
+
+    @mock.patch("app.requests.get")
+    def test_project_version_proxy_discovers_latest_webos(self, requests_get):
+        requests_get.side_effect = [
+            FakeResponse({"default_branch": "main", "stargazers_count": 24, "pushed_at": "2026-07-30T00:00:00Z"}),
+            FakeResponse([
+                {"name": "Web重构_v26.14.1.js", "download_url": "https://example/old", "html_url": "https://example/old-page"},
+                {"name": "Web重构_v26.14.2.js", "download_url": "https://example/latest", "html_url": "https://example/latest-page"},
+            ]),
+            FakeResponse(text="var VERSION = '26.14.2-local-update-proxy';"),
+        ]
+        app.PROJECT_VERSION_CACHE.clear()
+
+        result = app.project_version_response()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["tag"], "26.14.2-local-update-proxy")
+        self.assertEqual(result["source_file"], "Web重构_v26.14.2.js")
+        self.assertEqual(result["stars"], 24)
+        self.assertEqual(requests_get.call_count, 3)
+
+        cached = app.project_version_response()
+        self.assertTrue(cached["cached"])
+        self.assertEqual(requests_get.call_count, 3)
 
 
 if __name__ == "__main__":

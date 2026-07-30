@@ -2,15 +2,16 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.14.1-persisted-save';
+  var VERSION = '26.14.2-local-update-proxy';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.1.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.2.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v2';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
+  var GITHUB_LOCAL_PROXY_DEFAULTS = ['http://127.0.0.1:8000/project-version', 'http://localhost:8000/project-version'];
   var PHONE_SMS_PLUGIN_URL = GITHUB_REPO_URL;
   var OPERATOR_INFO_PLUGIN_URL = GITHUB_REPO_URL;
   var EXTERNAL_KANO_PHONE_SMS = (window.KanoPhoneSMS && typeof window.KanoPhoneSMS.open === 'function') ? window.KanoPhoneSMS : null;
@@ -1584,7 +1585,7 @@
     renderHomeUpdateNotice(info, info ? compareVersionTags(info.tag, VERSION) : 0);
   }
 
-  async function fetchGithubLatestVersion() {
+  async function fetchGithubLatestVersionDirect() {
     var apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO;
     var repoRes = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
     if (!repoRes.ok) throw new Error('GitHub 仓库信息读取失败（HTTP ' + repoRes.status + '）');
@@ -1606,6 +1607,63 @@
       pushedAt: repo.pushed_at || repo.updated_at || '',
       fetchedAt: Date.now()
     };
+  }
+
+  function getGithubLocalProxyUrls() {
+    var urls = [];
+    try {
+      var configured = localStorage.getItem('kano_operator_info_broadcast_api_v1') || '';
+      if (configured) {
+        var parsed = new URL(configured, location.href);
+        if (/^https?:$/i.test(parsed.protocol)) urls.push(parsed.origin + '/project-version');
+      }
+    } catch (e) {}
+    GITHUB_LOCAL_PROXY_DEFAULTS.forEach(function (url) {
+      if (urls.indexOf(url) === -1) urls.push(url);
+    });
+    return urls;
+  }
+
+  async function fetchGithubVersionFromLocalProxy() {
+    var urls = getGithubLocalProxyUrls();
+    var lastError = null;
+    for (var i = 0; i < urls.length; i += 1) {
+      try {
+        var res = await fetch(urls[i] + '?t=' + Date.now(), { cache: 'no-store', mode: 'cors' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var data = await res.json();
+        if (!data || data.ok === false || !data.tag) throw new Error(data && data.message ? data.message : '本地更新代理未返回版本');
+        return {
+          tag: String(data.tag),
+          url: data.url || GITHUB_REPO_URL,
+          source: '本地更新代理',
+          branch: data.branch || 'main',
+          stars: Number(data.stars || 0),
+          pushedAt: data.pushed_at || data.pushedAt || '',
+          fetchedAt: Date.now(),
+          proxyUrl: urls[i]
+        };
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError || new Error('本地更新代理不可用');
+  }
+
+  async function fetchGithubLatestVersion() {
+    var directError = null;
+    try {
+      return await fetchGithubLatestVersionDirect();
+    } catch (e) {
+      directError = e;
+    }
+    try {
+      return await fetchGithubVersionFromLocalProxy();
+    } catch (proxyError) {
+      var directMessage = directError && directError.message ? directError.message : '网络请求失败';
+      var proxyMessage = proxyError && proxyError.message ? proxyError.message : '本地代理不可用';
+      throw new Error(directMessage + '；本地更新代理：' + proxyMessage);
+    }
   }
 
   function renderHomeUpdateNotice(info, comparison) {

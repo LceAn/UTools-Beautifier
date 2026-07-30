@@ -12,10 +12,11 @@ import os
 import secrets
 import shlex
 import re
+import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 import requests
 
@@ -27,6 +28,10 @@ CONFIG_KEYS = ("Session", "Access", "User-Agent", "data")
 WEB_DIR = Path(__file__).with_name("web")
 INDEX_FILE = WEB_DIR / "index.html"
 ICON_FILE = WEB_DIR / "icon.svg"
+PROJECT_REPO = "LceAn/UTools-Beautifier"
+PROJECT_API_URL = f"https://api.github.com/repos/{PROJECT_REPO}"
+PROJECT_CACHE_TTL = 10 * 60
+PROJECT_VERSION_CACHE = {}
 
 BASE_HEADERS = {
     "Host": "wx.10099.com.cn",
@@ -247,8 +252,69 @@ def traffic_response(include_details=False):
     return response
 
 
+def version_tuple(value):
+    return tuple(int(part) for part in str(value).split("."))
+
+
+def project_version_response(force=False):
+    now = time.time()
+    cached_at = float(PROJECT_VERSION_CACHE.get("cached_at", 0) or 0)
+    cached_payload = PROJECT_VERSION_CACHE.get("payload")
+    if not force and cached_payload and now - cached_at < PROJECT_CACHE_TTL:
+        return dict(cached_payload, cached=True)
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "UTools-Beautifier-local-version-proxy",
+    }
+    repo_response = requests.get(PROJECT_API_URL, headers=headers, timeout=12)
+    repo_response.raise_for_status()
+    repo = repo_response.json()
+    branch = str(repo.get("default_branch") or "main")
+
+    contents_response = requests.get(
+        f"{PROJECT_API_URL}/contents",
+        headers=headers,
+        params={"ref": branch},
+        timeout=12,
+    )
+    contents_response.raise_for_status()
+    candidates = []
+    for item in contents_response.json():
+        name = str(item.get("name") or "")
+        match = re.fullmatch(r"Web重构_v(\d+\.\d+\.\d+)\.js", name)
+        if match and item.get("download_url"):
+            candidates.append((version_tuple(match.group(1)), item, match.group(1)))
+    if not candidates:
+        raise RuntimeError("GitHub 仓库中未找到 Web重构_v*.js")
+
+    _, latest_item, filename_version = max(candidates, key=lambda entry: entry[0])
+    source_response = requests.get(latest_item["download_url"], headers=headers, timeout=15)
+    source_response.raise_for_status()
+    version_match = re.search(r"var\s+VERSION\s*=\s*['\"]([^'\"]+)['\"]", source_response.text)
+    if not version_match:
+        raise RuntimeError("GitHub WebOS 源码中未找到 VERSION")
+
+    filename = str(latest_item.get("name") or f"Web重构_v{filename_version}.js")
+    payload = {
+        "ok": True,
+        "tag": version_match.group(1),
+        "branch": branch,
+        "stars": int(repo.get("stargazers_count") or 0),
+        "pushed_at": repo.get("pushed_at") or repo.get("updated_at") or "",
+        "source_file": filename,
+        "source": "local-project-version-proxy",
+        "url": latest_item.get("html_url") or f"https://github.com/{PROJECT_REPO}/blob/{quote(branch)}/{quote(filename)}",
+        "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "cached": False,
+    }
+    PROJECT_VERSION_CACHE.clear()
+    PROJECT_VERSION_CACHE.update({"cached_at": now, "payload": payload})
+    return dict(payload)
+
+
 class Handler(BaseHTTPRequestHandler):
-    server_version = "10099-Tracker/1.1"
+    server_version = "10099-Tracker/1.2"
 
     def authorized(self):
         supplied = self.headers.get("X-Admin-Token", "")
@@ -265,6 +331,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
         self.wfile.write(body)
 
@@ -273,6 +340,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Token")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
 
     def do_GET(self):
@@ -285,6 +353,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/health":
             self.json_response(200, {"ok": True, "configured": config_status()["configured"]})
+            return
+        if parsed.path == "/project-version":
+            try:
+                force = parse_qs(parsed.query).get("force", ["0"])[0].lower() in ("1", "true", "yes")
+                self.json_response(200, project_version_response(force=force))
+            except requests.RequestException as error:
+                self.json_response(502, {"ok": False, "error": "github_upstream_error", "message": str(error)})
+            except Exception as error:
+                self.json_response(500, {"ok": False, "error": "project_version_error", "message": str(error)})
             return
         if parsed.path == "/api/config":
             if not self.authorized():

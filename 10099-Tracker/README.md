@@ -12,6 +12,8 @@
 
 它不能凭手机号和密码自动登录，也不能免抓包生成加密参数。登录态失效后，需要从小程序重新复制一次 cURL。敏感字段不会写入插件或提交到 Git。
 
+服务还为 WebOS 关于页提供公开只读的仓库版本代理。当浏览器拦截 GitHub API 时，WebOS 会自动请求 `/project-version`；该接口只读取公开仓库元数据，不读取抓包配置和管理令牌。
+
 ## 方式一：macOS 原生运行
 
 没有安装 Docker 时，直接运行最省事：
@@ -78,6 +80,7 @@ http://127.0.0.1:8000/traffic?details=1
 | 地址 | 用途 |
 | --- | --- |
 | `/health` | 服务健康状态 |
+| `/project-version` | WebOS 版本和 GitHub Stars 的只读缓存代理 |
 | `/traffic` | 总流量、已用和剩余流量 |
 | `/traffic?details=1` | 加上流量资源明细 |
 | `/api/config` | 脱敏配置状态，需要 `X-Admin-Token` |
