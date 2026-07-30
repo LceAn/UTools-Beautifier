@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.2.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.3.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function knPluginGetBaseURL');
 const end = source.indexOf('  function knPluginMakeId');

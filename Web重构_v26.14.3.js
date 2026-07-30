@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.14.2-local-update-proxy';
+  var VERSION = '26.14.3-update-proxy-resilience';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.2.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.3.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v2';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -1624,12 +1624,14 @@
     return urls;
   }
 
-  async function fetchGithubVersionFromLocalProxy() {
+  async function fetchGithubVersionFromLocalProxy(options) {
+    options = options && typeof options === 'object' ? options : {};
     var urls = getGithubLocalProxyUrls();
     var lastError = null;
     for (var i = 0; i < urls.length; i += 1) {
       try {
-        var res = await fetch(urls[i] + '?t=' + Date.now(), { cache: 'no-store', mode: 'cors' });
+        var query = 't=' + Date.now() + (options.force ? '&force=1' : '');
+        var res = await fetch(urls[i] + '?' + query, { cache: 'no-store', mode: 'cors' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
         if (!data || data.ok === false || !data.tag) throw new Error(data && data.message ? data.message : '本地更新代理未返回版本');
@@ -1641,7 +1643,9 @@
           stars: Number(data.stars || 0),
           pushedAt: data.pushed_at || data.pushedAt || '',
           fetchedAt: Date.now(),
-          proxyUrl: urls[i]
+          proxyUrl: urls[i],
+          proxyCached: !!data.cached,
+          proxyStale: !!data.stale
         };
       } catch (e) {
         lastError = e;
@@ -1650,7 +1654,7 @@
     throw lastError || new Error('本地更新代理不可用');
   }
 
-  async function fetchGithubLatestVersion() {
+  async function fetchGithubLatestVersion(options) {
     var directError = null;
     try {
       return await fetchGithubLatestVersionDirect();
@@ -1658,7 +1662,7 @@
       directError = e;
     }
     try {
-      return await fetchGithubVersionFromLocalProxy();
+      return await fetchGithubVersionFromLocalProxy(options);
     } catch (proxyError) {
       var directMessage = directError && directError.message ? directError.message : '网络请求失败';
       var proxyMessage = proxyError && proxyError.message ? proxyError.message : '本地代理不可用';
@@ -1705,7 +1709,7 @@
     if (githubCheckPromise) return githubCheckPromise;
     if (btn) { btn.disabled = true; btn.textContent = '正在检查…'; }
     if (!options.quiet) setGithubVersionUI('正在连接 GitHub', '读取中…', '正在读取默认分支中的 WebOS 源码版本和仓库 Stars。', 'checking');
-    githubCheckPromise = fetchGithubLatestVersion().then(function (info) {
+    githubCheckPromise = fetchGithubLatestVersion(options).then(function (info) {
       saveGithubCache(info);
       var comparison = compareVersionTags(info.tag, VERSION);
       var link = '<a href="' + knEsc(info.url) + '" target="_blank" rel="noopener noreferrer">查看源码</a>';
@@ -1713,7 +1717,10 @@
       if (comparison > 0) note = '当前版本：' + knEsc(VERSION) + '。GitHub 最新版本：' + knEsc(info.tag) + '。' + link;
       else if (comparison === 0) note = '当前版本与 GitHub 默认分支中的 WebOS 源码一致。' + link;
       else note = '本地版本：' + knEsc(VERSION) + '。仓库版本：' + knEsc(info.tag) + '。本地可能是开发版。' + link;
-      setGithubVersionUI(comparison > 0 ? '发现新版本' : (comparison === 0 ? '当前已是最新版本' : '当前版本高于仓库版本'), info.tag, note, comparison > 0 ? 'new' : (comparison === 0 ? 'ok' : 'warn'), info);
+      if (info.proxyStale) note += '本地更新代理本次刷新失败，已使用最后一次成功结果。';
+      var stateText = comparison > 0 ? '发现新版本' : (comparison === 0 ? '当前已是最新版本' : '当前版本高于仓库版本');
+      if (info.proxyStale && comparison <= 0) stateText = '使用代理缓存';
+      setGithubVersionUI(stateText, info.tag, note, comparison > 0 ? 'new' : (info.proxyStale || comparison < 0 ? 'warn' : 'ok'), info);
       renderHomeUpdateNotice(info, comparison);
       return info;
     }).catch(function (err) {

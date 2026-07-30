@@ -93,22 +93,46 @@ class TrackerTests(unittest.TestCase):
             FakeResponse({"default_branch": "main", "stargazers_count": 24, "pushed_at": "2026-07-30T00:00:00Z"}),
             FakeResponse([
                 {"name": "Web重构_v26.14.1.js", "download_url": "https://example/old", "html_url": "https://example/old-page"},
-                {"name": "Web重构_v26.14.2.js", "download_url": "https://example/latest", "html_url": "https://example/latest-page"},
+                {"name": "Web重构_v26.14.3.js", "download_url": "https://example/latest", "html_url": "https://example/latest-page"},
             ]),
-            FakeResponse(text="var VERSION = '26.14.2-local-update-proxy';"),
+            FakeResponse(text="var VERSION = '26.14.3-update-proxy-resilience';"),
         ]
         app.PROJECT_VERSION_CACHE.clear()
 
         result = app.project_version_response()
         self.assertTrue(result["ok"])
-        self.assertEqual(result["tag"], "26.14.2-local-update-proxy")
-        self.assertEqual(result["source_file"], "Web重构_v26.14.2.js")
+        self.assertEqual(result["tag"], "26.14.3-update-proxy-resilience")
+        self.assertEqual(result["source_file"], "Web重构_v26.14.3.js")
         self.assertEqual(result["stars"], 24)
+        self.assertFalse(result["stale"])
         self.assertEqual(requests_get.call_count, 3)
 
         cached = app.project_version_response()
         self.assertTrue(cached["cached"])
+        self.assertFalse(cached["stale"])
         self.assertEqual(requests_get.call_count, 3)
+
+    @mock.patch("app.fetch_project_version_payload", side_effect=app.requests.ConnectionError("offline"))
+    def test_project_version_proxy_uses_stale_cache_on_refresh_failure(self, _fetch):
+        app.PROJECT_VERSION_CACHE.clear()
+        app.PROJECT_VERSION_CACHE.update({
+            "cached_at": 0,
+            "payload": {
+                "ok": True,
+                "tag": "26.14.3-update-proxy-resilience",
+                "branch": "main",
+                "stars": 24,
+                "cached": False,
+                "stale": False,
+            },
+        })
+
+        result = app.project_version_response(force=True)
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["cached"])
+        self.assertTrue(result["stale"])
+        self.assertEqual(result["refresh_error"], "ConnectionError")
 
 
 if __name__ == "__main__":

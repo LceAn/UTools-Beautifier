@@ -256,13 +256,7 @@ def version_tuple(value):
     return tuple(int(part) for part in str(value).split("."))
 
 
-def project_version_response(force=False):
-    now = time.time()
-    cached_at = float(PROJECT_VERSION_CACHE.get("cached_at", 0) or 0)
-    cached_payload = PROJECT_VERSION_CACHE.get("payload")
-    if not force and cached_payload and now - cached_at < PROJECT_CACHE_TTL:
-        return dict(cached_payload, cached=True)
-
+def fetch_project_version_payload():
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "UTools-Beautifier-local-version-proxy",
@@ -307,7 +301,30 @@ def project_version_response(force=False):
         "url": latest_item.get("html_url") or f"https://github.com/{PROJECT_REPO}/blob/{quote(branch)}/{quote(filename)}",
         "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "cached": False,
+        "stale": False,
     }
+    return payload
+
+
+def project_version_response(force=False):
+    now = time.time()
+    cached_at = float(PROJECT_VERSION_CACHE.get("cached_at", 0) or 0)
+    cached_payload = PROJECT_VERSION_CACHE.get("payload")
+    if not force and cached_payload and now - cached_at < PROJECT_CACHE_TTL:
+        return dict(cached_payload, cached=True, stale=False)
+
+    try:
+        payload = fetch_project_version_payload()
+    except Exception as error:
+        if cached_payload:
+            return dict(
+                cached_payload,
+                cached=True,
+                stale=True,
+                refresh_error=error.__class__.__name__,
+            )
+        raise
+
     PROJECT_VERSION_CACHE.clear()
     PROJECT_VERSION_CACHE.update({"cached_at": now, "payload": payload})
     return dict(payload)

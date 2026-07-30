@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.2.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.3.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function normalizeVersionTag');
 const end = source.indexOf('  var FORWARD_CONFIG_KEY');
@@ -41,10 +41,10 @@ const sandbox = {
   encodeURIComponent,
   URL,
   location: { href: 'http://192.168.100.1:2333/' },
-  VERSION: '26.14.2-local-update-proxy',
+  VERSION: '26.14.3-update-proxy-resilience',
   GITHUB_REPO: 'LceAn/UTools-Beautifier',
   GITHUB_REPO_URL: 'https://github.com/LceAn/UTools-Beautifier',
-  GITHUB_SOURCE_PATH: 'Web重构_v26.14.2.js',
+  GITHUB_SOURCE_PATH: 'Web重构_v26.14.3.js',
   GITHUB_LOCAL_PROXY_DEFAULTS: ['http://127.0.0.1:8000/project-version'],
   GITHUB_CACHE_KEY: 'test-github-cache',
   GITHUB_UPDATE_DISMISS_KEY: 'test-update-dismissed',
@@ -61,6 +61,7 @@ const sandbox = {
     getItem(key) { return storage.has(key) ? storage.get(key) : null; },
     setItem(key, value) { storage.set(key, String(value)); },
   },
+  lastProxyUrl: '',
   document: {
     getElementById(id) { return elements.get(id) || null; },
     querySelector() { return null; },
@@ -107,6 +108,7 @@ async function main() {
   assert.equal(storage.get('test-update-dismissed'), '26.15.0-next');
 
   sandbox.fetch = async (url) => {
+    sandbox.lastProxyUrl = String(url);
     if (String(url).includes('api.github.com')) throw new TypeError('Failed to fetch');
     if (String(url).startsWith('http://127.0.0.1:8000/project-version')) {
       return {
@@ -119,10 +121,12 @@ async function main() {
     }
     throw new Error(`Unexpected fallback URL: ${url}`);
   };
-  const proxyInfo = await sandbox.fetchGithubLatestVersion();
+  const proxyInfo = await sandbox.fetchGithubLatestVersion({ force: true });
   assert.equal(proxyInfo.tag, '26.14.2-local-update-proxy');
   assert.equal(proxyInfo.source, '本地更新代理');
   assert.equal(proxyInfo.stars, 24);
+  assert.equal(proxyInfo.proxyCached, false);
+  assert.ok(sandbox.lastProxyUrl.includes('force=1'));
 
   console.log('webos about/update tests: ok');
 }
