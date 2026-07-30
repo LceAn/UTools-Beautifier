@@ -12,6 +12,8 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       TRAFFIC_CONFIG_FILE: /app/data/config.json
       TRAFFIC_TOKEN_FILE: /app/data/admin_token
+      TRAFFIC_CACHE_FILE: /app/data/traffic_cache.json
+      TRAFFIC_REFRESH_SECONDS: ${TRAFFIC_REFRESH_SECONDS:-900}
     volumes:
       - ./data:/app/data
     healthcheck:

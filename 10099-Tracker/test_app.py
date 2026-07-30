@@ -1,4 +1,6 @@
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -86,6 +88,107 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(result["balance_gb"], 1.5)
         self.assertEqual(result["used_gb"], 0.5)
         self.assertEqual(len(result["details"]), 1)
+
+    @mock.patch("app.traffic_response")
+    def test_automatic_traffic_response_caches_success(self, traffic_response):
+        traffic_response.return_value = {
+            "ok": True,
+            "source": "中国广电官方接口",
+            "total_gb": 10,
+            "used_gb": 4,
+            "balance_gb": 6,
+            "updated_at": "2026-07-30 15:00:00",
+            "details": [{"name": "通用流量"}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            old_path = app.TRAFFIC_CACHE_FILE
+            try:
+                app.TRAFFIC_CACHE_FILE = Path(directory) / "traffic_cache.json"
+                app.TRAFFIC_CACHE.clear()
+                fresh = app.automatic_traffic_response(include_details=True)
+                cached = app.automatic_traffic_response(include_details=False)
+                self.assertFalse(fresh["cached"])
+                self.assertFalse(fresh["stale"])
+                self.assertTrue(fresh["automatic"])
+                self.assertTrue(cached["cached"])
+                self.assertNotIn("details", cached)
+                self.assertEqual(traffic_response.call_count, 1)
+                self.assertTrue(app.TRAFFIC_CACHE_FILE.exists())
+            finally:
+                app.TRAFFIC_CACHE_FILE = old_path
+                app.TRAFFIC_CACHE.clear()
+
+    @mock.patch("app.traffic_response", side_effect=app.LoginExpiredError("expired"))
+    def test_automatic_traffic_response_uses_stale_cache_on_expiry(self, _traffic_response):
+        with tempfile.TemporaryDirectory() as directory:
+            old_path = app.TRAFFIC_CACHE_FILE
+            try:
+                app.TRAFFIC_CACHE_FILE = Path(directory) / "traffic_cache.json"
+                app.TRAFFIC_CACHE.clear()
+                app.TRAFFIC_CACHE.update({
+                    "payload": {
+                        "ok": True,
+                        "source": "中国广电官方接口",
+                        "total_gb": 10,
+                        "used_gb": 4,
+                        "balance_gb": 6,
+                        "updated_at": "2026-07-30 15:00:00",
+                    },
+                    "cached_at": 1,
+                    "last_success_at": 1,
+                })
+                result = app.automatic_traffic_response(force=True)
+                self.assertTrue(result["cached"])
+                self.assertTrue(result["stale"])
+                self.assertEqual(result["automation_error"], "login_expired")
+                self.assertTrue(result["authorization_required"])
+            finally:
+                app.TRAFFIC_CACHE_FILE = old_path
+                app.TRAFFIC_CACHE.clear()
+
+    @mock.patch("app.traffic_response")
+    def test_health_status_does_not_wait_for_upstream_refresh(self, traffic_response):
+        refresh_started = threading.Event()
+        allow_refresh = threading.Event()
+
+        def delayed_response(include_details=False):
+            refresh_started.set()
+            allow_refresh.wait(1)
+            return {
+                "ok": True,
+                "source": "中国广电官方接口",
+                "total_gb": 10,
+                "used_gb": 4,
+                "balance_gb": 6,
+                "updated_at": "2026-07-30 15:00:00",
+            }
+
+        traffic_response.side_effect = delayed_response
+        with tempfile.TemporaryDirectory() as directory:
+            old_cache_path = app.TRAFFIC_CACHE_FILE
+            old_config_path = app.CONFIG_FILE
+            try:
+                app.TRAFFIC_CACHE_FILE = Path(directory) / "traffic_cache.json"
+                app.CONFIG_FILE = Path(directory) / "config.json"
+                app.TRAFFIC_CACHE.clear()
+                worker = threading.Thread(target=app.automatic_traffic_response, kwargs={"force": True})
+                worker.start()
+                self.assertTrue(refresh_started.wait(0.5))
+
+                started_at = time.monotonic()
+                status = app.traffic_automation_status()
+                elapsed = time.monotonic() - started_at
+
+                self.assertLess(elapsed, 0.2)
+                self.assertTrue(status["automatic"])
+                allow_refresh.set()
+                worker.join(1)
+                self.assertFalse(worker.is_alive())
+            finally:
+                allow_refresh.set()
+                app.TRAFFIC_CACHE_FILE = old_cache_path
+                app.CONFIG_FILE = old_config_path
+                app.TRAFFIC_CACHE.clear()
 
     @mock.patch("app.requests.get")
     def test_project_version_proxy_discovers_latest_webos(self, requests_get):

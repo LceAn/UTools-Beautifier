@@ -2,16 +2,16 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.14.3-update-proxy-resilience';
+  var VERSION = '26.14.4-auto-data-query';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.3.js';
-  var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v2';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.4.js';
+  var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
-  var GITHUB_LOCAL_PROXY_DEFAULTS = ['http://127.0.0.1:8000/project-version', 'http://localhost:8000/project-version'];
+  var GITHUB_LOCAL_PROXY_DEFAULTS = ['http://192.168.100.249:8000/project-version', 'http://127.0.0.1:8000/project-version', 'http://localhost:8000/project-version'];
   var PHONE_SMS_PLUGIN_URL = GITHUB_REPO_URL;
   var OPERATOR_INFO_PLUGIN_URL = GITHUB_REPO_URL;
   var EXTERNAL_KANO_PHONE_SMS = (window.KanoPhoneSMS && typeof window.KanoPhoneSMS.open === 'function') ? window.KanoPhoneSMS : null;
@@ -1585,15 +1585,73 @@
     renderHomeUpdateNotice(info, info ? compareVersionTags(info.tag, VERSION) : 0);
   }
 
+  function getWebOSProxyUrl(targetUrl) {
+    var base = '/api';
+    try {
+      if (typeof KANO_baseURL !== 'undefined' && KANO_baseURL) base = String(KANO_baseURL);
+    } catch (e) {}
+    return base.replace(/\/$/, '') + '/proxy/--' + String(targetUrl || '');
+  }
+
+  async function fetchGithubRequest(url, options) {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
+    var requestOptions = Object.assign({}, options || {});
+    if (controller) requestOptions.signal = controller.signal;
+    try {
+      return await fetch(url, requestOptions);
+    } catch (error) {
+      if (error && error.name === 'AbortError') throw new Error('版本数据请求超时');
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  async function fetchGithubLatestVersionViaWebOSProxy() {
+    var headers = { Accept: 'application/vnd.github+json' };
+    var apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO;
+    var repoRes = await fetchGithubRequest(getWebOSProxyUrl(apiUrl), { headers: headers, cache: 'no-store' });
+    if (!repoRes.ok) throw new Error('设备同源代理读取 GitHub 仓库失败（HTTP ' + repoRes.status + '）');
+    var repo = await repoRes.json();
+    var branch = repo.default_branch || 'main';
+    var contentsUrl = apiUrl + '/contents?ref=' + encodeURIComponent(branch);
+    var contentsRes = await fetchGithubRequest(getWebOSProxyUrl(contentsUrl), { headers: headers, cache: 'no-store' });
+    if (!contentsRes.ok) throw new Error('设备同源代理读取仓库文件失败（HTTP ' + contentsRes.status + '）');
+    var contents = await contentsRes.json();
+    if (!Array.isArray(contents)) throw new Error('GitHub 仓库文件列表格式不正确');
+    var candidates = contents.map(function (item) {
+      var match = String(item && item.name || '').match(/^Web重构_v(\d+\.\d+\.\d+)\.js$/);
+      return match && item.download_url ? { item: item, version: match[1] } : null;
+    }).filter(Boolean);
+    if (!candidates.length) throw new Error('GitHub 仓库中未找到 Web重构_v*.js');
+    candidates.sort(function (a, b) { return compareVersionTags(a.version, b.version); });
+    var latest = candidates[candidates.length - 1].item;
+    var sourceRes = await fetchGithubRequest(getWebOSProxyUrl(latest.download_url), { cache: 'no-store' });
+    if (!sourceRes.ok) throw new Error('设备同源代理读取 WebOS 源码失败（HTTP ' + sourceRes.status + '）');
+    var sourceText = await sourceRes.text();
+    var versionMatch = sourceText.match(/var\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (!versionMatch || !versionMatch[1]) throw new Error('未在 GitHub WebOS 源码中找到 VERSION');
+    return {
+      tag: versionMatch[1],
+      url: latest.html_url || GITHUB_REPO_URL,
+      source: '设备同源 GitHub 代理',
+      branch: branch,
+      stars: Number(repo.stargazers_count || 0),
+      pushedAt: repo.pushed_at || repo.updated_at || '',
+      fetchedAt: Date.now()
+    };
+  }
+
   async function fetchGithubLatestVersionDirect() {
     var apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO;
-    var repoRes = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+    var repoRes = await fetchGithubRequest(apiUrl, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
     if (!repoRes.ok) throw new Error('GitHub 仓库信息读取失败（HTTP ' + repoRes.status + '）');
     var repo = await repoRes.json();
     var branch = repo.default_branch || 'main';
     var sourcePath = GITHUB_SOURCE_PATH.split('/').map(encodeURIComponent).join('/');
     var sourceUrl = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/' + encodeURIComponent(branch) + '/' + sourcePath;
-    var sourceRes = await fetch(sourceUrl, { cache: 'no-store' });
+    var sourceRes = await fetchGithubRequest(sourceUrl, { cache: 'no-store' });
     if (!sourceRes.ok) throw new Error('默认分支中的 WebOS 源码读取失败（HTTP ' + sourceRes.status + '）');
     var sourceText = await sourceRes.text();
     var versionMatch = sourceText.match(/var\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
@@ -1629,32 +1687,42 @@
     var urls = getGithubLocalProxyUrls();
     var lastError = null;
     for (var i = 0; i < urls.length; i += 1) {
-      try {
-        var query = 't=' + Date.now() + (options.force ? '&force=1' : '');
-        var res = await fetch(urls[i] + '?' + query, { cache: 'no-store', mode: 'cors' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        var data = await res.json();
-        if (!data || data.ok === false || !data.tag) throw new Error(data && data.message ? data.message : '本地更新代理未返回版本');
-        return {
-          tag: String(data.tag),
-          url: data.url || GITHUB_REPO_URL,
-          source: '本地更新代理',
-          branch: data.branch || 'main',
-          stars: Number(data.stars || 0),
-          pushedAt: data.pushed_at || data.pushedAt || '',
-          fetchedAt: Date.now(),
-          proxyUrl: urls[i],
-          proxyCached: !!data.cached,
-          proxyStale: !!data.stale
-        };
-      } catch (e) {
-        lastError = e;
+      var query = 't=' + Date.now() + (options.force ? '&force=1' : '');
+      var targetUrl = urls[i] + (urls[i].indexOf('?') === -1 ? '?' : '&') + query;
+      var requestUrls = [getWebOSProxyUrl(targetUrl), targetUrl];
+      for (var j = 0; j < requestUrls.length; j += 1) {
+        try {
+          var res = await fetchGithubRequest(requestUrls[j], { cache: 'no-store', mode: j === 0 ? 'same-origin' : 'cors' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var data = await res.json();
+          if (!data || data.ok === false || !data.tag) throw new Error(data && data.message ? data.message : '本地更新代理未返回版本');
+          return {
+            tag: String(data.tag),
+            url: data.url || GITHUB_REPO_URL,
+            source: j === 0 ? '设备同源更新代理' : '本地更新代理',
+            branch: data.branch || 'main',
+            stars: Number(data.stars || 0),
+            pushedAt: data.pushed_at || data.pushedAt || '',
+            fetchedAt: Date.now(),
+            proxyUrl: urls[i],
+            proxyCached: !!data.cached,
+            proxyStale: !!data.stale
+          };
+        } catch (e) {
+          lastError = e;
+        }
       }
     }
     throw lastError || new Error('本地更新代理不可用');
   }
 
   async function fetchGithubLatestVersion(options) {
+    var sameOriginError = null;
+    try {
+      return await fetchGithubLatestVersionViaWebOSProxy();
+    } catch (e) {
+      sameOriginError = e;
+    }
     var directError = null;
     try {
       return await fetchGithubLatestVersionDirect();
@@ -1664,9 +1732,10 @@
     try {
       return await fetchGithubVersionFromLocalProxy(options);
     } catch (proxyError) {
+      var sameOriginMessage = sameOriginError && sameOriginError.message ? sameOriginError.message : '设备同源代理不可用';
       var directMessage = directError && directError.message ? directError.message : '网络请求失败';
       var proxyMessage = proxyError && proxyError.message ? proxyError.message : '本地代理不可用';
-      throw new Error(directMessage + '；本地更新代理：' + proxyMessage);
+      throw new Error(sameOriginMessage + '；直连 GitHub：' + directMessage + '；本地更新代理：' + proxyMessage);
     }
   }
 

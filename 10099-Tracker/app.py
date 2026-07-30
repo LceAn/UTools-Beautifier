@@ -12,6 +12,7 @@ import os
 import secrets
 import shlex
 import re
+import threading
 import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,6 +25,7 @@ import requests
 UPSTREAM_URL = "https://wx.10099.com.cn/contact-web/api/busi/qryUserRes"
 CONFIG_FILE = Path(os.environ.get("TRAFFIC_CONFIG_FILE", "data/config.json")).expanduser()
 TOKEN_FILE = Path(os.environ.get("TRAFFIC_TOKEN_FILE", "data/admin_token")).expanduser()
+TRAFFIC_CACHE_FILE = Path(os.environ.get("TRAFFIC_CACHE_FILE", "data/traffic_cache.json")).expanduser()
 CONFIG_KEYS = ("Session", "Access", "User-Agent", "data")
 WEB_DIR = Path(__file__).with_name("web")
 INDEX_FILE = WEB_DIR / "index.html"
@@ -32,6 +34,11 @@ PROJECT_REPO = "LceAn/UTools-Beautifier"
 PROJECT_API_URL = f"https://api.github.com/repos/{PROJECT_REPO}"
 PROJECT_CACHE_TTL = 10 * 60
 PROJECT_VERSION_CACHE = {}
+TRAFFIC_REFRESH_INTERVAL = max(60, int(os.environ.get("TRAFFIC_REFRESH_SECONDS", "900")))
+TRAFFIC_CACHE = {}
+TRAFFIC_CACHE_LOCK = threading.Lock()
+TRAFFIC_REFRESH_LOCK = threading.Lock()
+TRAFFIC_REFRESH_EVENT = threading.Event()
 
 BASE_HEADERS = {
     "Host": "wx.10099.com.cn",
@@ -132,6 +139,8 @@ def config_status():
         "payload": bool(str(raw.get("data", "")).strip()),
         "updated_at": datetime.fromtimestamp(CONFIG_FILE.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
         if CONFIG_FILE.exists() else "",
+        "automatic_query": True,
+        "refresh_interval_seconds": TRAFFIC_REFRESH_INTERVAL,
     }
 
 
@@ -186,6 +195,10 @@ def save_curl(curl_text):
     config = read_json(CONFIG_FILE) if CONFIG_FILE.exists() else {}
     config.update(parse_curl(curl_text))
     write_json(CONFIG_FILE, config)
+    with TRAFFIC_CACHE_LOCK:
+        TRAFFIC_CACHE.pop("last_error", None)
+        TRAFFIC_CACHE.pop("error_code", None)
+    TRAFFIC_REFRESH_EVENT.set()
     return config_status()
 
 
@@ -250,6 +263,136 @@ def traffic_response(include_details=False):
     if include_details:
         response["details"] = result["details"]
     return response
+
+
+def timestamp_text(value):
+    if not value:
+        return ""
+    return datetime.fromtimestamp(float(value)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def load_traffic_cache():
+    if not TRAFFIC_CACHE_FILE.exists():
+        return
+    try:
+        saved = read_json(TRAFFIC_CACHE_FILE)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return
+    payload = saved.get("payload")
+    if not isinstance(payload, dict) or not payload.get("ok"):
+        return
+    with TRAFFIC_CACHE_LOCK:
+        TRAFFIC_CACHE.clear()
+        TRAFFIC_CACHE.update(saved)
+
+
+def persist_traffic_cache():
+    payload = {
+        key: TRAFFIC_CACHE.get(key)
+        for key in ("payload", "cached_at", "last_attempt_at", "last_success_at", "last_error", "error_code")
+        if TRAFFIC_CACHE.get(key) not in (None, "")
+    }
+    if payload.get("payload"):
+        write_json(TRAFFIC_CACHE_FILE, payload)
+
+
+def traffic_error_code(error):
+    if isinstance(error, LoginExpiredError):
+        return "login_expired"
+    if isinstance(error, (FileNotFoundError, ValueError, json.JSONDecodeError)):
+        return "config_error"
+    if isinstance(error, requests.RequestException):
+        return "upstream_error"
+    return "server_error"
+
+
+def format_cached_traffic(payload, include_details, cached, stale):
+    result = dict(payload)
+    if not include_details:
+        result.pop("details", None)
+    result.update({
+        "automatic": True,
+        "cached": bool(cached),
+        "stale": bool(stale),
+        "refresh_interval_seconds": TRAFFIC_REFRESH_INTERVAL,
+        "last_success_at": timestamp_text(TRAFFIC_CACHE.get("last_success_at")),
+        "last_attempt_at": timestamp_text(TRAFFIC_CACHE.get("last_attempt_at")),
+    })
+    error_code = str(TRAFFIC_CACHE.get("error_code") or "")
+    if stale and error_code:
+        result["automation_error"] = error_code
+        result["authorization_required"] = error_code in ("login_expired", "config_error")
+    return result
+
+
+def automatic_traffic_response(include_details=False, force=False):
+    now = time.time()
+    with TRAFFIC_CACHE_LOCK:
+        payload = TRAFFIC_CACHE.get("payload")
+        cached_at = float(TRAFFIC_CACHE.get("cached_at", 0) or 0)
+        if not force and payload and now - cached_at < TRAFFIC_REFRESH_INTERVAL:
+            return format_cached_traffic(payload, include_details, cached=True, stale=False)
+
+    with TRAFFIC_REFRESH_LOCK:
+        now = time.time()
+        with TRAFFIC_CACHE_LOCK:
+            payload = TRAFFIC_CACHE.get("payload")
+            cached_at = float(TRAFFIC_CACHE.get("cached_at", 0) or 0)
+            if not force and payload and now - cached_at < TRAFFIC_REFRESH_INTERVAL:
+                return format_cached_traffic(payload, include_details, cached=True, stale=False)
+            TRAFFIC_CACHE["last_attempt_at"] = now
+
+        try:
+            fresh = traffic_response(include_details=True)
+        except Exception as error:
+            code = traffic_error_code(error)
+            with TRAFFIC_CACHE_LOCK:
+                TRAFFIC_CACHE["error_code"] = code
+                TRAFFIC_CACHE["last_error"] = error.__class__.__name__
+                persist_traffic_cache()
+                payload = TRAFFIC_CACHE.get("payload")
+                if payload:
+                    return format_cached_traffic(payload, include_details, cached=True, stale=True)
+            raise
+
+        completed_at = time.time()
+        with TRAFFIC_CACHE_LOCK:
+            TRAFFIC_CACHE.clear()
+            TRAFFIC_CACHE.update({
+                "payload": fresh,
+                "cached_at": completed_at,
+                "last_attempt_at": now,
+                "last_success_at": completed_at,
+            })
+            persist_traffic_cache()
+            return format_cached_traffic(fresh, include_details, cached=False, stale=False)
+
+
+def traffic_automation_status():
+    config = config_status()
+    with TRAFFIC_CACHE_LOCK:
+        error_code = str(TRAFFIC_CACHE.get("error_code") or "")
+        return {
+            "configured": config["configured"],
+            "automatic": True,
+            "refresh_interval_seconds": TRAFFIC_REFRESH_INTERVAL,
+            "cache_available": bool(TRAFFIC_CACHE.get("payload")),
+            "last_success_at": timestamp_text(TRAFFIC_CACHE.get("last_success_at")),
+            "last_attempt_at": timestamp_text(TRAFFIC_CACHE.get("last_attempt_at")),
+            "error": error_code,
+            "authorization_required": not config["configured"] or error_code in ("login_expired", "config_error"),
+        }
+
+
+def traffic_refresh_worker():
+    while True:
+        if config_status()["configured"]:
+            try:
+                automatic_traffic_response(include_details=True, force=True)
+            except Exception as error:
+                print(f"广电自动查询失败：{error.__class__.__name__}", flush=True)
+        TRAFFIC_REFRESH_EVENT.wait(TRAFFIC_REFRESH_INTERVAL)
+        TRAFFIC_REFRESH_EVENT.clear()
 
 
 def version_tuple(value):
@@ -331,7 +474,7 @@ def project_version_response(force=False):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "10099-Tracker/1.2"
+    server_version = "10099-Tracker/1.3"
 
     def authorized(self):
         supplied = self.headers.get("X-Admin-Token", "")
@@ -369,7 +512,7 @@ class Handler(BaseHTTPRequestHandler):
             self.file_response(ICON_FILE, "image/svg+xml; charset=utf-8")
             return
         if parsed.path == "/health":
-            self.json_response(200, {"ok": True, "configured": config_status()["configured"]})
+            self.json_response(200, {"ok": True, **traffic_automation_status()})
             return
         if parsed.path == "/project-version":
             try:
@@ -390,8 +533,9 @@ class Handler(BaseHTTPRequestHandler):
             self.json_response(404, {"ok": False, "error": "not_found"})
             return
         include_details = parse_qs(parsed.query).get("details", ["0"])[0].lower() in ("1", "true", "yes")
+        force = parse_qs(parsed.query).get("refresh", ["0"])[0].lower() in ("1", "true", "yes")
         try:
-            self.json_response(200, traffic_response(include_details))
+            self.json_response(200, automatic_traffic_response(include_details, force=force))
         except LoginExpiredError as error:
             self.json_response(401, {"ok": False, "error": "login_expired", "message": "登录态已过期，请在代理配置页粘贴新的 curl。"})
             print(f"登录态已过期：{error}", flush=True)
@@ -445,9 +589,12 @@ class Handler(BaseHTTPRequestHandler):
 
 def run(host, port):
     token = admin_token()
+    load_traffic_cache()
+    threading.Thread(target=traffic_refresh_worker, name="10099-auto-refresh", daemon=True).start()
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"配置页面：http://{host}:{port}/", flush=True)
     print(f"插件 API：http://{host}:{port}/traffic?details=1", flush=True)
+    print(f"自动查询：每 {TRAFFIC_REFRESH_INTERVAL // 60} 分钟刷新", flush=True)
     print(f"管理令牌：{token}", flush=True)
     try:
         server.serve_forever()

@@ -4,13 +4,15 @@
 
 ## 它如何工作
 
-中国广电小程序查询请求包含短期有效的 `Session`、`Access` 和加密 `data`。服务在本机保存这些字段，代替浏览器请求：
+中国广电小程序查询请求包含短期有效的 `Session`、`Access` 和加密 `data`。服务在本机保存这些字段，启动后自动查询并向浏览器提供缓存结果：
 
 ```text
 运营商信息插件 -> 本机 /traffic -> wx.10099.com.cn/qryUserRes
 ```
 
-它不能凭手机号和密码自动登录，也不能免抓包生成加密参数。登录态失效后，需要从小程序重新复制一次 cURL。敏感字段不会写入插件或提交到 Git。
+首次授权后，服务默认每 15 分钟刷新一次，并将最近成功的非敏感结果写入 `data/traffic_cache.json`。登录态失效或官方接口临时不可达时，`/traffic` 会继续返回最近成功结果，并标记 `stale: true`。
+
+它不能凭手机号和密码自动登录，也不能免授权生成小程序的动态加密参数。因此首次使用和登录态失效时仍需要从小程序复制一次 cURL；之后的日常查询、缓存和刷新都是自动的。敏感字段不会写入插件或提交到 Git。
 
 服务还为 WebOS 关于页提供公开只读的仓库版本代理。当浏览器拦截 GitHub API 时，WebOS 会自动请求 `/project-version`；该接口只读取公开仓库元数据，不读取抓包配置和管理令牌。结果默认缓存 10 分钟；`force=1` 可强制刷新，GitHub 临时不可达时会返回最后一次成功结果并标记 `stale: true`。
 
@@ -61,13 +63,13 @@ docker compose down
 
 4. 将该请求复制为 cURL。
 5. 打开本地配置页，输入 `data/admin_token` 中的管理令牌。
-6. 粘贴完整 cURL，点击“解析并保存”，再点击“查询”。
+6. 粘贴完整 cURL，点击“解析并保存”。服务会立即启动自动查询，不需要逐次手工执行。
 
 不要把 cURL、`config.json` 或管理令牌发到聊天、Issue 或 Git 仓库。
 
 ## 连接运营商信息插件
 
-若 UFI-TOOLS 页面和服务都在当前 Mac 的浏览器中打开，在插件的“本地查询 API”填写：
+插件会自动尝试已保存的服务地址、`127.0.0.1:8000` 与当前 F50 局域网的 Mac 服务，并自动选择直连或 UFI-TOOLS `/api/proxy/--` 转发，无需在插件界面手工填写 URL。服务的标准接口仍为：
 
 ```text
 http://127.0.0.1:8000/traffic?details=1
@@ -79,10 +81,11 @@ http://127.0.0.1:8000/traffic?details=1
 
 | 地址 | 用途 |
 | --- | --- |
-| `/health` | 服务健康状态 |
+| `/health` | 服务、自动查询、缓存与授权状态 |
 | `/project-version` | WebOS 版本和 GitHub Stars 的只读缓存代理 |
-| `/traffic` | 总流量、已用和剩余流量 |
+| `/traffic` | 总流量、已用和剩余流量，默认读取自动缓存 |
 | `/traffic?details=1` | 加上流量资源明细 |
+| `/traffic?details=1&refresh=1` | 立即刷新官方接口 |
 | `/api/config` | 脱敏配置状态，需要 `X-Admin-Token` |
 | `/api/extract-curl` | 保存 cURL，需要 `X-Admin-Token` |
 
@@ -93,4 +96,4 @@ cd /Users/lcean/Documents/F50/10099-Tracker
 python3 -m unittest -v
 ```
 
-没有有效抓包配置时，`/traffic` 返回 `config_error`；这表示代理服务已工作，只是还没有可用于官方接口的登录态。
+没有有效授权配置和历史缓存时，`/traffic` 返回 `config_error`；这表示代理服务已工作，只是还没有可用于官方接口的动态登录态。

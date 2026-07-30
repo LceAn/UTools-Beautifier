@@ -3,7 +3,7 @@
   'use strict';
 
   var TITLE = '运营商信息';
-  var VERSION = '1.2.0-broadcast-local-api';
+  var VERSION = '1.3.0-broadcast-auto-query';
   var STYLE_ID = 'kano-operator-info-style';
   var MODAL_ID = 'kano-operator-info-modal';
   var BUTTON_ID = 'kano-operator-info-button';
@@ -11,7 +11,13 @@
   var BROADCAST_API_KEY = 'kano_operator_info_broadcast_api_v1';
   var POLL_INTERVAL = 7000;
   var POLL_TIMEOUT = 90000;
-  var API_TIMEOUT = 12000;
+  var API_TIMEOUT = 8000;
+  var BROADCAST_POLL_INTERVAL = 5 * 60 * 1000;
+  var BROADCAST_DEFAULT_API_URLS = [
+    'http://192.168.100.249:8000/traffic?details=1',
+    'http://127.0.0.1:8000/traffic?details=1',
+    'http://localhost:8000/traffic?details=1'
+  ];
 
   var state = {
     snapshot: {},
@@ -24,8 +30,13 @@
     repliesBusy: false,
     proxyBusy: false,
     proxyError: '',
+    proxySourceUrl: '',
+    proxyStale: false,
+    proxyAuthorizationRequired: false,
+    proxyTimer: null,
     busy: false,
     pollTimer: null,
+    autoReplyTimer: null,
     pollDeadline: 0,
     pendingQuery: null,
     escHandler: null
@@ -156,9 +167,9 @@
     var errorCode = clean(payload && payload.error).toLowerCase();
     var message = clean(payload && (payload.message || payload.msg));
     if (status === 401 || status === 403 || errorCode === 'login_expired') {
-      return '广电登录态已过期，请在本地代理中更新小程序请求配置';
+      return '广电登录态已过期，请在本地服务完成一次授权更新';
     }
-    if (errorCode === 'config_error') return message || '本地代理配置不完整';
+    if (errorCode === 'config_error') return '广电首次授权未完成，请在本地服务配置一次小程序登录态';
     if (errorCode === 'upstream_error') return '本地代理无法连接广电官方接口' + (message ? '：' + message : '');
     if (message) return message;
     return status ? '本地查询 API 请求失败：HTTP ' + status : '本地查询 API 返回失败状态';
@@ -197,11 +208,23 @@
       raw: '',
       replyKind: 'proxy',
       sourceNumber: '10099 API',
-      details: details
+      details: details,
+      proxyCached: !!source.cached,
+      proxyStale: !!source.stale,
+      authorizationRequired: !!source.authorization_required,
+      automatic: source.automatic !== false,
+      lastSuccessAt: clean(source.last_success_at)
     };
   }
 
-  async function fetchBroadcastApi(url) {
+  function getBroadcastRequestUrls(url) {
+    var target = clean(url);
+    var proxyUrl = getBaseURL().replace(/\/$/, '') + '/proxy/--' + target;
+    var isLoopback = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::|\/)/i.test(target);
+    return isLoopback ? [target, proxyUrl] : [proxyUrl, target];
+  }
+
+  async function fetchBroadcastApiRequest(url) {
     var controller = typeof AbortController === 'function' ? new AbortController() : null;
     var timer = controller ? setTimeout(function () { controller.abort(); }, API_TIMEOUT) : null;
     try {
@@ -228,6 +251,20 @@
     } finally {
       if (timer) clearTimeout(timer);
     }
+  }
+
+  async function fetchBroadcastApi(url) {
+    var requestUrls = getBroadcastRequestUrls(url);
+    var lastError = null;
+    for (var i = 0; i < requestUrls.length; i += 1) {
+      try {
+        return await fetchBroadcastApiRequest(requestUrls[i]);
+      } catch (error) {
+        lastError = error;
+        if (/首次授权|登录态已过期/.test(error && error.message || '')) throw error;
+      }
+    }
+    throw lastError || new Error('无法连接广电自动查询服务');
   }
 
   function firstValue(object, keys) {
@@ -309,9 +346,20 @@
     } catch (e) {}
   }
 
+  function getBroadcastApiUrls() {
+    var urls = [];
+    try {
+      var configured = clean(localStorage.getItem(BROADCAST_API_KEY));
+      if (configured) urls.push(configured);
+    } catch (e) {}
+    BROADCAST_DEFAULT_API_URLS.forEach(function (url) {
+      if (urls.indexOf(url) === -1) urls.push(url);
+    });
+    return urls;
+  }
+
   function getBroadcastApiUrl() {
-    try { return clean(localStorage.getItem(BROADCAST_API_KEY)); }
-    catch (e) { return ''; }
+    return getBroadcastApiUrls()[0] || '';
   }
 
   function normalizeBroadcastApiUrl(value) {
@@ -675,6 +723,18 @@
     state.pollDeadline = 0;
   }
 
+  function stopAutoReplyPolling() {
+    if (state.autoReplyTimer) clearInterval(state.autoReplyTimer);
+    state.autoReplyTimer = null;
+  }
+
+  function startAutoReplyPolling() {
+    stopAutoReplyPolling();
+    state.autoReplyTimer = setInterval(function () {
+      if (!state.repliesBusy) readReplies(false).catch(function () {});
+    }, 60 * 1000);
+  }
+
   function startReplyPolling(existingIds) {
     stopReplyPolling();
     state.pollDeadline = Date.now() + POLL_TIMEOUT;
@@ -731,29 +791,49 @@
 
   async function queryBroadcastApi(manual) {
     if (state.proxyBusy) return state.proxyParsed;
-    var url = getBroadcastApiUrl();
-    if (!url) {
-      setStatus('请先保存本地查询 API 地址', 'error');
-      if (manual) toast('请先配置本地查询 API', 'red');
-      return {};
-    }
+    var urls = getBroadcastApiUrls();
 
     state.proxyBusy = true;
     state.proxyError = '';
     renderQueryActions();
     renderParsed();
-    setStatus('正在通过本地代理查询广电官方接口', 'loading');
+    setStatus('正在自动读取广电官方结果', 'loading');
     try {
-      state.proxyParsed = await fetchBroadcastApi(url);
+      var lastError = null;
+      var authError = null;
+      for (var i = 0; i < urls.length; i += 1) {
+        var targetUrl = urls[i];
+        if (manual) targetUrl += (targetUrl.indexOf('?') === -1 ? '?' : '&') + 'refresh=1';
+        try {
+          state.proxyParsed = await fetchBroadcastApi(targetUrl);
+          state.proxySourceUrl = urls[i];
+          state.proxyStale = !!state.proxyParsed.proxyStale;
+          state.proxyAuthorizationRequired = !!state.proxyParsed.authorizationRequired;
+          try { setBroadcastApiUrl(urls[i]); } catch (e) {}
+          lastError = null;
+          break;
+        } catch (error) {
+          lastError = error;
+          if (/首次授权|登录态已过期/.test(error && error.message || '')) authError = error;
+        }
+      }
+      if (lastError) throw authError || lastError;
       syncEffectiveParsed();
       renderParsed();
-      setStatus('广电官方流量已更新（经本地代理）', 'success');
+      setStatus(state.proxyStale ? '已显示最近一次广电官方结果，当前授权需更新' : '广电官方结果已自动更新', state.proxyStale ? 'idle' : 'success');
       if (manual) toast('广电官方流量已更新', 'green');
+      startBroadcastPolling();
       return state.proxyParsed;
     } catch (error) {
       state.proxyError = error.message || '本地查询 API 请求失败';
+      state.proxyAuthorizationRequired = /首次授权|登录态已过期/.test(state.proxyError);
+      syncEffectiveParsed();
       renderParsed();
-      setStatus(state.proxyError, 'error');
+      if (hasParsedCarrierData(state.smsParsed)) {
+        setStatus('已自动读取最近 10099 官方短信结果', 'success');
+      } else {
+        setStatus(state.proxyError, 'error');
+      }
       if (manual) toast(state.proxyError, 'red');
       return {};
     } finally {
@@ -763,28 +843,26 @@
     }
   }
 
-  function saveBroadcastApi() {
-    var input = document.getElementById('kano-operator-api-url');
-    if (!input) return;
+  function stopBroadcastPolling() {
+    if (state.proxyTimer) clearInterval(state.proxyTimer);
+    state.proxyTimer = null;
+  }
+
+  function startBroadcastPolling() {
+    stopBroadcastPolling();
+    if (state.provider !== 'broadcast') return;
+    state.proxyTimer = setInterval(function () {
+      if (state.provider === 'broadcast') queryBroadcastApi(false).catch(function () {});
+    }, BROADCAST_POLL_INTERVAL);
+  }
+
+  function openBroadcastProxySettings() {
+    var url = state.proxySourceUrl || getBroadcastApiUrl();
     try {
-      var url = setBroadcastApiUrl(input.value);
-      input.value = url;
-      state.proxyError = '';
-      if (!url) {
-        state.proxyParsed = {};
-        syncEffectiveParsed();
-        renderParsed();
-        renderQueryActions();
-        setStatus('已清除本地查询 API 地址', 'idle');
-        toast('本地查询 API 地址已清除', 'green');
-        return;
-      }
-      renderQueryActions();
-      setStatus('本地查询 API 地址已保存，正在测试连接', 'loading');
-      queryBroadcastApi(true);
+      var parsed = new URL(url, window.location.href);
+      window.open(parsed.origin + '/', '_blank', 'noopener,noreferrer');
     } catch (error) {
-      setStatus(error.message || '本地查询 API 地址保存失败', 'error');
-      toast(error.message || '保存失败', 'red');
+      toast('无法打开广电授权设置', 'red');
     }
   }
 
@@ -872,28 +950,23 @@
     }
 
     if (state.provider === 'broadcast') {
-      var apiUrl = getBroadcastApiUrl();
+      var hasSmsResult = hasParsedCarrierData(state.smsParsed);
+      var autoState = state.proxyBusy ? '正在更新' : (state.proxyParsed.replyKind === 'proxy' ? (state.proxyStale ? '已保留缓存' : '已自动更新') : (hasSmsResult ? '已读取官方短信' : (state.proxyError ? (state.proxyAuthorizationRequired ? '等待可选授权' : '连接异常') : '正在自动发现')));
+      var autoDetail = state.proxyParsed.lastSuccessAt ? '最近成功 ' + state.proxyParsed.lastSuccessAt : (state.smsParsed.sourceDate ? '官方短信 ' + state.smsParsed.sourceDate : '短信自动读取 / API 每 15 分钟');
       box.innerHTML = '' +
-        '<div class="kano-operator-api-config"><label for="kano-operator-api-url">本地查询 API</label><div><input id="kano-operator-api-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://局域网地址:8000/traffic?details=1" value="' + escapeHTML(apiUrl) + '"><button type="button" data-operator-api-save>保存</button></div><small>只保存代理地址；广电 Access / Session 留在本地代理端。</small></div>' +
-        '<button type="button" class="kano-operator-query-btn api" data-operator-api-query' + (!apiUrl || state.proxyBusy ? ' disabled' : '') + '><span>' + (state.proxyBusy ? '正在查询' : '查询官方流量') + '</span><small>本地代理 / 官方小程序接口</small></button>' +
+        '<div class="kano-operator-auto-service"><div><b>广电自动查询</b><span>' + escapeHTML(autoState) + '</span><small>' + escapeHTML(autoDetail) + '</small></div><button type="button" data-operator-api-query title="立即刷新" aria-label="立即刷新"' + (state.proxyBusy ? ' disabled' : '') + '>↻</button></div>' +
+        (state.proxyAuthorizationRequired ? '<button type="button" class="kano-operator-query-btn api" data-operator-api-settings><span>API 授权设置</span><small>可选增强；官方短信结果仍会自动读取</small></button>' : '') +
         '<button type="button" class="kano-operator-query-btn call" data-operator-call><span>拨打 10099</span><small>由电话与短信插件拨号</small></button>' +
         '<button type="button" class="kano-operator-query-btn official" data-operator-official><span>中国广电官网</span><small>10099.com.cn / 新标签</small></button>' +
         '<div class="kano-operator-channel-note error">本机实测：收到 10099 菜单后回复 1 或 2，均被判定为无效指令；该短信入口已停用。</div>';
-      var saveButton = box.querySelector('[data-operator-api-save]');
       var queryButton = box.querySelector('[data-operator-api-query]');
+      var settingsButton = box.querySelector('[data-operator-api-settings]');
       var callButton = box.querySelector('[data-operator-call]');
       var officialBroadcastButton = box.querySelector('[data-operator-official]');
-      var apiInput = box.querySelector('#kano-operator-api-url');
-      if (saveButton) saveButton.onclick = saveBroadcastApi;
       if (queryButton) queryButton.onclick = function () { queryBroadcastApi(true); };
+      if (settingsButton) settingsButton.onclick = openBroadcastProxySettings;
       if (callButton) callButton.onclick = dialProviderService;
       if (officialBroadcastButton) officialBroadcastButton.onclick = openOfficialHall;
-      if (apiInput) apiInput.onkeydown = function (event) {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          saveBroadcastApi();
-        }
-      };
       return;
     }
 
@@ -1039,6 +1112,7 @@
       '#' + MODAL_ID + ' .kano-operator-query-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}' +
       '#' + MODAL_ID + ' .kano-operator-query-btn{min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border-radius:8px;border:1px solid rgba(99,164,255,.24);background:rgba(99,164,255,.10);color:var(--ko-text);cursor:pointer;text-align:left}#' + MODAL_ID + ' .kano-operator-query-btn:hover{background:rgba(99,164,255,.16)}#' + MODAL_ID + ' .kano-operator-query-btn:disabled{opacity:.45;cursor:not-allowed}#' + MODAL_ID + ' .kano-operator-query-btn.official{border-color:rgba(75,190,126,.28);background:rgba(75,190,126,.09)}#' + MODAL_ID + ' .kano-operator-query-btn.official:hover{background:rgba(75,190,126,.15)}#' + MODAL_ID + ' .kano-operator-query-btn span{font-size:13px;font-weight:850}#' + MODAL_ID + ' .kano-operator-query-btn small{font-size:10px;color:var(--ko-muted);text-align:right}#' + MODAL_ID + ' .kano-operator-channel-note{grid-column:1/-1;padding:8px 10px;border-left:2px solid rgba(75,190,126,.45);font-size:10px;line-height:1.55;color:var(--ko-muted)}' +
       '#' + MODAL_ID + ' .kano-operator-query-btn.api{border-color:rgba(88,176,255,.32);background:rgba(69,153,236,.12)}#' + MODAL_ID + ' .kano-operator-query-btn.call{border-color:rgba(245,190,72,.30);background:rgba(245,190,72,.09)}' +
+      '#' + MODAL_ID + ' .kano-operator-auto-service{grid-column:1/-1;min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(75,190,126,.26);border-radius:8px;background:rgba(75,190,126,.08)}#' + MODAL_ID + ' .kano-operator-auto-service>div{min-width:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;align-items:center}#' + MODAL_ID + ' .kano-operator-auto-service b{font-size:12px}#' + MODAL_ID + ' .kano-operator-auto-service span{font-size:10px;color:#bceec9}#' + MODAL_ID + ' .kano-operator-auto-service small{grid-column:1/-1;font-size:9px;color:var(--ko-muted)}#' + MODAL_ID + ' .kano-operator-auto-service button{width:36px;height:36px;flex:0 0 36px;border:1px solid rgba(75,190,126,.28);border-radius:8px;background:rgba(75,190,126,.10);color:var(--ko-text);font-size:17px;cursor:pointer}' +
       '#' + MODAL_ID + ' .kano-operator-api-config{grid-column:1/-1;display:grid;gap:6px}#' + MODAL_ID + ' .kano-operator-api-config>label{font-size:11px;font-weight:800;color:var(--ko-text)}#' + MODAL_ID + ' .kano-operator-api-config>div{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:8px}#' + MODAL_ID + ' .kano-operator-api-config input{width:100%;height:38px;padding:0 10px;border-radius:8px;border:1px solid var(--ko-border);background:#111821;color:var(--ko-text);outline:none;font:inherit;font-size:11px}#' + MODAL_ID + ' .kano-operator-api-config input:focus{border-color:rgba(99,164,255,.55)}#' + MODAL_ID + ' .kano-operator-api-config button{height:38px;border-radius:8px;border:1px solid rgba(99,164,255,.28);background:rgba(99,164,255,.11);color:var(--ko-text);cursor:pointer;font-size:11px;font-weight:800}#' + MODAL_ID + ' .kano-operator-api-config small{font-size:9px;line-height:1.45;color:var(--ko-muted)}#' + MODAL_ID + ' .kano-operator-channel-note.error{border-left-color:rgba(255,95,104,.62);color:#ffc6ca;background:rgba(255,95,104,.055)}' +
       '#' + MODAL_ID + ' .kano-operator-status{min-height:38px;display:flex;align-items:center;padding:0 12px;border-radius:8px;border:1px solid var(--ko-border);background:rgba(255,255,255,.035);font-size:11px;color:var(--ko-muted)}#' + MODAL_ID + ' .kano-operator-status.success{color:#bceec9;border-color:rgba(57,210,121,.26);background:rgba(57,210,121,.08)}#' + MODAL_ID + ' .kano-operator-status.error{color:#ffd0d3;border-color:rgba(255,95,104,.26);background:rgba(255,95,104,.08)}#' + MODAL_ID + ' .kano-operator-status.loading{color:#cde2ff;border-color:rgba(99,164,255,.28);background:rgba(99,164,255,.08)}' +
       '#' + MODAL_ID + ' .kano-operator-replies-section{min-height:0;display:flex;flex-direction:column;padding:16px}#' + MODAL_ID + ' .kano-operator-replies{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}' +
@@ -1060,7 +1134,7 @@
         '<header class="kano-operator-head"><div class="kano-operator-head-left"><div class="kano-operator-mark" aria-hidden="true">◎</div><div class="kano-operator-heading"><h2 id="kano-operator-title">运营商信息</h2><p>SIM 识别与官方查询渠道</p></div></div><div class="kano-operator-head-actions"><button type="button" class="kano-operator-icon-btn" data-operator-action="refresh" title="刷新" aria-label="刷新">↻</button><button type="button" class="kano-operator-icon-btn" data-operator-action="close" title="关闭" aria-label="关闭">×</button></div></header>' +
         '<div class="kano-operator-body"><aside class="kano-operator-sidebar"><div id="kano-operator-badge" class="kano-operator-badge unknown">未识别</div><div class="kano-operator-provider-row"><label for="kano-operator-provider">运营商选择</label><select id="kano-operator-provider"><option value="auto">自动识别</option><option value="mobile">中国移动</option><option value="unicom">中国联通</option><option value="telecom">中国电信</option><option value="broadcast">中国广电</option></select></div><div id="kano-operator-identity" class="kano-operator-identity"></div></aside>' +
         '<main class="kano-operator-main"><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询结果</b><span id="kano-operator-result-source">等待读取官方回执</span></div><div id="kano-operator-parsed" class="kano-operator-results"></div></section><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询渠道</b><span id="kano-operator-channel-hint">短信发送前需要确认</span></div><div id="kano-operator-query-actions" class="kano-operator-query-actions"></div></section><section class="kano-operator-section"><div id="kano-operator-status" class="kano-operator-status idle">等待刷新</div></section><section class="kano-operator-replies-section"><div class="kano-operator-section-head"><b>查询回复</b><button type="button" class="kano-operator-icon-btn" data-operator-action="replies" title="刷新回复" aria-label="刷新回复">↻</button></div><div id="kano-operator-replies" class="kano-operator-replies"></div></section></main></div>' +
-        '<footer class="kano-operator-footer"><span>敏感登录态仅保存在自托管代理端；插件只保存 API 地址。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
+        '<footer class="kano-operator-footer"><span>广电结果由本地服务定时刷新；敏感登录态不进入插件。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
       '</section>';
     modal.addEventListener('click', function (event) { if (event.target === modal) close(); });
     document.body.appendChild(modal);
@@ -1079,7 +1153,8 @@
       state.proxyError = '';
       renderAll();
       readReplies(false).then(function () {
-        if (state.provider === 'broadcast' && getBroadcastApiUrl()) queryBroadcastApi(false);
+        if (state.provider === 'broadcast') queryBroadcastApi(false);
+        else stopBroadcastPolling();
       });
     };
     return modal;
@@ -1123,6 +1198,7 @@
     if (!state.repliesLoaded) state.repliesBusy = true;
     renderAll();
     try { await refresh(false); } catch (e) {}
+    startAutoReplyPolling();
   }
 
   function close() {
@@ -1136,6 +1212,8 @@
 
   function destroy() {
     stopReplyPolling();
+    stopAutoReplyPolling();
+    stopBroadcastPolling();
     close();
     var modal = document.getElementById(MODAL_ID);
     var style = document.getElementById(STYLE_ID);
@@ -1178,6 +1256,9 @@
   window.KanoCarrierInfo = api;
   syncWebOSCard();
   setTimeout(syncWebOSCard, 900);
+  setTimeout(function () {
+    refresh(false).catch(function () {}).finally(startAutoReplyPolling);
+  }, 1200);
   document.dispatchEvent(new CustomEvent('kano:operator-info-ready', { detail: { version: VERSION } }));
 }());
 //</script>

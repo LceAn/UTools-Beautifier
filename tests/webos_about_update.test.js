@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.3.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.4.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function normalizeVersionTag');
 const end = source.indexOf('  var FORWARD_CONFIG_KEY');
@@ -37,18 +37,22 @@ const sandbox = {
   Number,
   Object,
   Promise,
+  AbortController,
+  setTimeout,
+  clearTimeout,
   String,
   encodeURIComponent,
   URL,
   location: { href: 'http://192.168.100.1:2333/' },
-  VERSION: '26.14.3-update-proxy-resilience',
+  VERSION: '26.14.4-auto-data-query',
   GITHUB_REPO: 'LceAn/UTools-Beautifier',
   GITHUB_REPO_URL: 'https://github.com/LceAn/UTools-Beautifier',
-  GITHUB_SOURCE_PATH: 'Web重构_v26.14.3.js',
+  GITHUB_SOURCE_PATH: 'Web重构_v26.14.4.js',
   GITHUB_LOCAL_PROXY_DEFAULTS: ['http://127.0.0.1:8000/project-version'],
   GITHUB_CACHE_KEY: 'test-github-cache',
   GITHUB_UPDATE_DISMISS_KEY: 'test-update-dismissed',
   GITHUB_CACHE_TTL: 6 * 60 * 60 * 1000,
+  KANO_baseURL: '/api',
   knEsc(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -67,7 +71,8 @@ const sandbox = {
     querySelector() { return null; },
   },
   async fetch(url) {
-    if (url === 'https://api.github.com/repos/LceAn/UTools-Beautifier') {
+    const value = String(url);
+    if (value === '/api/proxy/--https://api.github.com/repos/LceAn/UTools-Beautifier') {
       return {
         ok: true,
         status: 200,
@@ -76,7 +81,19 @@ const sandbox = {
         },
       };
     }
-    if (String(url).includes('raw.githubusercontent.com')) {
+    if (value.startsWith('/api/proxy/--https://api.github.com/repos/LceAn/UTools-Beautifier/contents?')) {
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return [
+            { name: 'Web重构_v26.14.4.js', download_url: 'https://raw.githubusercontent.com/example/26.14.4.js', html_url: 'https://example/26.14.4' },
+            { name: 'Web重构_v26.15.0.js', download_url: 'https://raw.githubusercontent.com/example/26.15.0.js', html_url: 'https://example/26.15.0' },
+          ];
+        },
+      };
+    }
+    if (value === '/api/proxy/--https://raw.githubusercontent.com/example/26.15.0.js') {
       return { ok: true, status: 200, async text() { return "var VERSION = '26.15.0-next';"; } };
     }
     throw new Error(`Unexpected URL: ${url}`);
@@ -96,6 +113,8 @@ async function main() {
   assert.equal(info.tag, '26.15.0-next');
   assert.equal(info.stars, 42);
   assert.equal(info.branch, 'main');
+  assert.equal(info.source, '设备同源 GitHub 代理');
+  assert.equal(sandbox.getWebOSProxyUrl('https://example.com/a'), '/api/proxy/--https://example.com/a');
 
   await sandbox.checkGithubVersion({ force: true, quiet: true });
   assert.equal(elements.get('kn-about-latest-version').textContent, '26.15.0-next');
@@ -110,7 +129,7 @@ async function main() {
   sandbox.fetch = async (url) => {
     sandbox.lastProxyUrl = String(url);
     if (String(url).includes('api.github.com')) throw new TypeError('Failed to fetch');
-    if (String(url).startsWith('http://127.0.0.1:8000/project-version')) {
+    if (String(url).startsWith('/api/proxy/--http://127.0.0.1:8000/project-version')) {
       return {
         ok: true,
         status: 200,
@@ -123,7 +142,7 @@ async function main() {
   };
   const proxyInfo = await sandbox.fetchGithubLatestVersion({ force: true });
   assert.equal(proxyInfo.tag, '26.14.2-local-update-proxy');
-  assert.equal(proxyInfo.source, '本地更新代理');
+  assert.equal(proxyInfo.source, '设备同源更新代理');
   assert.equal(proxyInfo.stars, 24);
   assert.equal(proxyInfo.proxyCached, false);
   assert.ok(sandbox.lastProxyUrl.includes('force=1'));

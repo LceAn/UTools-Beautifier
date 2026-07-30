@@ -149,6 +149,9 @@
               <div><dt>Session</dt><dd id="session">--</dd></div>
               <div><dt>Access</dt><dd id="access">--</dd></div>
               <div><dt>加密数据</dt><dd id="payload">--</dd></div>
+              <div><dt>自动查询</dt><dd id="automaticQuery">--</dd></div>
+              <div><dt>最近成功</dt><dd id="lastSuccess">--</dd></div>
+              <div><dt>当前状态</dt><dd id="queryState">--</dd></div>
             </dl>
           </div>
         </section>
@@ -161,8 +164,8 @@
         </section>
 
         <section>
-          <div class="section-head"><h2>官方查询结果</h2><button id="query" class="button primary" type="button">查询</button></div>
-          <div class="section-body"><pre id="result">暂无数据。</pre></div>
+          <div class="section-head"><h2>官方查询结果</h2><button id="query" class="button primary" type="button">立即刷新</button></div>
+          <div class="section-body"><pre id="result">正在读取自动查询结果...</pre></div>
         </section>
       </div>
     </div>
@@ -173,7 +176,8 @@
     const fields = {
       token: $("#adminToken"), curl: $("#curlText"), notice: $("#notice"), result: $("#result"),
       configured: $("#configured"), session: $("#session"), access: $("#access"), payload: $("#payload"),
-      updated: $("#configUpdated"), service: $("#serviceStatus"), endpoint: $("#endpoint")
+      updated: $("#configUpdated"), service: $("#serviceStatus"), endpoint: $("#endpoint"),
+      automatic: $("#automaticQuery"), lastSuccess: $("#lastSuccess"), queryState: $("#queryState")
     };
     let token = sessionStorage.getItem("trafficAdminToken") || "";
     fields.token.value = token;
@@ -214,9 +218,27 @@
         const payload = await request("/health");
         fields.service.className = `status-pill ${payload.configured ? "ready" : ""}`.trim();
         fields.service.querySelector(".status-label").textContent = payload.configured ? "服务正常" : "等待配置";
+        fields.automatic.textContent = payload.automatic ? `每 ${Math.round(payload.refresh_interval_seconds / 60)} 分钟` : "未启用";
+        fields.lastSuccess.textContent = payload.last_success_at || "尚无成功结果";
+        fields.queryState.textContent = payload.authorization_required ? "需要授权" : (payload.error ? "更新异常" : (payload.cache_available ? "已自动更新" : "等待首次查询"));
       } catch (error) {
         fields.service.className = "status-pill error";
         fields.service.querySelector(".status-label").textContent = "服务异常";
+      }
+    }
+
+    async function loadTraffic(force = false, showNotice = false) {
+      fields.result.textContent = "正在读取中国广电官方结果...";
+      try {
+        const path = `/traffic?details=1${force ? "&refresh=1" : ""}`;
+        const payload = await request(path);
+        fields.result.textContent = JSON.stringify(payload, null, 2);
+        if (showNotice) setNotice(payload.stale ? "已读取最近成功结果，当前授权需更新。" : "官方流量已更新。", payload.stale ? "error" : "success");
+      } catch (error) {
+        fields.result.textContent = error.message;
+        if (showNotice) setNotice(error.message, "error");
+      } finally {
+        await checkHealth();
       }
     }
 
@@ -251,23 +273,17 @@
         const payload = await request("/api/extract-curl", { method: "POST", body: JSON.stringify({ curl: fields.curl.value }) }, true);
         renderConfig(payload.config);
         fields.curl.value = "";
-        setNotice("请求配置已保存，可以查询官方流量。", "success");
+        setNotice("授权信息已保存，自动查询已启动。", "success");
         await checkHealth();
+        await loadTraffic(true, false);
       } catch (error) { setNotice(error.message, "error"); }
       finally { busy(button, false); }
     };
     $("#query").onclick = async (event) => {
       const button = event.currentTarget;
-      busy(button, true, "正在查询");
-      fields.result.textContent = "正在连接中国广电官方接口...";
-      try {
-        const payload = await request("/traffic?details=1");
-        fields.result.textContent = JSON.stringify(payload, null, 2);
-        setNotice("官方流量查询成功。", "success");
-      } catch (error) {
-        fields.result.textContent = error.message;
-        setNotice(error.message, "error");
-      } finally { busy(button, false); }
+      busy(button, true, "正在刷新");
+      try { await loadTraffic(true, true); }
+      finally { busy(button, false); }
     };
     $("#copyEndpoint").onclick = async () => {
       try { await navigator.clipboard.writeText(fields.endpoint.textContent); setNotice("插件接口已复制。", "success"); }
@@ -275,6 +291,8 @@
     };
 
     checkHealth();
+    loadTraffic(false, false);
+    setInterval(() => loadTraffic(false, false), 60 * 1000);
     if (token) loadConfig(false).catch(() => {});
   </script>
 </body>

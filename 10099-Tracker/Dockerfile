@@ -4,7 +4,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     TRAFFIC_CONFIG_FILE=/app/data/config.json \
-    TRAFFIC_TOKEN_FILE=/app/data/admin_token
+    TRAFFIC_TOKEN_FILE=/app/data/admin_token \
+    TRAFFIC_CACHE_FILE=/app/data/traffic_cache.json \
+    TRAFFIC_REFRESH_SECONDS=900
 
 WORKDIR /app
 COPY requirements.txt ./
