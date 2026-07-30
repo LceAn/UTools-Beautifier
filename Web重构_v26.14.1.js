@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.14.0-github-updates';
+  var VERSION = '26.14.1-persisted-save';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.0.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.1.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v2';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -2276,30 +2276,94 @@
     try { if (typeof common_headers !== 'undefined' && common_headers) return Object.assign({}, common_headers); } catch (e) {}
     var headers = {};
     try {
-      var token = localStorage.getItem('kano_sms_token') || localStorage.getItem('KANO_TOKEN') || '';
+      var token = localStorage.getItem('kano_sms_token') || localStorage.getItem('KANO_TOKEN') || localStorage.getItem('kano_token') || '';
       if (token) headers.authorization = token;
     } catch (e) {}
     return headers;
   }
 
+  function knPluginNormalizePersistedText(text) {
+    return String(text == null ? '' : text).replace(/\r\n?/g, '\n').trim();
+  }
+
+  function knPluginSaveResultSucceeded(result) {
+    if (result === true || result === 0 || result === '0') return true;
+    if (typeof result === 'string') return /^(success|ok|saved)$/i.test(result.trim());
+    if (!result || typeof result !== 'object') return false;
+    if (result.success === true || result.ok === true || result.code === 0 || result.code === '0') return true;
+    return knPluginSaveResultSucceeded(result.result) || knPluginSaveResultSucceeded(result.status);
+  }
+
+  function knPluginResultError(result, fallback) {
+    if (result && typeof result === 'object') {
+      var detail = result.error || result.message || result.msg || result.detail;
+      if (detail) return String(detail);
+    }
+    return fallback || '保存接口未确认成功';
+  }
+
+  async function knPluginReadResponse(res, action) {
+    var raw = '';
+    try { raw = await res.text(); } catch (e) { raw = ''; }
+    var parsed = null;
+    if (raw && raw.trim()) {
+      try { parsed = JSON.parse(raw); } catch (e) {}
+    }
+    if (!res.ok) {
+      throw new Error(knPluginResultError(parsed, (action || '设备接口') + '失败（HTTP ' + res.status + '）'));
+    }
+    return { raw: raw, parsed: parsed, status: res.status };
+  }
+
   async function knPluginGetCustomHead() {
     if (typeof getCustomHead === 'function') {
       var t = await getCustomHead();
-      return t || '';
+      if (typeof t === 'string') return t;
+      if (t && typeof t.text === 'string') return t.text;
+      throw new Error('读取插件接口未返回源码');
     }
-    var res = await fetch(knPluginGetBaseURL() + '/get_custom_head?t=' + Date.now(), { headers: knPluginGetHeaders() });
-    var data = await res.json();
-    return data && data.text ? data.text : '';
+    var res = await fetch(knPluginGetBaseURL() + '/get_custom_head?t=' + Date.now(), {
+      headers: knPluginGetHeaders(),
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+    var response = await knPluginReadResponse(res, '读取插件');
+    if (response.parsed && typeof response.parsed.text === 'string') return response.parsed.text;
+    if (typeof response.parsed === 'string') return response.parsed;
+    if (response.raw && /\[KANO_PLUGIN_START\]/.test(response.raw)) return response.raw;
+    throw new Error('读取插件接口返回空内容，请确认设备已登录');
   }
 
   async function knPluginSetCustomHead(text) {
     if (typeof setCustomHead === 'function') return await setCustomHead(text || '');
+    var headers = knPluginGetHeaders();
+    var hasContentType = Object.keys(headers).some(function (key) { return key.toLowerCase() === 'content-type'; });
+    if (!hasContentType) headers['Content-Type'] = 'application/json;charset=UTF-8';
     var res = await fetch(knPluginGetBaseURL() + '/set_custom_head', {
       method: 'POST',
-      headers: knPluginGetHeaders(),
+      headers: headers,
+      credentials: 'same-origin',
       body: JSON.stringify({ text: text || '' })
     });
-    return await res.json();
+    var response = await knPluginReadResponse(res, '保存插件');
+    if (response.parsed != null) return response.parsed;
+    if (response.raw && response.raw.trim()) return response.raw.trim();
+    return { result: 'unknown', status: response.status, empty: true };
+  }
+
+  async function knPluginVerifySavedHead(expectedText) {
+    var expected = knPluginNormalizePersistedText(expectedText);
+    var lastError = null;
+    for (var attempt = 0; attempt < 3; attempt += 1) {
+      if (attempt > 0) await new Promise(function (resolve) { setTimeout(resolve, 420 * attempt); });
+      try {
+        var actual = await knPluginGetCustomHead();
+        if (knPluginNormalizePersistedText(actual) === expected) return { ok: true, attempt: attempt + 1 };
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    return { ok: false, error: lastError };
   }
 
   function knPluginMakeId(name, index) {
@@ -2637,13 +2701,21 @@
   async function knPluginCommit(message, shouldReload) {
     knPluginSetStatus('正在保存插件配置…', 'checking');
     try {
-      var result = await knPluginSetCustomHead(knPluginSerialize());
-      if (!result || result.result !== 'success') {
-        throw new Error(result && result.error ? result.error : '保存接口返回失败');
+      if (!getStoredLoginState()) throw new Error('请先登录设备账号，再保存插件');
+      var serialized = knPluginSerialize();
+      var result = await knPluginSetCustomHead(serialized);
+      var reportedSuccess = knPluginSaveResultSucceeded(result);
+      knPluginSetStatus('设备已接收，正在回读校验…', 'checking');
+      var verification = await knPluginVerifySavedHead(serialized);
+      if (!verification.ok) {
+        var fallback = reportedSuccess ? '保存接口已返回成功，但回读内容不一致' : '保存接口未确认成功，且回读校验未通过';
+        if (verification.error && verification.error.message) fallback += '：' + verification.error.message;
+        throw new Error(knPluginResultError(result, fallback));
       }
+      knPluginManager.rawText = serialized;
       knPluginManager.dirty = false;
-      knPluginSetStatus(message || '插件配置已保存。页面即将刷新并载入新插件。', 'ok');
-      knPluginToast(shouldReload ? '插件配置已保存，正在刷新页面' : '插件配置已保存', 'green');
+      knPluginSetStatus(message || '插件配置已保存并通过回读校验。', 'ok');
+      knPluginToast(shouldReload ? '插件已持久化，正在刷新页面' : '插件已持久化并校验', 'green');
       if (shouldReload) {
         setTimeout(function () { location.reload(); }, 650);
         return true;

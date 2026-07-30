@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.0.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.14.1.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function normalizeVersionTag');
 const end = source.indexOf('  var FORWARD_CONFIG_KEY');
@@ -39,10 +39,10 @@ const sandbox = {
   Promise,
   String,
   encodeURIComponent,
-  VERSION: '26.14.0-github-updates',
+  VERSION: '26.14.1-persisted-save',
   GITHUB_REPO: 'LceAn/UTools-Beautifier',
   GITHUB_REPO_URL: 'https://github.com/LceAn/UTools-Beautifier',
-  GITHUB_SOURCE_PATH: 'Web重构_v26.14.0.js',
+  GITHUB_SOURCE_PATH: 'Web重构_v26.14.1.js',
   GITHUB_CACHE_KEY: 'test-github-cache',
   GITHUB_UPDATE_DISMISS_KEY: 'test-update-dismissed',
   GITHUB_CACHE_TTL: 6 * 60 * 60 * 1000,
@@ -83,10 +83,10 @@ vm.createContext(sandbox);
 vm.runInContext(source.slice(start, end), sandbox, { filename: 'webos-version-block.js' });
 
 async function main() {
-  assert.equal(sandbox.compareVersionTags('26.14.0-github-updates', '26.14.0-settings-center'), 0);
+  assert.equal(sandbox.compareVersionTags('26.14.1-persisted-save', '26.14.0-settings-center'), 1);
   assert.equal(sandbox.compareVersionTags('26.15.0', '26.14.9'), 1);
-  assert.equal(sandbox.compareVersionTags('26.13.9', '26.14.0'), -1);
-  assert.equal(sandbox.compareVersionTags('development', '26.14.0'), 0);
+  assert.equal(sandbox.compareVersionTags('26.13.9', '26.14.1'), -1);
+  assert.equal(sandbox.compareVersionTags('development', '26.14.1'), 0);
 
   const info = await sandbox.fetchGithubLatestVersion();
   assert.equal(info.tag, '26.15.0-next');
