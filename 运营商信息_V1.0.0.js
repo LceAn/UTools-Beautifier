@@ -3,21 +3,17 @@
   'use strict';
 
   var TITLE = '运营商信息';
-  var VERSION = '1.3.0-broadcast-auto-query';
+  var VERSION = '1.3.1-broadcast-device-auto';
   var STYLE_ID = 'kano-operator-info-style';
   var MODAL_ID = 'kano-operator-info-modal';
   var BUTTON_ID = 'kano-operator-info-button';
   var PROVIDER_KEY = 'kano_operator_info_provider_v1';
-  var BROADCAST_API_KEY = 'kano_operator_info_broadcast_api_v1';
+  var BROADCAST_API_KEY = 'kano_operator_info_broadcast_api_v2';
   var POLL_INTERVAL = 7000;
   var POLL_TIMEOUT = 90000;
   var API_TIMEOUT = 8000;
   var BROADCAST_POLL_INTERVAL = 5 * 60 * 1000;
-  var BROADCAST_DEFAULT_API_URLS = [
-    'http://192.168.100.249:8000/traffic?details=1',
-    'http://127.0.0.1:8000/traffic?details=1',
-    'http://localhost:8000/traffic?details=1'
-  ];
+  var BROADCAST_DEFAULT_API_URLS = [];
 
   var state = {
     snapshot: {},
@@ -444,7 +440,7 @@
       } catch (e) {}
     }
     var base64 = raw.replace(/\s+/g, '');
-    if (base64.length >= 12 && base64.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
+    if (base64.length >= 4 && base64.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(base64)) {
       try {
         if (typeof decodeBase64 === 'function') {
           var helperDecoded = decodeBase64(base64);
@@ -570,21 +566,26 @@
 
   function parseReplies(replies) {
     var incoming = (replies || []).filter(function (reply) { return reply.direction === 'in'; });
+    var classifiedFallback = null;
     for (var i = 0; i < incoming.length; i += 1) {
       var parsed = parseCarrierSms(incoming[i].content);
       var classification = classifyOfficialReply(incoming[i].content);
-      if (classification || hasParsedCarrierData(parsed)) {
+      if (hasParsedCarrierData(parsed)) {
         parsed.sourceDate = incoming[i].date || '';
         parsed.sourceNumber = incoming[i].number || '';
         parsed.sourceId = incoming[i].id || '';
-        if (classification) {
-          parsed.replyKind = classification.kind;
-          parsed.status = classification.status;
-        }
         return parsed;
       }
+      if (!classifiedFallback && classification) {
+        parsed.sourceDate = incoming[i].date || '';
+        parsed.sourceNumber = incoming[i].number || '';
+        parsed.sourceId = incoming[i].id || '';
+        parsed.replyKind = classification.kind;
+        parsed.status = classification.status;
+        classifiedFallback = parsed;
+      }
     }
-    return {};
+    return classifiedFallback || {};
   }
 
   function formatSmsDate(value) {
@@ -792,6 +793,14 @@
   async function queryBroadcastApi(manual) {
     if (state.proxyBusy) return state.proxyParsed;
     var urls = getBroadcastApiUrls();
+    if (!urls.length) {
+      state.proxyError = '';
+      state.proxyAuthorizationRequired = false;
+      syncEffectiveParsed();
+      renderQueryActions();
+      renderParsed();
+      return {};
+    }
 
     state.proxyBusy = true;
     state.proxyError = '';
@@ -850,7 +859,7 @@
 
   function startBroadcastPolling() {
     stopBroadcastPolling();
-    if (state.provider !== 'broadcast') return;
+    if (state.provider !== 'broadcast' || !getBroadcastApiUrls().length) return;
     state.proxyTimer = setInterval(function () {
       if (state.provider === 'broadcast') queryBroadcastApi(false).catch(function () {});
     }, BROADCAST_POLL_INTERVAL);
@@ -943,7 +952,7 @@
     if (!box) return;
     var provider = PROVIDERS[state.provider] || PROVIDERS.unknown;
     var hint = document.getElementById('kano-operator-channel-hint');
-    if (hint) hint.textContent = state.provider === 'broadcast' ? '本地 API / 电话 / 官网' : '短信发送前需要确认';
+    if (hint) hint.textContent = state.provider === 'broadcast' ? 'F50 短信 / 电话 / 官网' : '短信发送前需要确认';
     if (!provider.commands.length && !provider.officialUrl) {
       box.innerHTML = '<div class="kano-operator-empty">自动识别未完成，请手动选择运营商。</div>';
       return;
@@ -951,19 +960,24 @@
 
     if (state.provider === 'broadcast') {
       var hasSmsResult = hasParsedCarrierData(state.smsParsed);
-      var autoState = state.proxyBusy ? '正在更新' : (state.proxyParsed.replyKind === 'proxy' ? (state.proxyStale ? '已保留缓存' : '已自动更新') : (hasSmsResult ? '已读取官方短信' : (state.proxyError ? (state.proxyAuthorizationRequired ? '等待可选授权' : '连接异常') : '正在自动发现')));
-      var autoDetail = state.proxyParsed.lastSuccessAt ? '最近成功 ' + state.proxyParsed.lastSuccessAt : (state.smsParsed.sourceDate ? '官方短信 ' + state.smsParsed.sourceDate : '短信自动读取 / API 每 15 分钟');
+      var hasReplies = state.replies && state.replies.length;
+      var autoState = state.proxyBusy ? '正在更新' : (state.proxyParsed.replyKind === 'proxy' ? (state.proxyStale ? '已保留缓存' : '已自动更新') : (hasSmsResult ? '已读取官方短信' : (hasReplies ? '已读取官方回执' : '等待官方短信')));
+      var autoDetail = state.proxyParsed.lastSuccessAt ? '最近成功 ' + state.proxyParsed.lastSuccessAt : (state.smsParsed.sourceDate ? '最近可用结果 ' + state.smsParsed.sourceDate : 'F50 每分钟自动读取 10099 回执');
       box.innerHTML = '' +
-        '<div class="kano-operator-auto-service"><div><b>广电自动查询</b><span>' + escapeHTML(autoState) + '</span><small>' + escapeHTML(autoDetail) + '</small></div><button type="button" data-operator-api-query title="立即刷新" aria-label="立即刷新"' + (state.proxyBusy ? ' disabled' : '') + '>↻</button></div>' +
+        '<div class="kano-operator-auto-service"><div><b>F50 本机自动读取</b><span>' + escapeHTML(autoState) + '</span><small>' + escapeHTML(autoDetail) + '</small></div><button type="button" data-operator-refresh-all title="立即刷新" aria-label="立即刷新"' + (state.proxyBusy || state.repliesBusy ? ' disabled' : '') + '>↻</button></div>' +
         (state.proxyAuthorizationRequired ? '<button type="button" class="kano-operator-query-btn api" data-operator-api-settings><span>API 授权设置</span><small>可选增强；官方短信结果仍会自动读取</small></button>' : '') +
         '<button type="button" class="kano-operator-query-btn call" data-operator-call><span>拨打 10099</span><small>由电话与短信插件拨号</small></button>' +
         '<button type="button" class="kano-operator-query-btn official" data-operator-official><span>中国广电官网</span><small>10099.com.cn / 新标签</small></button>' +
         '<div class="kano-operator-channel-note error">本机实测：收到 10099 菜单后回复 1 或 2，均被判定为无效指令；该短信入口已停用。</div>';
-      var queryButton = box.querySelector('[data-operator-api-query]');
+      var queryButton = box.querySelector('[data-operator-refresh-all]');
       var settingsButton = box.querySelector('[data-operator-api-settings]');
       var callButton = box.querySelector('[data-operator-call]');
       var officialBroadcastButton = box.querySelector('[data-operator-official]');
-      if (queryButton) queryButton.onclick = function () { queryBroadcastApi(true); };
+      if (queryButton) queryButton.onclick = function () {
+        readReplies(true).then(function () {
+          if (getBroadcastApiUrls().length) queryBroadcastApi(true);
+        });
+      };
       if (settingsButton) settingsButton.onclick = openBroadcastProxySettings;
       if (callButton) callButton.onclick = dialProviderService;
       if (officialBroadcastButton) officialBroadcastButton.onclick = openOfficialHall;
@@ -1068,7 +1082,7 @@
       renderAll();
       setStatus('状态已刷新', 'success');
       await readReplies(false);
-      if (state.provider === 'broadcast' && getBroadcastApiUrl()) await queryBroadcastApi(false);
+      if (state.provider === 'broadcast' && getBroadcastApiUrls().length) await queryBroadcastApi(false);
       if (manual) toast('运营商信息已刷新', 'green');
       return state.snapshot;
     } catch (error) {
@@ -1134,7 +1148,7 @@
         '<header class="kano-operator-head"><div class="kano-operator-head-left"><div class="kano-operator-mark" aria-hidden="true">◎</div><div class="kano-operator-heading"><h2 id="kano-operator-title">运营商信息</h2><p>SIM 识别与官方查询渠道</p></div></div><div class="kano-operator-head-actions"><button type="button" class="kano-operator-icon-btn" data-operator-action="refresh" title="刷新" aria-label="刷新">↻</button><button type="button" class="kano-operator-icon-btn" data-operator-action="close" title="关闭" aria-label="关闭">×</button></div></header>' +
         '<div class="kano-operator-body"><aside class="kano-operator-sidebar"><div id="kano-operator-badge" class="kano-operator-badge unknown">未识别</div><div class="kano-operator-provider-row"><label for="kano-operator-provider">运营商选择</label><select id="kano-operator-provider"><option value="auto">自动识别</option><option value="mobile">中国移动</option><option value="unicom">中国联通</option><option value="telecom">中国电信</option><option value="broadcast">中国广电</option></select></div><div id="kano-operator-identity" class="kano-operator-identity"></div></aside>' +
         '<main class="kano-operator-main"><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询结果</b><span id="kano-operator-result-source">等待读取官方回执</span></div><div id="kano-operator-parsed" class="kano-operator-results"></div></section><section class="kano-operator-section"><div class="kano-operator-section-head"><b>官方查询渠道</b><span id="kano-operator-channel-hint">短信发送前需要确认</span></div><div id="kano-operator-query-actions" class="kano-operator-query-actions"></div></section><section class="kano-operator-section"><div id="kano-operator-status" class="kano-operator-status idle">等待刷新</div></section><section class="kano-operator-replies-section"><div class="kano-operator-section-head"><b>查询回复</b><button type="button" class="kano-operator-icon-btn" data-operator-action="replies" title="刷新回复" aria-label="刷新回复">↻</button></div><div id="kano-operator-replies" class="kano-operator-replies"></div></section></main></div>' +
-        '<footer class="kano-operator-footer"><span>广电结果由本地服务定时刷新；敏感登录态不进入插件。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
+        '<footer class="kano-operator-footer"><span>F50 每分钟自动读取官方短信；可选 API 登录态不进入插件。</span><span>v' + escapeHTML(VERSION) + '</span></footer>' +
       '</section>';
     modal.addEventListener('click', function (event) { if (event.target === modal) close(); });
     document.body.appendChild(modal);
@@ -1153,7 +1167,7 @@
       state.proxyError = '';
       renderAll();
       readReplies(false).then(function () {
-        if (state.provider === 'broadcast') queryBroadcastApi(false);
+        if (state.provider === 'broadcast' && getBroadcastApiUrls().length) queryBroadcastApi(false);
         else stopBroadcastPolling();
       });
     };

@@ -1,6 +1,6 @@
 # 10099 Tracker 本地服务
 
-这是 [BiancoCat/10099-Tracker](https://github.com/BiancoCat/10099-Tracker) 核心查询流程的本地集成版，用于给本仓库的“运营商信息”插件提供中国广电官方流量数据。上游项目采用 MIT License，本目录保留了 [UPSTREAM-LICENSE.txt](UPSTREAM-LICENSE.txt)。
+这是 [BiancoCat/10099-Tracker](https://github.com/BiancoCat/10099-Tracker) 核心查询流程的可选集成版，用于给本仓库的“运营商信息”插件补充中国广电官方小程序流量数据。上游项目采用 MIT License，本目录保留了 [UPSTREAM-LICENSE.txt](UPSTREAM-LICENSE.txt)。F50 固件本身没有 Python、Node 或 Docker，因此这个服务不能直接在 F50 上运行；F50 默认使用 custom head 插件自动读取设备内的 `10099` 官方短信，不依赖本服务。
 
 ## 它如何工作
 
@@ -69,11 +69,20 @@ docker compose down
 
 ## 连接运营商信息插件
 
-插件会自动尝试已保存的服务地址、`127.0.0.1:8000` 与当前 F50 局域网的 Mac 服务，并自动选择直连或 UFI-TOOLS `/api/proxy/--` 转发，无需在插件界面手工填写 URL。服务的标准接口仍为：
+插件不会默认探测 Mac 或其他局域网主机。只有显式保存服务地址后，才会把这个服务作为可选增强；未配置时，F50 官方短信自动读取仍会持续工作。服务的标准接口为：
 
 ```text
 http://127.0.0.1:8000/traffic?details=1
 ```
+
+在 UFI-TOOLS 页面控制台中显式启用：
+
+```js
+window.KanoOperatorInfo.setBroadcastApiUrl('http://<服务主机>:8000/traffic?details=1');
+window.KanoOperatorInfo.queryBroadcastApi(true);
+```
+
+传入空字符串可停用可选服务：`window.KanoOperatorInfo.setBroadcastApiUrl('')`。
 
 如果从手机或另一台电脑打开 UFI-TOOLS，则服务需要以 `0.0.0.0` 监听，并把 `127.0.0.1` 换成这台 Mac 的局域网 IP；若 macOS 防火墙拦截 Python，请允许该程序接收入站连接。
 

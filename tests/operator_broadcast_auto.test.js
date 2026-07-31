@@ -15,6 +15,8 @@ assert.ok(helperStart >= 0 && helperEnd > helperStart, 'broadcast request helper
 assert.ok(urlStart >= 0 && urlEnd > urlStart, 'broadcast URL helpers should exist');
 assert.ok(smsStart >= 0 && smsEnd > smsStart, 'SMS decoding helpers should exist');
 assert.match(source, /refresh\(false\)\.catch\(function \(\) \{\}\)\.finally\(startAutoReplyPolling\)/, 'operator data should refresh automatically after plugin load');
+assert.doesNotMatch(source, /192\.168\.100\.249:8000/, 'operator plugin must not probe a fixed Mac address');
+assert.doesNotMatch(source, /'连接异常'/, 'an unconfigured optional API must not be shown as a connection failure');
 const closeStart = source.indexOf('  function close()');
 const destroyStart = source.indexOf('  function destroy()');
 assert.ok(closeStart >= 0 && destroyStart > closeStart, 'operator close lifecycle should exist');
@@ -35,10 +37,7 @@ const sandbox = {
   clearTimeout,
   API_TIMEOUT: 1000,
   BROADCAST_API_KEY: 'test-broadcast-api',
-  BROADCAST_DEFAULT_API_URLS: [
-    'http://192.168.100.249:8000/traffic?details=1',
-    'http://127.0.0.1:8000/traffic?details=1',
-  ],
+  BROADCAST_DEFAULT_API_URLS: [],
   KANO_baseURL: '/api',
   window: { location: { href: 'http://192.168.100.1:2333/' } },
   localStorage: {
@@ -48,7 +47,7 @@ const sandbox = {
   },
   async fetch(url) {
     calls.push(String(url));
-    if (String(url).startsWith('/api/proxy/--http://192.168.100.249:8000/traffic')) {
+    if (String(url).startsWith('/api/proxy/--http://10.0.0.2:8000/traffic')) {
       return {
         ok: true,
         status: 200,
@@ -78,24 +77,29 @@ vm.runInContext(source.slice(smsStart, smsEnd), sandbox, { filename: 'operator-s
 async function main() {
   assert.deepEqual(
     Array.from(sandbox.getBroadcastApiUrls()),
-    sandbox.BROADCAST_DEFAULT_API_URLS,
+    [],
   );
+  storage.set('test-broadcast-api', 'http://10.0.0.2:8000/traffic?details=1');
+  assert.deepEqual(Array.from(sandbox.getBroadcastApiUrls()), ['http://10.0.0.2:8000/traffic?details=1']);
   assert.equal(
-    sandbox.getBroadcastRequestUrls('http://192.168.100.249:8000/traffic?details=1')[0],
-    '/api/proxy/--http://192.168.100.249:8000/traffic?details=1',
+    sandbox.getBroadcastRequestUrls('http://10.0.0.2:8000/traffic?details=1')[0],
+    '/api/proxy/--http://10.0.0.2:8000/traffic?details=1',
   );
   assert.equal(
     sandbox.getBroadcastRequestUrls('http://127.0.0.1:8000/traffic?details=1')[0],
     'http://127.0.0.1:8000/traffic?details=1',
   );
 
-  const result = await sandbox.fetchBroadcastApi('http://192.168.100.249:8000/traffic?details=1');
+  const result = await sandbox.fetchBroadcastApi('http://10.0.0.2:8000/traffic?details=1');
   assert.equal(result.dataRemaining, '12 GB');
   assert.equal(result.dataUsed, '8 GB');
   assert.equal(result.replyKind, 'proxy');
   assert.equal(result.automatic, true);
   assert.equal(result.lastSuccessAt, '2026-07-30 15:30:00');
   assert.equal(calls.length, 1);
+
+  assert.equal(sandbox.decodeSmsContent('MQ=='), '1');
+  assert.equal(sandbox.decodeSmsContent('MTAwOTk='), '10099');
 
   const encodedSms = Buffer.from('【流量加油包提醒】尊敬的客户，截至2026年7月30日15时30分，您订购的流量加油包现已使用14GB319.90MB，剩余704.10MB。【中国广电】', 'utf8').toString('base64');
   const decodedSms = sandbox.decodeSmsContent(encodedSms);
@@ -108,6 +112,26 @@ async function main() {
   const actualParsed = sandbox.parseCarrierSms(sandbox.decodeSmsContent(actualDeviceSms));
   assert.equal(actualParsed.dataRemaining, '0 MB');
   assert.equal(actualParsed.status, '流量包已用尽');
+
+  const preferredResult = sandbox.parseReplies([
+    {
+      id: '20',
+      direction: 'in',
+      number: '10099',
+      date: '2026-07-31 10:34',
+      content: '尊敬的客户，您好！您发送的指令有误或不存在。【中国广电】',
+    },
+    {
+      id: '19',
+      direction: 'in',
+      number: '10099',
+      date: '2026-07-30 23:49',
+      content: '截至2026年7月30日23时49分，流量已使用14GB319.90MB，剩余704.10MB。【中国广电】',
+    },
+  ]);
+  assert.equal(preferredResult.dataRemaining, '704.10MB');
+  assert.equal(preferredResult.sourceDate, '2026-07-30 23:49');
+  assert.equal(preferredResult.replyKind, undefined);
   console.log('operator broadcast auto-query tests: ok');
 }
 
