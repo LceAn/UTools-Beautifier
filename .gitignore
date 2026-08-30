@@ -1,0 +1,15 @@
+# Python（本地校验脚本用）
+__pycache__/
+*.py[cod]
+.venv/
+
+# Node
+node_modules/
+
+# macOS / Windows 垃圾
+._*
+.DS_Store
+Thumbs.db
+
+# 本地产物
+*.log
