@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.16.1.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.16.2.js'), 'utf8');
 const cfg = { auto: true, interval: 10000, userSetAuto: false };
 const auto = { checked: false, disabled: false };
 const interval = { value: '' };
@@ -114,6 +114,7 @@ assert.equal(featureInput.checked, true, 'detached compatibility panel must init
 
 let dashboardCss = '';
 sandbox.HOME_STYLE_ID = 'home-test-style';
+sandbox.HEADER_ID = 'kn-app-header';
 sandbox.document = {
   getElementById: () => null,
   createElement: () => ({}),
@@ -127,3 +128,6 @@ assert.match(dashboardCss, /#kn-home-dashboard\.kn-home-dashboard\{[^}]*backgrou
 assert.match(dashboardCss, /--home-panel:rgba\(20,23,28,\.86\)/);
 assert.match(dashboardCss, /\.kn-theme-light #kn-home-dashboard\.kn-home-dashboard\{--home-panel:rgba\(250,252,254,\.9\)/);
 assert.ok(dashboardCss.includes('-webkit-backdrop-filter:blur(14px)'));
+assert.ok(dashboardCss.includes('@media(min-width:1100px)'));
+assert.match(dashboardCss, /\.kn-home-resource-main\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+assert.match(dashboardCss, /\.kn-home-shortcuts\{display:flex;align-items:center/);

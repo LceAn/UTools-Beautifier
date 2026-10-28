@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.16.1-wallpaper-surface';
+  var VERSION = '26.16.2-home-fit';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.16.1.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.16.2.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -5784,6 +5784,63 @@
         ${s} #kn-home-maint-card{grid-column:auto}
       }
       @media(max-width:360px){${s} .kn-home-refresh-time{width:100%;order:5;text-align:right}${s} .kn-home-local-stat .kn-home-stat-value{font-size:11px}}
+      @media(min-width:1100px){
+        body:has(${s}:not(.kn-os-hidden)) #${HEADER_ID}{margin-bottom:12px!important}
+        ${s}{margin-bottom:12px;flex:0 1 auto}
+        ${s}.kn-home-dashboard{padding-bottom:8px}
+        ${s} .kn-home-card-head{padding:6px 0}
+        ${s} .kn-home-title{font-size:18px}
+        ${s} .kn-home-refresh{width:30px;height:30px;flex-basis:30px}
+        ${s} .kn-home-refresh-select{height:30px}
+        ${s} .kn-home-status-grid{padding:8px 0;margin-bottom:8px}
+        ${s} .kn-home-stat{padding:0 12px}
+        ${s} .kn-home-stat-label{font-size:10px;line-height:1.2;margin-bottom:3px}
+        ${s} .kn-home-stat-value{font-size:18px;line-height:1.25}
+        ${s} .kn-home-stat-sub{line-height:1.3;margin-top:3px}
+        ${s} .kn-home-network-meta{margin-top:3px}
+        ${s} .kn-home-phone-line{line-height:1.3}
+        ${s} .kn-home-dashboard-fusion{column-gap:24px}
+        ${s} .kn-home-dash-card{padding-bottom:6px}
+        ${s} .kn-home-dash-head{min-height:22px;margin-bottom:2px}
+        ${s} .kn-home-dash-title{font-size:13px;line-height:1.3}
+        ${s} .kn-home-duplex{padding:6px 0 8px}
+        ${s} .kn-home-duplex-label{font-size:10px;line-height:1.2;margin-bottom:3px}
+        ${s} .kn-home-rx,${s} .kn-home-tx{font-size:22px;line-height:1.2}
+        ${s} .kn-home-kpi-grid{padding-top:6px}
+        ${s} .kn-home-kpi-label{line-height:1.2;margin-bottom:4px}
+        ${s} .kn-home-kpi-value{font-size:16px;line-height:1.2}
+        ${s} .kn-home-kpi-value.small{font-size:11px;line-height:1.3}
+        ${s} .kn-home-qci{padding-top:6px;margin-top:6px}
+        ${s} .kn-home-progress-row{padding:7px 0;line-height:1.2}
+        ${s} .kn-home-signal-insights{padding-top:8px;line-height:1.3}
+        ${s} .kn-home-resource-card{padding-top:6px}
+        ${s} .kn-home-resource-grid{gap:8px 24px}
+        ${s} .kn-home-resource-main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;padding:0;align-content:center}
+        ${s} .kn-home-resource-row{grid-template-columns:56px minmax(16px,1fr) 124px;gap:6px;line-height:1.2}
+        ${s} .kn-home-resource-side{align-self:center}
+        ${s} .kn-home-cpu-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 0 0 14px}
+        ${s} .kn-home-cpu-summary-item b{line-height:1.2;margin-bottom:3px}
+        ${s} .kn-home-cpu-summary-item span{font-size:16px;line-height:1.25;white-space:nowrap}
+        ${s} .kn-home-core-strip{padding-top:6px}
+        ${s} .kn-home-core-title{line-height:1.2;margin-bottom:4px}
+        ${s} .kn-home-core-grid{padding:0 0 2px}
+        ${s} .kn-home-core-chip{flex-basis:116px;padding:0 8px;gap:4px;line-height:1.2}
+        ${s} .kn-home-core-metric{grid-template-columns:22px minmax(6px,1fr) 43px;gap:4px;min-height:12px}
+        ${s} .kn-home-address-bar{padding:7px 0;line-height:1.3}
+        ${s} .kn-home-details-wrap>summary{padding:6px 0;line-height:1.3}
+        ${s} .kn-home-shortcuts{display:flex;align-items:center;gap:12px;padding-top:8px}
+        ${s} .kn-home-shortcuts>.kn-home-dash-title{flex:0 0 auto;margin:0}
+        ${s} .kn-home-plugin-grid{flex:1;min-width:0;gap:8px}
+        ${s} .kn-home-phone-dock{flex-direction:row;align-items:center;justify-content:space-between;min-height:46px;padding:7px 8px;gap:8px}
+        ${s} .kn-home-shortcut-head{font-size:11px;gap:6px;flex-shrink:0}
+        ${s} .kn-home-action-row{margin:0;gap:5px;flex-wrap:nowrap}
+        ${s} .kn-home-primary-action,${s} .kn-home-secondary-action,${s} .kn-home-rocket-action{min-height:30px;padding:0 8px;font-size:11px}
+      }
+      @media(min-width:1100px) and (max-height:800px){
+        ${s}{margin-bottom:4px}
+        ${s}.kn-home-dashboard{padding-bottom:4px}
+        ${s} .kn-home-card-head{padding:4px 0}
+      }
       @media(prefers-reduced-motion:reduce){${s} .kn-home-progress-fill{transition:none}}
     `;
     document.head.appendChild(style);
