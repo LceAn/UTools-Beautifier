@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.15.2-home-cleanup';
+  var VERSION = '26.16.0-home-layout';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.15.2.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.16.0.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -263,13 +263,14 @@
     });
   }
 
-  function syncWebOSSettingsControls() {
+  function syncWebOSSettingsControls(scope) {
+    scope = scope || document;
     var cfg = readWebOSConfig();
-    Array.prototype.slice.call(document.querySelectorAll('[data-webos-feature]')).forEach(function (input) {
+    Array.prototype.slice.call(scope.querySelectorAll('[data-webos-feature]')).forEach(function (input) {
       var key = input.getAttribute('data-webos-feature');
       if (input.type === 'checkbox') input.checked = cfg[key] !== false;
     });
-    var compat = document.querySelector('[data-webos-action="compatMode"]');
+    var compat = scope.querySelector('[data-webos-action="compatMode"]');
     if (compat) compat.textContent = cfg.compatibilityMode ? '退出兼容模式' : '一键关闭增强功能';
   }
 
@@ -3946,7 +3947,7 @@
       var info = detectWebOSDeviceInfo();
       summary.textContent = info.isF50 ? ('当前识别为 F50：' + info.model + '，建议保持完整增强体验。') : ('当前未明确识别为 F50：' + info.model + '。如出现字段错误或页面卡顿，可一键关闭增强功能。');
     }
-    syncWebOSSettingsControls();
+    syncWebOSSettingsControls(dialog);
   }
 
   function mergeBackgroundSettingsIntoAppearance(dialog) {
@@ -4505,6 +4506,7 @@
       if (!(el instanceof HTMLElement)) return;
       var tag = el.tagName ? el.tagName.toUpperCase() : '';
       if (tag !== 'BUTTON' && tag !== 'SELECT') return;
+      if (el.closest && el.closest('#' + HOME_DASHBOARD_ID)) return;
       if (el.closest && (el.closest('#' + DIALOG_ID) || el.closest('#' + HEADER_ID) || el.closest('#' + TOOLBOX_WRAPPER_ID) || el.closest('#' + TOOLBOX_DRAWER_ID) || el.closest('#' + TOOLBOX_SETTINGS_ID))) return;
       el.classList.add('kn-home-function-hidden');
       el.setAttribute('data-kn-home-function-hidden', '1');
@@ -5207,9 +5209,10 @@
     var btn = document.querySelector('#' + HOME_DASHBOARD_ID + ' [data-home-auto-refresh]');
     if (sel) sel.value = String(cfg.interval);
     if (btn) {
-      btn.classList.toggle('is-on', !!cfg.auto && loggedIn);
-      btn.textContent = loggedIn ? ('自动刷新：' + (cfg.auto ? '开' : '关')) : '自动刷新：登录后';
-      btn.title = !loggedIn ? '登录 UFI-TOOLS 后自动刷新状态' : (cfg.auto ? ('每 ' + Math.round(cfg.interval / 1000) + ' 秒自动刷新') : '自动刷新已关闭');
+      var enabled = isWebOSFeatureEnabled('homeAutoRefresh');
+      btn.checked = !!cfg.auto && loggedIn && enabled;
+      btn.disabled = !loggedIn || !enabled;
+      btn.title = !loggedIn ? '登录 UFI-TOOLS 后自动刷新状态' : (!enabled ? '兼容性设置中已关闭自动刷新' : (cfg.auto ? ('每 ' + Math.round(cfg.interval / 1000) + ' 秒自动刷新') : '自动刷新已关闭'));
     }
   }
 
@@ -5217,7 +5220,9 @@
     var btn = document.querySelector('#' + HOME_DASHBOARD_ID + ' [data-home-action="refresh"]');
     if (!btn) return;
     btn.classList.toggle('is-busy', !!busy);
-    btn.textContent = busy ? '刷新中…' : '刷新状态';
+    btn.disabled = !!busy;
+    btn.setAttribute('aria-busy', String(!!busy));
+    btn.title = busy ? '刷新中…' : '刷新状态';
   }
 
   function setHomeLastUpdate(success, text) {
@@ -5531,11 +5536,9 @@
     };
 
     var autoBtn = home.querySelector('[data-home-auto-refresh]');
-    if (autoBtn) autoBtn.onclick = function (e) {
-      if (e && e.preventDefault) e.preventDefault();
-      if (e && e.stopPropagation) e.stopPropagation();
+    if (autoBtn) autoBtn.onchange = function () {
       var cfg = readHomeRefreshConfig();
-      cfg.auto = !cfg.auto;
+      cfg.auto = !!autoBtn.checked;
       cfg.userSetAuto = true;
       saveHomeRefreshConfig(cfg);
       state.homeRefreshAt = 0;
@@ -5544,169 +5547,243 @@
     };
 
     var phoneLine = home.querySelector('#kn-home-phone-line');
-    if (phoneLine) phoneLine.onclick = copyHomePhoneFromLine;
+    if (phoneLine) {
+      phoneLine.onclick = copyHomePhoneFromLine;
+      phoneLine.onkeydown = function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyHomePhoneFromLine(); }
+      };
+    }
     syncHomeRefreshControls();
+  }
+
+  /*
+   * Refresh icon: Lucide, ISC License.
+   * Copyright (c) 2026 Lucide Icons and Contributors
+   * Permission to use, copy, modify, and/or distribute this software for any
+   * purpose with or without fee is hereby granted, provided that the above
+   * copyright notice and this permission notice appear in all copies.
+   * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+   * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+   * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+   * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+   * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+   */
+  function homeRefreshIcon() {
+    return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>';
   }
 
   function injectHomeDashboardCSS() {
     if (document.getElementById(HOME_STYLE_ID)) return;
     var style = document.createElement('style');
     style.id = HOME_STYLE_ID;
-    style.textContent = '' +
-      '#'+ HOME_DASHBOARD_ID + '{--home-card-bg:rgba(11,16,24,.72);--home-card-bg-soft:rgba(255,255,255,.038);--home-card-border:rgba(255,255,255,.09);--home-text:rgba(255,255,255,.92);--home-muted:rgba(255,255,255,.50);--home-muted-2:rgba(255,255,255,.36);--home-good:#39d279;--home-warn:#f7c948;--home-bad:#ff5f68;--home-blue:#7fb4ff;--home-radius-lg:24px;--home-radius-md:16px;--home-gap:12px;width:min(1280px,calc(100% - 40px));margin:0 auto 24px;box-sizing:border-box;}' +
-      '#'+ HOME_DASHBOARD_ID + ' *{box-sizing:border-box;}' +
-      '#'+ HOME_DASHBOARD_ID + '.kn-home-dashboard{display:flex;flex-direction:column;gap:16px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-card,#'+ HOME_DASHBOARD_ID + ' .kn-home-dash-card{border:1px solid var(--home-card-border);border-radius:var(--home-radius-lg);background:linear-gradient(180deg,rgba(18,23,32,.80),rgba(10,14,21,.66));backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);box-shadow:0 14px 36px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.045);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-device-card{padding:18px;overflow:hidden;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kicker{font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:rgba(142,190,255,.84);margin-bottom:6px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-title{font-size:20px;font-weight:950;color:var(--home-text);line-height:1.2;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-subtitle{margin-top:6px;font-size:12px;line-height:1.65;color:var(--home-muted);max-width:780px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(120,180,255,.24);background:rgba(72,150,255,.12);color:rgba(220,238,255,.94);font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh.is-busy{opacity:.65;pointer-events:none;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-select{height:34px;min-width:92px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:rgba(255,255,255,.86);font-size:12px;font-weight:850;padding:0 10px;outline:none;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-toggle{height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:rgba(255,255,255,.72);font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-toggle.is-on{background:rgba(57,210,121,.15);border-color:rgba(134,239,172,.28);color:rgba(225,255,235,.96);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-time{width:100%;font-size:10.5px;color:var(--home-muted-2);text-align:right;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-notice{min-height:38px;display:flex;align-items:center;gap:10px;margin:-2px 0 12px;padding:7px 8px 7px 11px;border-radius:10px;border:1px solid rgba(247,201,72,.20);background:rgba(247,201,72,.065);color:rgba(255,246,214,.92);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-notice[hidden]{display:none!important}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-icon{width:22px;height:22px;flex:0 0 22px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;background:rgba(247,201,72,.12);font-size:13px;font-weight:950}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy{min-width:0;flex:1;display:flex;align-items:baseline;gap:8px}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy b{font-size:11px;font-weight:900;white-space:nowrap}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy span{min-width:0;font-size:10.5px;color:var(--home-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-actions{display:flex;align-items:center;gap:4px}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-link,#'+ HOME_DASHBOARD_ID + ' .kn-home-update-close{height:26px;min-height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;border:1px solid rgba(247,201,72,.18);background:rgba(255,255,255,.045);color:inherit;text-decoration:none;font-size:10px;font-weight:850;cursor:pointer}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-update-link{padding:0 9px}#'+ HOME_DASHBOARD_ID + ' .kn-home-update-close{width:26px;padding:0;font-size:15px}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat{min-width:0;padding:14px;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-label{font-size:11px;color:var(--home-muted);font-weight:780;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-value{font-size:18px;font-weight:950;color:var(--home-text);line-height:1.32;word-break:break-word;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-stat-sub{margin-top:6px;font-size:10.5px;color:var(--home-muted-2);line-height:1.38;word-break:break-word;}#'+ HOME_DASHBOARD_ID + ' .kn-home-stat.is-clickable{cursor:pointer;}#'+ HOME_DASHBOARD_ID + ' .kn-home-stat.is-clickable:hover{border-color:rgba(120,180,255,.26);background:rgba(120,180,255,.06);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-line{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 8px;margin-top:7px;border-radius:999px;background:rgba(57,210,121,.08);border:1px solid rgba(134,239,172,.16);color:rgba(229,255,237,.86);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-line:hover{background:rgba(57,210,121,.14);border-color:rgba(134,239,172,.28);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-dashboard-fusion{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;margin-top:14px;align-items:stretch;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-left-column{grid-column:span 6;min-width:0;display:grid;grid-template-rows:auto minmax(150px,1fr);gap:12px;align-self:stretch;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-dash-card{min-width:0;padding:16px;overflow:hidden;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-card{display:flex;flex-direction:column;min-height:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-network-card{grid-column:span 6;grid-row:auto;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card{padding:16px;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:14px;min-height:150px;background:radial-gradient(circle at 12% 0%,rgba(120,180,255,.12),transparent 42%),linear-gradient(135deg,rgba(78,146,255,.085),rgba(57,210,121,.040));}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-card{grid-column:span 12;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-dash-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-dash-title{font-size:14px;font-weight:950;color:rgba(255,255,255,.88);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-dash-extra{font-size:11px;color:var(--home-muted-2);font-weight:760;text-align:right;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-list{display:flex;flex-direction:column;gap:12px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-row{display:grid;grid-template-columns:96px minmax(160px,1fr) 76px 52px;gap:12px;align-items:center;font-size:12px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-label{min-width:0;color:var(--home-muted);font-weight:820;line-height:1.2;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-label strong{display:block;font-size:12px;color:rgba(255,255,255,.76);font-weight:950;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-label span{display:block;margin-top:3px;font-size:10px;color:var(--home-muted-2);font-weight:700;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-track{height:9px;border-radius:999px;background:rgba(255,255,255,.075);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.22);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-fill{height:100%;width:0%;border-radius:inherit;background:linear-gradient(90deg,var(--home-blue),var(--home-good));transition:width .24s ease,background .24s ease,opacity .24s ease;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-fill.good{background:linear-gradient(90deg,var(--home-blue),var(--home-good));}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-fill.warn{background:linear-gradient(90deg,#f59e0b,var(--home-warn));}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-fill.bad{background:linear-gradient(90deg,var(--home-bad),#f97316);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-fill.empty{width:0%!important;opacity:.35;background:rgba(255,255,255,.20);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-value{font-size:12px;color:rgba(255,255,255,.82);font-weight:900;text-align:right;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-state{height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:0 8px;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:rgba(255,255,255,.68);white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-state.good{color:#dfffea;background:rgba(57,210,121,.13);border-color:rgba(134,239,172,.26);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-state.warn{color:#fff4d0;background:rgba(247,201,72,.13);border-color:rgba(247,201,72,.24);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-state.bad{color:#ffe5e8;background:rgba(255,95,104,.13);border-color:rgba(255,130,140,.24);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-state.empty{color:rgba(255,255,255,.42);background:rgba(255,255,255,.035);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-card{justify-content:flex-start;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-card .kn-home-progress-list{gap:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights>div{min-width:0;padding:10px 11px;border-radius:15px;background:rgba(255,255,255,.038);border:1px solid rgba(255,255,255,.06);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights b{display:block;font-size:10px;color:var(--home-muted-2);margin-bottom:5px;font-weight:850;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights span{display:block;font-size:12px;color:var(--home-text);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi{min-width:0;padding:13px;border-radius:17px;background:rgba(255,255,255,.042);border:1px solid rgba(255,255,255,.065);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi.hero{grid-column:1/-1;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-label{font-size:11px;color:var(--home-muted);font-weight:780;margin-bottom:7px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-value{font-size:19px;font-weight:950;color:var(--home-text);line-height:1.25;word-break:break-word;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-value.small{font-size:13px;line-height:1.45;color:rgba(255,255,255,.78);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-duplex{display:flex;align-items:center;justify-content:space-between;gap:12px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-duplex-block{min-width:0;flex:1;padding:10px 12px;border-radius:15px;background:rgba(0,0,0,.16);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-duplex-label{font-size:10px;color:var(--home-muted-2);font-weight:850;margin-bottom:5px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rx,#'+ HOME_DASHBOARD_ID + ' .kn-home-tx{display:block;font-size:22px;font-weight:950;color:var(--home-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rx{color:#dfffea;}#'+ HOME_DASHBOARD_ID + ' .kn-home-tx{color:#dbeafe;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr);gap:14px;align-items:start;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-main{min-width:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-side{min-width:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-row{display:grid;grid-template-columns:98px minmax(0,1fr) 96px;gap:10px;align-items:center;font-size:12px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-item{padding:10px;border-radius:15px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-item b{display:block;font-size:10px;color:var(--home-muted-2);margin-bottom:5px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-item span{font-size:14px;color:var(--home-text);font-weight:950;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-strip{grid-column:1/-1;margin-top:0;border-radius:18px;background:rgba(0,0,0,.12);border:1px solid rgba(255,255,255,.06);overflow:hidden;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-title{padding:10px 12px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:900;color:rgba(255,255,255,.78);border-bottom:1px solid rgba(255,255,255,.055);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-title span:last-child{font-size:10px;color:var(--home-muted-2);font-weight:850;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-grid{display:flex;flex-wrap:nowrap;gap:8px;padding:10px 12px 12px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-grid::-webkit-scrollbar{height:5px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip{flex:1 1 0;min-width:0;display:grid;grid-template-columns:1fr;gap:7px;align-items:start;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055);font-size:10px;color:rgba(255,255,255,.68);line-height:1.15;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip b{display:flex;align-items:center;justify-content:space-between;color:var(--home-text);font-size:11px;font-weight:950;letter-spacing:.02em;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-metric{display:grid;grid-template-columns:28px minmax(0,1fr) 42px;gap:6px;align-items:center;min-width:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-metric-label{font-size:9px;color:var(--home-muted-2);font-weight:850;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-metric-value{font-size:9.5px;color:rgba(255,255,255,.82);font-weight:900;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-mini-track{height:5px;border-radius:999px;background:rgba(255,255,255,.075);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.22);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-mini-fill{height:100%;width:0%;border-radius:inherit;background:linear-gradient(90deg,var(--home-blue),var(--home-good));}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-core-mini-fill.warn{background:linear-gradient(90deg,#f59e0b,var(--home-warn));}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-mini-fill.bad{background:linear-gradient(90deg,var(--home-bad),#f97316);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-details-wrap{border:1px solid rgba(255,255,255,.08);border-radius:22px;background:rgba(255,255,255,.032);overflow:hidden;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-details-wrap>summary{cursor:pointer;list-style:none;padding:14px 16px;font-size:13px;font-weight:950;color:rgba(255,255,255,.86);background:rgba(255,255,255,.035);display:flex;justify-content:space-between;gap:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-details-wrap>summary::-webkit-details-marker{display:none;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail{min-width:0;padding:12px;border-radius:18px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.055);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-title{font-size:12px;font-weight:950;color:rgba(255,255,255,.80);margin-bottom:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-dl{display:grid;grid-template-columns:1fr;gap:7px;margin:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-dl>div{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;align-items:start;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-dl dt{font-size:11px;color:var(--home-muted-2);font-weight:780;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-dl dd{margin:0;font-size:12px;color:rgba(255,255,255,.75);line-height:1.45;word-break:break-all;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 12px 14px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card{position:relative;overflow:hidden;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 15% 20%,rgba(127,180,255,.10),transparent 34%),radial-gradient(circle at 88% 90%,rgba(57,210,121,.08),transparent 34%);opacity:.9;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-actions{position:relative;z-index:1;display:grid;grid-template-rows:auto 1fr auto;gap:12px;width:100%;height:100%;min-height:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-title{font-size:13px;font-weight:950;color:var(--home-text);display:flex;align-items:center;justify-content:space-between;gap:10px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-title-main{display:inline-flex;align-items:center;gap:8px;min-width:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-title-main:before{content:"✦";width:20px;height:20px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:rgba(120,180,255,.12);border:1px solid rgba(120,180,255,.18);font-size:12px;color:#b9d7ff;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-title span{font-size:10.5px;font-weight:800;color:var(--home-muted-2);white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-body{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-copy{min-width:0;display:flex;flex-direction:column;gap:6px;color:var(--home-muted);font-size:11px;line-height:1.45;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-copy b{font-size:12px;color:rgba(255,255,255,.80);font-weight:920;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-copy span{display:inline-flex;align-items:center;width:max-content;max-width:100%;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.54);font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card .kn-home-rocket-actions{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;gap:8px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action{position:relative;overflow:hidden;height:34px;min-height:34px;padding:0 13px;border-radius:999px;border:1px solid rgba(120,180,255,.24);background:linear-gradient(180deg,rgba(78,146,255,.20),rgba(78,146,255,.095));color:rgba(235,244,255,.95);font-size:12px;font-weight:900;cursor:pointer;box-shadow:0 8px 18px rgba(30,90,200,.11),inset 0 1px 0 rgba(255,255,255,.10);transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease,opacity .16s ease;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action:hover{transform:translateY(-1px);border-color:rgba(134,201,255,.40);background:linear-gradient(180deg,rgba(78,146,255,.26),rgba(78,146,255,.12));box-shadow:0 12px 24px rgba(30,90,200,.16),inset 0 1px 0 rgba(255,255,255,.13);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action:active{transform:translateY(0) scale(.985);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-icon{display:inline-block;font-size:13px;line-height:1;filter:drop-shadow(0 0 6px rgba(135,206,250,.30));}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action.launching{pointer-events:none;opacity:.86;box-shadow:0 0 0 3px rgba(120,180,255,.08),0 10px 24px rgba(30,90,200,.18),inset 0 1px 0 rgba(255,255,255,.14);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action.launching .kn-home-rocket-icon{animation:knRocketLaunch .72s cubic-bezier(.2,.8,.2,1) both;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action.launching:after{content:"";position:absolute;left:17px;bottom:3px;width:8px;height:20px;border-radius:999px;background:linear-gradient(180deg,rgba(255,230,130,.0),rgba(255,190,70,.72),rgba(255,95,104,.0));animation:knRocketFlame .72s ease-in-out both;}' +
-      '@keyframes knRocketLaunch{0%{transform:translate(0,0) rotate(0deg)}45%{transform:translate(4px,-7px) rotate(-14deg)}100%{transform:translate(0,0) rotate(0deg)}}' +
-      '@keyframes knRocketFlame{0%{opacity:0;transform:translateY(9px) scaleY(.45)}35%{opacity:.95;transform:translateY(0) scaleY(1)}100%{opacity:0;transform:translateY(-12px) scaleY(.38)}}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-primary-action,#'+ HOME_DASHBOARD_ID + ' .kn-home-secondary-action{min-height:40px;padding:0 14px;border-radius:999px;font-size:12px;font-weight:900;cursor:pointer;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-primary-action{border:1px solid rgba(120,180,255,.30);background:linear-gradient(180deg,rgba(78,146,255,.34),rgba(78,146,255,.17));color:#fff;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-secondary-action{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:rgba(255,255,255,.78);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-warn{font-size:11px;line-height:1.6;color:var(--home-muted-2);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock{padding:16px;border-radius:22px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.032);display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-block{display:flex;gap:13px;align-items:flex-start;min-width:0;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-icon{width:52px;height:52px;flex:0 0 52px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(72,150,255,.13);border:1px solid rgba(120,180,255,.24);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-status{margin-top:6px;font-size:11px;color:var(--home-muted-2);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-status.ready{color:rgba(134,239,172,.88);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-status.missing{color:rgba(247,201,72,.88);}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-action-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-stack{display:grid;gap:5px;margin-top:4px;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-row{display:grid;grid-template-columns:38px minmax(0,1fr);gap:7px;align-items:center;font-size:12px;line-height:1.25;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-row b{font-size:10px;color:var(--home-muted-2);font-weight:900;letter-spacing:.03em;}' +
-      '#'+ HOME_DASHBOARD_ID + ' .kn-home-exit-ip-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--home-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:850;}' +
-      '.kn-phone-missing-modal{position:fixed;inset:0;z-index:1000001;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(0,0,0,.58);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}.kn-phone-missing-card{width:min(440px,calc(100vw - 34px));border-radius:24px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(28,32,42,.96),rgba(13,16,22,.96));box-shadow:0 32px 90px rgba(0,0,0,.56);padding:20px;color:#fff;}.kn-phone-missing-title{font-size:18px;font-weight:950;margin-bottom:8px}.kn-phone-missing-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.58);margin-bottom:16px}.kn-phone-missing-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}.kn-phone-missing-actions button{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#fff;font-weight:850;cursor:pointer}.kn-phone-missing-actions .primary{background:rgba(72,150,255,.28);border-color:rgba(120,180,255,.32);}' +
-      '.kn-theme-light #'+ HOME_DASHBOARD_ID + '{--home-card-bg:rgba(255,255,255,.72);--home-card-bg-soft:rgba(255,255,255,.54);--home-card-border:rgba(34,50,80,.08);--home-text:#172033;--home-muted:rgba(23,32,51,.58);--home-muted-2:rgba(23,32,51,.42);}' +
-      '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-card,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-dash-card,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-details-wrap{background:rgba(255,255,255,.58)!important;border-color:rgba(34,50,80,.08)!important;box-shadow:0 14px 36px rgba(34,50,80,.10),inset 0 1px 0 rgba(255,255,255,.58)!important;}' +
-      '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-stat,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-kpi,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-detail,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-item{background:rgba(255,255,255,.48)!important;border-color:rgba(34,50,80,.08)!important;}' +
-      '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-title,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-stat-value,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-value,.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-dash-title{color:#172033!important;}' +
-      '.kn-theme-light #'+ HOME_DASHBOARD_ID + ' .kn-home-update-notice{color:#765600;background:rgba(247,201,72,.13);border-color:rgba(138,99,0,.14)}' +
-      '@media(max-width:1180px){#'+ HOME_DASHBOARD_ID + '{width:min(100% - 28px,1120px);}#'+ HOME_DASHBOARD_ID + ' .kn-home-left-column,#'+ HOME_DASHBOARD_ID + ' .kn-home-network-card{grid-column:span 12;}#'+ HOME_DASHBOARD_ID + ' .kn-home-left-column{grid-template-rows:auto auto;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card{min-height:120px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-network-card{grid-row:auto;}#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-grid{grid-template-columns:1fr;}}' +
-      '@media(max-width:760px){#'+ HOME_DASHBOARD_ID + '{width:calc(100% - 18px);margin-bottom:16px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-card-head{flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh-controls{width:100%;justify-content:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-refresh{flex:1;}#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy{align-items:flex-start;flex-direction:column;gap:1px}#'+ HOME_DASHBOARD_ID + ' .kn-home-update-copy span{white-space:normal}#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{grid-template-columns:repeat(2,minmax(0,1fr));}#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-row,#'+ HOME_DASHBOARD_ID + ' .kn-home-resource-row{grid-template-columns:1fr;gap:6px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-progress-value{text-align:left;}#'+ HOME_DASHBOARD_ID + ' .kn-home-kpi-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip{min-width:118px;flex-basis:118px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-signal-insights{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-plugin-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-phone-dock{align-items:flex-start;flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-body{align-items:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card .kn-home-rocket-actions{justify-content:flex-start;}}' +
-      '@media(max-width:520px){#'+ HOME_DASHBOARD_ID + '{width:calc(100% - 12px);}#'+ HOME_DASHBOARD_ID + ' .kn-home-status-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-title{font-size:18px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-duplex{flex-direction:column;align-items:stretch;}#'+ HOME_DASHBOARD_ID + ' .kn-home-rx,#'+ HOME_DASHBOARD_ID + ' .kn-home-tx{font-size:20px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-cpu-summary-grid{grid-template-columns:1fr;}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-grid{padding-left:10px;padding-right:10px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-core-chip{min-width:112px;flex-basis:112px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-detail-dl>div{grid-template-columns:76px minmax(0,1fr);}#'+ HOME_DASHBOARD_ID + ' .kn-home-action-row{display:grid;grid-template-columns:1fr;width:100%;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-body{flex-direction:column;}#'+ HOME_DASHBOARD_ID + ' .kn-home-maint-card .kn-home-rocket-actions{width:100%;justify-content:flex-start;}#'+ HOME_DASHBOARD_ID + ' .kn-home-rocket-action{flex:1 1 120px;}#'+ HOME_DASHBOARD_ID + ' .kn-home-primary-action,#'+ HOME_DASHBOARD_ID + ' .kn-home-secondary-action{width:100%;}}';
+    var s = '#' + HOME_DASHBOARD_ID;
+    style.textContent = `
+      ${s}{--home-text:#e9ecef;--home-muted:#a2a9b2;--home-muted-2:#858e99;--home-line:rgba(224,231,238,.13);--home-surface:rgba(27,30,35,.86);--home-soft:rgba(255,255,255,.035);--home-good:#64cb9d;--home-warn:#e9bd61;--home-bad:#f17f89;--home-blue:#85b6ed;box-sizing:border-box;width:min(1280px,calc(100% - 40px));margin:0 auto 20px;min-height:0;flex:1 1 auto;overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain;color:var(--home-text)}
+      ${s} *{box-sizing:border-box;letter-spacing:0}
+      ${s}.kn-home-dashboard{display:flex;flex-direction:column;gap:0;padding:0 6px 16px}
+      ${s}>*{flex-shrink:0}
+      ${s} button,${s} select,${s} input{font:inherit}
+      ${s} button{cursor:pointer}
+      ${s} button:focus-visible,${s} select:focus-visible,${s} [role="button"]:focus-visible,${s} summary:focus-visible{outline:2px solid var(--home-blue);outline-offset:3px}
+      ${s} .kn-home-card-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0}
+      ${s} .kn-home-title{margin:0;color:var(--home-text);font-size:20px;font-weight:750;line-height:1.4}
+      ${s} .kn-home-refresh-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;font-size:11px}
+      ${s} .kn-home-refresh-time{color:var(--home-muted-2);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+      ${s} .kn-home-refresh{display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px;width:34px;height:34px;padding:0;border:1px solid var(--home-line);border-radius:6px;background:var(--home-soft);color:var(--home-text)}
+      ${s} .kn-home-refresh svg{width:16px;height:16px}
+      ${s} .kn-home-refresh.is-busy{opacity:.45;cursor:wait}
+      ${s} .kn-home-refresh-select{height:34px;width:84px;min-width:0;padding:0 8px;border:1px solid var(--home-line);border-radius:6px;background:#24282e;color:var(--home-text);font-size:11px}
+      ${s} .kn-home-auto-control{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--home-muted);white-space:nowrap;font-size:11px}
+      ${s} .kn-home-auto-control input{width:16px;height:16px;margin:0;accent-color:var(--home-good)}
+      ${s} .kn-home-auto-control:has(input:disabled){opacity:.5;cursor:default}
+      ${s} .kn-home-update-notice{display:flex;align-items:center;gap:10px;padding:9px 10px;margin:0 0 12px;border:1px solid rgba(233,189,97,.28);border-radius:6px;background:rgba(233,189,97,.07);color:var(--home-text)}
+      ${s} .kn-home-update-notice[hidden]{display:none!important}
+      ${s} .kn-home-update-icon{color:var(--home-warn);font-size:16px}
+      ${s} .kn-home-update-copy{display:flex;gap:8px;align-items:baseline;flex:1;min-width:0;font-size:11px;flex-wrap:wrap}
+      ${s} .kn-home-update-copy span{color:var(--home-muted);overflow-wrap:anywhere}
+      ${s} .kn-home-update-actions{display:flex;align-items:center;gap:5px}
+      ${s} .kn-home-update-link,${s} .kn-home-update-close{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 8px;background:transparent;border:1px solid var(--home-line);border-radius:5px;color:inherit;font-size:11px;text-decoration:none}
+      ${s} .kn-home-update-close{width:28px;padding:0;font-size:16px}
+      ${s} .kn-home-status-grid{display:grid;grid-template-columns:1.35fr 1fr .8fr 1.1fr;gap:0;background:var(--home-surface);border:1px solid var(--home-line);border-radius:8px;margin:0 0 18px;padding:16px 0}
+      ${s} .kn-home-stat{min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 18px;border-right:1px solid var(--home-line)}
+      ${s} .kn-home-stat:last-child{border-right:0}
+      ${s} .kn-home-stat-label{color:var(--home-muted);font-size:11px;font-weight:500;margin-bottom:7px}
+      ${s} .kn-home-stat-value{font-size:20px;font-weight:700;line-height:1.3;color:var(--home-text);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+      ${s} .kn-home-stat-sub{color:var(--home-muted-2);font-size:10px;line-height:1.5;margin-top:6px;overflow-wrap:anywhere}
+      ${s} .kn-home-network-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:7px}
+      ${s} .kn-home-network-meta .kn-home-stat-sub{margin:0}
+      ${s} .kn-home-phone-line{cursor:pointer;color:var(--home-muted);font-size:10px;line-height:1.5;white-space:nowrap}
+      ${s} .kn-home-phone-line:hover{color:var(--home-blue)}
+      ${s} .kn-home-dashboard-fusion{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 28px;align-items:start}
+      ${s} .kn-home-dash-card{min-width:0;padding:0 0 20px;background:transparent;border:0;border-radius:0;box-shadow:none}
+      ${s} .kn-home-dash-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px;margin-bottom:10px}
+      ${s} .kn-home-dash-title{margin:0;color:var(--home-text);font-size:14px;font-weight:700;line-height:1.4}
+      ${s} .kn-home-dash-extra{color:var(--home-muted-2);font-size:10px;line-height:1.5;text-align:right;min-width:0;overflow-wrap:anywhere}
+      ${s} .kn-home-network-card,${s} .kn-home-signal-card{align-self:stretch}
+      ${s} .kn-home-duplex{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:14px 0 18px;border-bottom:1px solid var(--home-line)}
+      ${s} .kn-home-duplex-block{min-width:0;padding:0 18px}
+      ${s} .kn-home-duplex-block:first-child{padding-left:0;border-right:1px solid var(--home-line)}
+      ${s} .kn-home-duplex-label{font-size:11px;color:var(--home-muted);margin-bottom:8px}
+      ${s} .kn-home-rx,${s} .kn-home-tx{display:block;min-width:0;font-size:27px;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      ${s} .kn-home-rx{color:var(--home-good)}
+      ${s} .kn-home-tx{color:var(--home-blue)}
+      ${s} .kn-home-kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding-top:16px}
+      ${s} .kn-home-kpi{min-width:0;padding:0 12px;border-right:1px solid var(--home-line)}
+      ${s} .kn-home-kpi:first-child{padding-left:0}
+      ${s} .kn-home-kpi:nth-child(3){border-right:0}
+      ${s} .kn-home-kpi-label{color:var(--home-muted);font-size:10px;margin-bottom:7px}
+      ${s} .kn-home-kpi-value{color:var(--home-text);font-size:18px;font-weight:650;line-height:1.4;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+      ${s} .kn-home-qci{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;border:0;border-top:1px solid var(--home-line);padding:12px 0 0;margin-top:16px}
+      ${s} .kn-home-qci .kn-home-kpi-label{margin:0;flex:0 0 auto}
+      ${s} .kn-home-kpi-value.small{font-size:11px;font-weight:500;line-height:1.5;color:var(--home-muted);overflow-wrap:anywhere}
+      ${s} .kn-home-progress-list{display:flex;flex-direction:column;gap:0}
+      ${s} .kn-home-progress-row{display:grid;grid-template-columns:52px minmax(40px,1fr) 76px 42px;align-items:center;gap:10px;padding:13px 0;border-bottom:1px solid var(--home-line)}
+      ${s} .kn-home-progress-label strong{font-size:11px;font-weight:600;color:var(--home-muted)}
+      ${s} .kn-home-progress-track{height:6px;border-radius:3px;background:rgba(143,158,175,.16);overflow:hidden;min-width:0}
+      ${s} .kn-home-progress-fill{height:100%;width:0;border-radius:inherit;background:var(--home-blue);transition:width .24s ease}
+      ${s} .kn-home-progress-fill.good{background:var(--home-good)}
+      ${s} .kn-home-progress-fill.warn{background:var(--home-warn)}
+      ${s} .kn-home-progress-fill.bad{background:var(--home-bad)}
+      ${s} .kn-home-progress-fill.empty{width:0!important;opacity:.35}
+      ${s} .kn-home-progress-value{text-align:right;font-size:12px;font-weight:650;color:var(--home-text);font-variant-numeric:tabular-nums;white-space:nowrap}
+      ${s} .kn-home-signal-state{font-size:10px;text-align:right;font-weight:600;color:var(--home-muted)}
+      ${s} .kn-home-signal-state.good{color:var(--home-good)}
+      ${s} .kn-home-signal-state.warn{color:var(--home-warn)}
+      ${s} .kn-home-signal-state.bad{color:var(--home-bad)}
+      ${s} .kn-home-signal-state.empty{color:var(--home-muted-2)}
+      ${s} .kn-home-signal-insights{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;padding-top:13px}
+      ${s} .kn-home-signal-insights>div{display:flex;align-items:baseline;gap:7px;min-width:0}
+      ${s} .kn-home-signal-insights b{font-size:10px;font-weight:500;color:var(--home-muted-2)}
+      ${s} .kn-home-signal-insights span{font-size:11px;color:var(--home-text)}
+      ${s} .kn-home-signal-insights .kn-home-radio-insight{display:none}
+      ${s} .kn-home-resource-card{grid-column:1/-1;padding-top:17px;border-top:1px solid var(--home-line)}
+      ${s} .kn-home-resource-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px 28px}
+      ${s} .kn-home-resource-main{gap:14px;padding:6px 0}
+      ${s} .kn-home-resource-row{display:grid;grid-template-columns:92px minmax(40px,1fr) 128px;align-items:center;gap:12px}
+      ${s} .kn-home-resource-row .kn-home-progress-label strong{display:block;font-size:11px}
+      ${s} .kn-home-resource-row .kn-home-progress-label span{display:none}
+      ${s} .kn-home-resource-row .kn-home-progress-value{font-size:11px;font-weight:500}
+      ${s} .kn-home-cpu-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;padding:6px 0 6px 24px;border-left:1px solid var(--home-line)}
+      ${s} .kn-home-cpu-summary-item{min-width:0}
+      ${s} .kn-home-cpu-summary-item b{display:block;color:var(--home-muted);font-size:10px;font-weight:500;margin-bottom:6px}
+      ${s} .kn-home-cpu-summary-item span{font-size:18px;font-weight:650;color:var(--home-text);font-variant-numeric:tabular-nums}
+      ${s} .kn-home-core-strip{grid-column:1/-1;min-width:0;border-top:1px solid var(--home-line);padding-top:14px}
+      ${s} .kn-home-core-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;font-size:12px;font-weight:600;color:var(--home-text)}
+      ${s} .kn-home-core-title span:last-child{font-size:10px;font-weight:400;color:var(--home-muted-2)}
+      ${s} .kn-home-core-grid{display:flex;flex-wrap:nowrap;gap:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--home-line) transparent;padding:3px 0 8px;-webkit-overflow-scrolling:touch}
+      ${s} .kn-home-core-chip{flex:1 0 120px;min-width:0;padding:0 12px;display:grid;gap:9px;border-right:1px solid var(--home-line)}
+      ${s} .kn-home-core-chip:first-child{padding-left:0}
+      ${s} .kn-home-core-chip:last-child{border-right:0}
+      ${s} .kn-home-core-chip b{font-size:11px;font-weight:650;color:var(--home-text)}
+      ${s} .kn-home-core-metric{display:grid;grid-template-columns:22px minmax(10px,1fr) 43px;align-items:center;gap:5px;min-width:0}
+      ${s} .kn-home-core-metric-label{font-size:9px;color:var(--home-muted-2);white-space:nowrap}
+      ${s} .kn-home-core-metric-value{font-size:10px;font-weight:500;text-align:right;white-space:nowrap;color:var(--home-text);font-variant-numeric:tabular-nums}
+      ${s} .kn-home-core-mini-track{height:4px;overflow:hidden;border-radius:2px;background:rgba(143,158,175,.16)}
+      ${s} .kn-home-core-mini-fill{height:100%;width:0;background:var(--home-blue);border-radius:inherit}
+      ${s} .kn-home-core-mini-fill.warn{background:var(--home-warn)}
+      ${s} .kn-home-core-mini-fill.bad{background:var(--home-bad)}
+      ${s} .kn-home-address-bar{display:grid;grid-template-columns:78px minmax(0,.7fr) minmax(0,1.3fr) auto;align-items:center;gap:10px 18px;min-width:0;padding:14px 0;border-top:1px solid var(--home-line);cursor:pointer}
+      ${s} .kn-home-address-label{color:var(--home-muted);font-size:11px}
+      ${s} .kn-home-exit-ip-row{display:flex;align-items:baseline;gap:9px;min-width:0;font-size:11px}
+      ${s} .kn-home-exit-ip-row b{color:var(--home-muted-2);font-size:10px;font-weight:500;flex:0 0 auto}
+      ${s} .kn-home-exit-ip-row span{min-width:0;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--home-text);font-variant-numeric:tabular-nums}
+      ${s} #kn-home-exit-ip{font-size:10px;color:var(--home-muted-2)}
+      ${s} .kn-home-details-wrap{border-top:1px solid var(--home-line);border-bottom:1px solid var(--home-line)}
+      ${s} .kn-home-details-wrap>summary{padding:14px 0;color:var(--home-muted);font-size:12px;cursor:pointer}
+      ${s} .kn-home-details-wrap>summary span:last-child{font-size:10px;color:var(--home-muted-2);margin-left:12px}
+      ${s} .kn-home-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 28px;padding:6px 0 20px}
+      ${s} .kn-home-detail{min-width:0}
+      ${s} .kn-home-detail-title{font-size:12px;color:var(--home-text);font-weight:600;margin-bottom:12px}
+      ${s} .kn-home-detail-dl{margin:0;display:grid;gap:8px}
+      ${s} .kn-home-detail-dl>div{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px}
+      ${s} .kn-home-detail-dl dt{font-size:11px;color:var(--home-muted-2)}
+      ${s} .kn-home-detail-dl dd{margin:0;font-size:11px;line-height:1.5;color:var(--home-text);overflow-wrap:anywhere}
+      ${s} .kn-home-shortcuts{padding-top:18px}
+      ${s} .kn-home-shortcuts>.kn-home-dash-title{margin-bottom:12px}
+      ${s} .kn-home-plugin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+      ${s} .kn-home-phone-dock{min-width:0;border:1px solid var(--home-line);border-radius:8px;background:var(--home-soft);padding:14px;display:flex;flex-direction:column;gap:14px}
+      ${s} .kn-home-shortcut-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:650;color:var(--home-text)}
+      ${s} .kn-home-plugin-status{font-size:10px;font-weight:500;color:var(--home-muted-2)}
+      ${s} .kn-home-plugin-status.ready{color:var(--home-good)}
+      ${s} .kn-home-plugin-status.missing{color:var(--home-warn)}
+      ${s} .kn-home-action-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto}
+      ${s} .kn-home-primary-action,${s} .kn-home-secondary-action,${s} .kn-home-rocket-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 11px;border:1px solid var(--home-line);border-radius:6px;background:rgba(255,255,255,.035);color:var(--home-text);font-size:11px;font-weight:500;white-space:nowrap}
+      ${s} .kn-home-primary-action{border-color:rgba(133,182,237,.3);color:var(--home-blue)}
+      ${s} button:hover{background:rgba(133,182,237,.08);border-color:rgba(133,182,237,.38)}
+      ${s} button:disabled{opacity:.5;cursor:wait}
+      .kn-phone-missing-modal{position:fixed;inset:0;z-index:1000001;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.6)}
+      .kn-phone-missing-card{width:min(440px,100%);padding:20px;border:1px solid #454c56;border-radius:8px;background:#20242a;color:#e9ecef}
+      .kn-phone-missing-title{font-size:18px;font-weight:700;margin-bottom:10px}
+      .kn-phone-missing-text{font-size:12px;line-height:1.6;color:#a2a9b2;margin-bottom:14px}
+      .kn-phone-missing-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+      .kn-phone-missing-actions button{min-height:34px;padding:0 12px;border:1px solid #454c56;border-radius:6px;background:#292f37;color:#e9ecef;cursor:pointer}
+      .kn-theme-light ${s}{--home-text:#20262c;--home-muted:#56616c;--home-muted-2:#6e7a85;--home-line:rgba(39,52,65,.14);--home-surface:rgba(255,255,255,.82);--home-soft:rgba(255,255,255,.35);--home-good:#207c57;--home-warn:#996c11;--home-bad:#ba3e4b;--home-blue:#2364a4}
+      .kn-theme-light ${s} .kn-home-refresh-select{background:#fff}
+      .kn-theme-light ${s} .kn-home-phone-dock{background:rgba(255,255,255,.5)}
+      @media(max-width:1080px){
+        ${s} .kn-home-stat{padding:0 12px}
+        ${s} .kn-home-stat-value{font-size:18px}
+        ${s} .kn-home-resource-grid{grid-template-columns:1fr}
+        ${s} .kn-home-cpu-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));padding:12px 0 0;border-left:0;border-top:1px solid var(--home-line)}
+        ${s} .kn-home-plugin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        ${s} #kn-home-maint-card{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between}
+        ${s} #kn-home-maint-card .kn-home-action-row{margin-top:0}
+      }
+      @media(max-width:760px){
+        ${s}{width:calc(100% - 24px)}
+        ${s} .kn-home-card-head{align-items:flex-start;flex-direction:column;gap:10px;padding:12px 0}
+        ${s} .kn-home-title{font-size:18px}
+        ${s} .kn-home-refresh-controls{width:100%;justify-content:flex-start;gap:8px}
+        ${s} .kn-home-refresh-time{margin-right:auto}
+        ${s} .kn-home-status-grid{grid-template-columns:repeat(3,minmax(0,1fr));padding:0;margin-bottom:14px}
+        ${s} .kn-home-network-stat{grid-column:1/-1;border:0;border-bottom:1px solid var(--home-line);padding:13px 14px}
+        ${s} .kn-home-network-stat .kn-home-stat-label{display:none}
+        ${s} .kn-home-network-meta{margin-top:5px}
+        ${s} .kn-home-network-stat .kn-home-stat-value{font-size:19px}
+        ${s} .kn-home-stat:not(.kn-home-network-stat){padding:13px 10px}
+        ${s} .kn-home-stat-label{font-size:10px;margin-bottom:6px}
+        ${s} .kn-home-stat-value{font-size:16px}
+        ${s} .kn-home-stat-sub{font-size:10px}
+        ${s} .kn-home-local-stat .kn-home-stat-value{font-size:12px;line-height:21px;white-space:nowrap}
+        ${s} .kn-home-stat:not(.kn-home-network-stat) .kn-home-stat-sub{display:none}
+        ${s} .kn-home-dashboard-fusion{grid-template-columns:1fr}
+        ${s} .kn-home-network-card{border-bottom:1px solid var(--home-line);padding-bottom:16px;margin-bottom:12px}
+        ${s} .kn-home-signal-card{padding-bottom:16px}
+        ${s} .kn-home-dash-head{margin-bottom:4px}
+        ${s} .kn-home-duplex{padding-top:10px}
+        ${s} .kn-home-rx,${s} .kn-home-tx{font-size:24px}
+        ${s} .kn-home-kpi-value{font-size:16px}
+        ${s} .kn-home-resource-card{padding-top:12px}
+        ${s} .kn-home-resource-row{grid-template-columns:76px minmax(32px,1fr) 122px;gap:8px}
+        ${s} .kn-home-cpu-summary-grid{gap:12px 8px}
+        ${s} .kn-home-cpu-summary-item span{font-size:16px}
+        ${s} .kn-home-address-bar{grid-template-columns:1fr auto;gap:10px;padding:14px 0}
+        ${s} .kn-home-address-label{grid-column:1}
+        ${s} #kn-home-exit-ip{grid-column:2;grid-row:1}
+        ${s} .kn-home-exit-ip-row{grid-column:1/-1}
+        ${s} .kn-home-detail-grid{grid-template-columns:1fr}
+        ${s} .kn-home-details-wrap>summary span:last-child{display:none}
+      }
+      @media(max-width:420px){
+        ${s}{width:calc(100% - 18px);padding-right:4px;padding-left:4px}
+        ${s} .kn-home-refresh-controls{gap:7px}
+        ${s} .kn-home-refresh-time{font-size:10px}
+        ${s} .kn-home-refresh-select{width:74px}
+        ${s} .kn-home-progress-row{grid-template-columns:42px minmax(25px,1fr) 68px 32px;gap:7px;padding:12px 0}
+        ${s} .kn-home-progress-value{font-size:11px}
+        ${s} .kn-home-signal-state{font-size:9px}
+        ${s} .kn-home-cpu-summary-item b{font-size:9px}
+        ${s} .kn-home-plugin-grid{grid-template-columns:1fr}
+        ${s} .kn-home-phone-dock{flex-direction:row;align-items:center;justify-content:space-between;padding:12px}
+        ${s} .kn-home-action-row{margin:0;gap:5px;justify-content:flex-end}
+        ${s} .kn-home-primary-action,${s} .kn-home-secondary-action,${s} .kn-home-rocket-action{padding:0 8px;font-size:10px}
+        ${s} #kn-home-maint-card{grid-column:auto}
+      }
+      @media(max-width:360px){${s} .kn-home-refresh-time{width:100%;order:5;text-align:right}${s} .kn-home-local-stat .kn-home-stat-value{font-size:11px}}
+      @media(prefers-reduced-motion:reduce){${s} .kn-home-progress-fill{transition:none}}
+    `;
     document.head.appendChild(style);
   }
 
@@ -5716,94 +5793,53 @@
     home.id = HOME_DASHBOARD_ID;
     home.className = 'kn-home-dashboard';
     home.innerHTML = [
-      '<div class="kn-home-hero">',
-        '<div class="kn-home-card kn-home-device-card">',
-          '<div class="kn-home-card-head">',
-            '<div>',
-              '<div class="kn-home-kicker">Home Dashboard</div>',
-              '<div class="kn-home-title">设备状态概览</div>',
-            '</div>',
-            '<div class="kn-home-refresh-controls"><button type="button" class="kn-home-refresh" data-home-action="refresh">刷新状态</button><select class="kn-home-refresh-select" data-home-refresh-interval><option value="5000">5 秒</option><option value="10000">10 秒</option><option value="30000">30 秒</option><option value="60000">60 秒</option></select><button type="button" class="kn-home-refresh-toggle" data-home-auto-refresh>自动刷新：关</button><div class="kn-home-refresh-time" id="kn-home-refresh-time">未刷新</div></div>',
-          '</div>',
-          '<div id="kn-home-update-notice" class="kn-home-update-notice" hidden><span class="kn-home-update-icon" aria-hidden="true">↑</span><div class="kn-home-update-copy"><b>发现新版本</b><span id="kn-home-update-version">GitHub 已有更新</span></div><div class="kn-home-update-actions"><a id="kn-home-update-link" class="kn-home-update-link" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">查看</a><button id="kn-home-update-close" class="kn-home-update-close" type="button" title="暂不提醒" aria-label="暂不提醒">×</button></div></div>',
-          '<div class="kn-home-status-grid">',
-            '<div class="kn-home-stat"><div class="kn-home-stat-label">运行状态</div><div id="kn-home-modem" class="kn-home-stat-value">--</div><div id="kn-home-uptime" class="kn-home-stat-sub">运行时长读取中</div></div>',
-            '<div class="kn-home-stat"><div class="kn-home-stat-label">网络状态 / 信号</div><div id="kn-home-network" class="kn-home-stat-value">--</div><div id="kn-home-phone-line" class="kn-home-stat-sub kn-home-phone-line" title="点击复制手机号">手机号读取中</div><div id="kn-home-signal" class="kn-home-stat-sub">信号 --</div></div>',
-            '<div class="kn-home-stat"><div class="kn-home-stat-label">内网 IP</div><div id="kn-home-ip" class="kn-home-stat-value">--</div><div id="kn-home-ip-sub" class="kn-home-stat-sub">设备管理 IPv4</div></div>',
-            '<div class="kn-home-stat is-clickable" id="kn-home-exit-ip-card" title="点击复制设备出口 IP"><div class="kn-home-stat-label">设备出口 IP</div><div id="kn-home-exit-ip" class="kn-home-stat-value">设备端查询</div><div class="kn-home-exit-ip-stack"><div class="kn-home-exit-ip-row"><b>IPv4</b><span id="kn-home-exit-ip-v4">--</span></div><div class="kn-home-exit-ip-row"><b>IPv6</b><span id="kn-home-exit-ip-v6">--</span></div></div><div id="kn-home-exit-ip-sub" class="kn-home-stat-sub">设备端查询 IPv4 / IPv6</div></div>',
-            '<div class="kn-home-stat"><div class="kn-home-stat-label">WiFi 接入</div><div id="kn-home-wifi" class="kn-home-stat-value">--</div><div id="kn-home-wifi-sub" class="kn-home-stat-sub">接入设备 --</div></div>',
-          '</div>',
-          '<div class="kn-home-dashboard-fusion">',
-            '<div class="kn-home-left-column">',
-            '<section class="kn-home-dash-card kn-home-signal-card">',
-              '<div class="kn-home-dash-head"><div class="kn-home-dash-title">无线信号质量</div><div class="kn-home-dash-extra" id="kn-home-signal-label">实时解析</div></div>',
-              '<div class="kn-home-progress-list">',
-                '<div class="kn-home-progress-row"><div class="kn-home-progress-label"><strong>RSRP</strong><span>-125 弱 / -81 强</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-rsrp"></div></div><div class="kn-home-progress-value" id="kn-home-val-rsrp">--</div><div class="kn-home-signal-state empty" id="kn-home-state-rsrp">暂无</div></div>',
-                '<div class="kn-home-progress-row"><div class="kn-home-progress-label"><strong>SINR</strong><span>-10 差 / 30 优</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-sinr"></div></div><div class="kn-home-progress-value" id="kn-home-val-sinr">--</div><div class="kn-home-signal-state empty" id="kn-home-state-sinr">暂无</div></div>',
-                '<div class="kn-home-progress-row"><div class="kn-home-progress-label"><strong>RSRQ</strong><span>-20 差 / -3 优</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-rsrq"></div></div><div class="kn-home-progress-value" id="kn-home-val-rsrq">--</div><div class="kn-home-signal-state empty" id="kn-home-state-rsrq">暂无</div></div>',
-              '</div>',
-              '<div class="kn-home-signal-insights">',
-                '<div><b>综合</b><span id="kn-home-signal-overall">--</span></div>',
-                '<div><b>射频</b><span id="kn-home-signal-radio">--</span></div>',
-                '<div><b>建议</b><span id="kn-home-signal-advice">等待数据</span></div>',
-              '</div>',
-            '</section>',
-            '<section class="kn-home-dash-card kn-home-maint-card">',
-              '<div class="kn-home-maint-actions"><div class="kn-home-maint-title"><div class="kn-home-maint-title-main">设备维护</div><span>轻量操作</span></div><div class="kn-home-maint-body"><div class="kn-home-maint-copy"><b>快速整理设备状态</b><span>清理缓存 / 降低瞬时负载，不中断网络</span></div><div class="kn-home-rocket-actions"><button type="button" class="kn-home-rocket-action" data-home-action="cleanMem"><span class="kn-home-rocket-icon">🚀</span><span class="kn-home-rocket-label">清理内存</span></button><button type="button" class="kn-home-rocket-action" data-home-action="coolDown"><span class="kn-home-rocket-icon">🚀</span><span class="kn-home-rocket-label">临时降温</span></button></div></div></div>',
-            '</section>',
-            '</div>',
-            '<section class="kn-home-dash-card kn-home-network-card">',
-              '<div class="kn-home-dash-head"><div class="kn-home-dash-title">实时网络</div><div class="kn-home-dash-extra" id="kn-home-throughput-label">RX / TX</div></div>',
-              '<div class="kn-home-kpi-grid">',
-                '<div class="kn-home-kpi hero"><div class="kn-home-kpi-label">实时下行 / 上行</div><div class="kn-home-duplex"><div class="kn-home-duplex-block"><div class="kn-home-duplex-label">下载 RX</div><span class="kn-home-rx" id="kn-home-kpi-rx">--</span></div><div class="kn-home-duplex-block"><div class="kn-home-duplex-label">上传 TX</div><span class="kn-home-tx" id="kn-home-kpi-tx">--</span></div></div></div>',
-                '<div class="kn-home-kpi"><div class="kn-home-kpi-label">当日流量</div><div class="kn-home-kpi-value" id="kn-home-kpi-daily">--</div></div>',
-                '<div class="kn-home-kpi"><div class="kn-home-kpi-label">本月已用</div><div class="kn-home-kpi-value" id="kn-home-kpi-month">--</div></div>',
-                '<div class="kn-home-kpi"><div class="kn-home-kpi-label">已用总流量</div><div class="kn-home-kpi-value" id="kn-home-kpi-total">--</div></div>',
-                '<div class="kn-home-kpi"><div class="kn-home-kpi-label">QoS / QCI</div><div class="kn-home-kpi-value small" id="kn-home-kpi-qci">--</div></div>',
-              '</div>',
-            '</section>',
-            '<section class="kn-home-dash-card kn-home-resource-card">',
-              '<div class="kn-home-dash-head"><div class="kn-home-dash-title">系统资源</div><div class="kn-home-dash-extra" id="kn-home-temp-mem-label">--</div></div>',
-              '<div class="kn-home-resource-grid">',
-                '<div class="kn-home-progress-list kn-home-resource-main">',
-                  '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>内存使用</strong><span>RAM 物理内存</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-mem"></div></div><div class="kn-home-progress-value" id="kn-home-val-mem">--</div></div>',
-                  '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>SWAP</strong><span>交换分区</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-swap"></div></div><div class="kn-home-progress-value" id="kn-home-val-swap">--</div></div>',
-                  '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>内部存储</strong><span>机身空间</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-storage"></div></div><div class="kn-home-progress-value" id="kn-home-val-storage">--</div></div>',
-                  '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>SD 卡</strong><span>外置存储</span></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-sd"></div></div><div class="kn-home-progress-value" id="kn-home-val-sd">--</div></div>',
-                '</div>',
-                '<div class="kn-home-resource-side">',
-                  '<div class="kn-home-cpu-summary-grid">',
-                    '<div class="kn-home-cpu-summary-item"><b>平均占用</b><span id="kn-home-cpu-avg">--</span></div>',
-                    '<div class="kn-home-cpu-summary-item"><b>活跃核心</b><span id="kn-home-cpu-active">--</span></div>',
-                    '<div class="kn-home-cpu-summary-item"><b>最高温度</b><span id="kn-home-cpu-max-temp">--</span></div>',
-                    '<div class="kn-home-cpu-summary-item"><b>最高频率</b><span id="kn-home-cpu-max-freq">--</span></div>',
-                  '</div>',
-                '</div>',
-                '<div class="kn-home-core-strip"><div class="kn-home-core-title"><span>CPU 核心明细</span><span>占用 / 频率 / 温度</span></div><div id="kn-home-cpu-cores" class="kn-home-core-grid"><div class="kn-home-core-chip"><b>CPU</b><div class="kn-home-core-metric"><span class="kn-home-core-metric-label">占用</span><div class="kn-home-core-mini-track"><div class="kn-home-core-mini-fill" style="width:0%"></div></div><span class="kn-home-core-metric-value">--</span></div><div class="kn-home-core-metric"><span class="kn-home-core-metric-label">频率</span><div class="kn-home-core-mini-track"><div class="kn-home-core-mini-fill" style="width:0%"></div></div><span class="kn-home-core-metric-value">--</span></div><div class="kn-home-core-metric"><span class="kn-home-core-metric-label">温度</span><div class="kn-home-core-mini-track"><div class="kn-home-core-mini-fill" style="width:0%"></div></div><span class="kn-home-core-metric-value">--</span></div></div></div></div>',
-              '</div>',
-            '</section>',
-          '</div>',
-        '</div>',
+      '<div class="kn-home-card-head">',
+        '<h1 class="kn-home-title">设备概览</h1>',
+        '<div class="kn-home-refresh-controls"><span class="kn-home-refresh-time" id="kn-home-refresh-time">未刷新</span><button type="button" class="kn-home-refresh" data-home-action="refresh" aria-label="刷新状态" title="刷新状态">' + homeRefreshIcon() + '</button><select class="kn-home-refresh-select" data-home-refresh-interval aria-label="刷新间隔"><option value="5000">5 秒</option><option value="10000">10 秒</option><option value="30000">30 秒</option><option value="60000">60 秒</option></select><label class="kn-home-auto-control"><input type="checkbox" data-home-auto-refresh aria-label="自动刷新"><span>自动刷新</span></label></div>',
       '</div>',
-      '<details class="kn-home-details-wrap">',
-        '<summary><span>设备详情 / 网络地址 / 射频参数</span><span>展开查看 IMEI、ICCID、NR/LTE 等低频信息</span></summary>',
-        '<div class="kn-home-detail-grid">',
-          '<div class="kn-home-detail"><div class="kn-home-detail-title">SIM 与号码</div><div id="kn-home-detail-sim"></div></div>',
-          '<div class="kn-home-detail"><div class="kn-home-detail-title">设备标识</div><div id="kn-home-detail-device"></div></div>',
-          '<div class="kn-home-detail"><div class="kn-home-detail-title">网络地址</div><div id="kn-home-detail-ip"></div></div>',
-          '<div class="kn-home-detail"><div class="kn-home-detail-title">版本与射频</div><div id="kn-home-detail-radio"></div></div>',
-        '</div>',
-      '</details>',
-      '<div class="kn-home-plugin-grid">',
-        '<div class="kn-home-phone-dock">',
-          '<div class="kn-home-phone-block"><div class="kn-home-phone-icon">☎</div><div><div class="kn-home-kicker">Communication Plugin</div><div class="kn-home-title">电话与短信</div><div class="kn-home-subtitle">打开电话、短信与消息转发入口。</div></div></div>',
-          '<div class="kn-home-action-row"><button type="button" class="kn-home-primary-action" data-home-action="phoneSms">打开通信面板</button><button type="button" class="kn-home-secondary-action" data-home-action="settingsForward">消息转发</button></div>',
-        '</div>',
-        '<div class="kn-home-phone-dock kn-home-operator-dock">',
-          '<div class="kn-home-phone-block"><div class="kn-home-phone-icon">🛰️</div><div><div class="kn-home-kicker">Operator Plugin</div><div class="kn-home-title">运营商信息</div><div class="kn-home-subtitle">查询官方套餐、余额、剩余流量与到期信息。</div><div id="kn-home-operator-plugin-status" class="kn-home-plugin-status">正在检测插件</div></div></div>',
-          '<div class="kn-home-action-row"><button type="button" class="kn-home-primary-action" data-home-action="operatorInfo">运营商查询</button><button type="button" class="kn-home-secondary-action kn-home-operator-github" data-home-action="operatorGithub">打开 GitHub</button></div>',
-        '</div>',
-      '</div>'
+      '<div id="kn-home-update-notice" class="kn-home-update-notice" hidden><span class="kn-home-update-icon" aria-hidden="true">↑</span><div class="kn-home-update-copy"><b>发现新版本</b><span id="kn-home-update-version">GitHub 已有更新</span></div><div class="kn-home-update-actions"><a id="kn-home-update-link" class="kn-home-update-link" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">查看</a><button id="kn-home-update-close" class="kn-home-update-close" type="button" title="暂不提醒" aria-label="暂不提醒">×</button></div></div>',
+      '<div class="kn-home-status-grid">',
+        '<div class="kn-home-stat kn-home-network-stat"><div class="kn-home-stat-label">当前网络</div><div id="kn-home-network" class="kn-home-stat-value">--</div><div class="kn-home-network-meta"><span id="kn-home-phone-line" class="kn-home-phone-line" title="复制手机号" role="button" tabindex="0">--</span><span id="kn-home-signal" class="kn-home-stat-sub">信号 --</span></div></div>',
+        '<div class="kn-home-stat"><div class="kn-home-stat-label">连接时长</div><div id="kn-home-modem" class="kn-home-stat-value">--</div><div id="kn-home-uptime" class="kn-home-stat-sub">--</div></div>',
+        '<div class="kn-home-stat"><div class="kn-home-stat-label">WiFi 接入</div><div id="kn-home-wifi" class="kn-home-stat-value">--</div><div id="kn-home-wifi-sub" class="kn-home-stat-sub">--</div></div>',
+        '<div class="kn-home-stat kn-home-local-stat"><div class="kn-home-stat-label">内网地址</div><div id="kn-home-ip" class="kn-home-stat-value">--</div><div id="kn-home-ip-sub" class="kn-home-stat-sub">IPv4</div></div>',
+      '</div>',
+      '<div class="kn-home-dashboard-fusion">',
+        '<section class="kn-home-dash-card kn-home-network-card" aria-label="实时网络">',
+          '<div class="kn-home-dash-head"><h2 class="kn-home-dash-title">实时网络</h2><span class="kn-home-dash-extra" id="kn-home-throughput-label">实时 RX / TX</span></div>',
+          '<div class="kn-home-duplex"><div class="kn-home-duplex-block"><div class="kn-home-duplex-label">下载</div><span class="kn-home-rx" id="kn-home-kpi-rx">--</span></div><div class="kn-home-duplex-block"><div class="kn-home-duplex-label">上传</div><span class="kn-home-tx" id="kn-home-kpi-tx">--</span></div></div>',
+          '<div class="kn-home-kpi-grid"><div class="kn-home-kpi"><div class="kn-home-kpi-label">当日流量</div><div class="kn-home-kpi-value" id="kn-home-kpi-daily">--</div></div><div class="kn-home-kpi"><div class="kn-home-kpi-label">本月已用</div><div class="kn-home-kpi-value" id="kn-home-kpi-month">--</div></div><div class="kn-home-kpi"><div class="kn-home-kpi-label">累计流量</div><div class="kn-home-kpi-value" id="kn-home-kpi-total">--</div></div><div class="kn-home-kpi kn-home-qci"><div class="kn-home-kpi-label">QoS / QCI</div><div class="kn-home-kpi-value small" id="kn-home-kpi-qci">--</div></div></div>',
+        '</section>',
+        '<section class="kn-home-dash-card kn-home-signal-card" aria-label="无线信号">',
+          '<div class="kn-home-dash-head"><h2 class="kn-home-dash-title">无线信号</h2><span class="kn-home-dash-extra" id="kn-home-signal-label">--</span></div>',
+          '<div class="kn-home-progress-list">',
+            '<div class="kn-home-progress-row"><div class="kn-home-progress-label"><strong>RSRP</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-rsrp"></div></div><div class="kn-home-progress-value" id="kn-home-val-rsrp">--</div><div class="kn-home-signal-state empty" id="kn-home-state-rsrp">暂无</div></div>',
+            '<div class="kn-home-progress-row"><div class="kn-home-progress-label"><strong>SINR</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-sinr"></div></div><div class="kn-home-progress-value" id="kn-home-val-sinr">--</div><div class="kn-home-signal-state empty" id="kn-home-state-sinr">暂无</div></div>',
+            '<div class="kn-home-progress-row"><div class="kn-home-progress-label"><strong>RSRQ</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-rsrq"></div></div><div class="kn-home-progress-value" id="kn-home-val-rsrq">--</div><div class="kn-home-signal-state empty" id="kn-home-state-rsrq">暂无</div></div>',
+          '</div>',
+          '<div class="kn-home-signal-insights"><div><b>综合</b><span id="kn-home-signal-overall">--</span></div><div class="kn-home-radio-insight"><b>射频</b><span id="kn-home-signal-radio">--</span></div><div><b>建议</b><span id="kn-home-signal-advice">--</span></div></div>',
+        '</section>',
+        '<section class="kn-home-dash-card kn-home-resource-card" aria-label="系统资源">',
+          '<div class="kn-home-dash-head"><h2 class="kn-home-dash-title">系统资源</h2></div>',
+          '<div class="kn-home-resource-grid">',
+            '<div class="kn-home-progress-list kn-home-resource-main">',
+              '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>内存</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-mem"></div></div><div class="kn-home-progress-value" id="kn-home-val-mem">--</div></div>',
+              '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>SWAP</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-swap"></div></div><div class="kn-home-progress-value" id="kn-home-val-swap">--</div></div>',
+              '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>内部存储</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-storage"></div></div><div class="kn-home-progress-value" id="kn-home-val-storage">--</div></div>',
+              '<div class="kn-home-resource-row"><div class="kn-home-progress-label"><strong>SD 卡</strong></div><div class="kn-home-progress-track"><div class="kn-home-progress-fill" id="kn-home-bar-sd"></div></div><div class="kn-home-progress-value" id="kn-home-val-sd">--</div></div>',
+            '</div>',
+            '<div class="kn-home-resource-side"><div class="kn-home-cpu-summary-grid"><div class="kn-home-cpu-summary-item"><b>CPU 占用</b><span id="kn-home-cpu-avg">--</span></div><div class="kn-home-cpu-summary-item"><b>活跃核心</b><span id="kn-home-cpu-active">--</span></div><div class="kn-home-cpu-summary-item"><b>最高温度</b><span id="kn-home-cpu-max-temp">--</span></div><div class="kn-home-cpu-summary-item"><b>最高频率</b><span id="kn-home-cpu-max-freq">--</span></div></div></div>',
+            '<div class="kn-home-core-strip"><div class="kn-home-core-title"><span>CPU 核心明细</span><span>占用 / 频率 / 温度</span></div><div id="kn-home-cpu-cores" class="kn-home-core-grid"></div></div>',
+          '</div>',
+        '</section>',
+      '</div>',
+      '<div class="kn-home-address-bar" id="kn-home-exit-ip-card" role="button" tabindex="0" aria-label="复制设备出口 IP" title="复制设备出口 IP"><span class="kn-home-address-label">出口地址</span><div class="kn-home-exit-ip-row"><b>IPv4</b><span id="kn-home-exit-ip-v4">--</span></div><div class="kn-home-exit-ip-row"><b>IPv6</b><span id="kn-home-exit-ip-v6">--</span></div><span id="kn-home-exit-ip">查询中</span><span id="kn-home-exit-ip-sub" hidden></span></div>',
+      '<details class="kn-home-details-wrap"><summary><span>设备详情</span><span>网络地址 · 设备标识 · 固件版本</span></summary><div class="kn-home-detail-grid"><div class="kn-home-detail"><div class="kn-home-detail-title">SIM 与号码</div><div id="kn-home-detail-sim"></div></div><div class="kn-home-detail"><div class="kn-home-detail-title">设备标识</div><div id="kn-home-detail-device"></div></div><div class="kn-home-detail"><div class="kn-home-detail-title">网络地址</div><div id="kn-home-detail-ip"></div></div><div class="kn-home-detail"><div class="kn-home-detail-title">版本与射频</div><div id="kn-home-detail-radio"></div></div></div></details>',
+      '<section class="kn-home-shortcuts" aria-label="常用操作"><h2 class="kn-home-dash-title">常用操作</h2><div class="kn-home-plugin-grid">',
+        '<div class="kn-home-phone-dock" id="kn-home-phone-sms-card"><div class="kn-home-shortcut-head">电话与短信</div><div class="kn-home-action-row"><button type="button" class="kn-home-primary-action" data-home-action="phoneSms">打开通信面板</button><button type="button" class="kn-home-secondary-action" data-home-action="settingsForward">消息转发</button></div></div>',
+        '<div class="kn-home-phone-dock kn-home-operator-dock" id="kn-home-operator-card"><div class="kn-home-shortcut-head"><span>运营商信息</span><span id="kn-home-operator-availability" class="kn-home-plugin-status">检测中</span></div><div class="kn-home-action-row"><button type="button" class="kn-home-primary-action" data-home-action="operatorInfo">运营商查询</button><button type="button" class="kn-home-secondary-action" data-home-action="operatorGithub">打开 GitHub</button></div></div>',
+        '<div class="kn-home-phone-dock" id="kn-home-maint-card"><div class="kn-home-shortcut-head">设备维护</div><div class="kn-home-action-row"><button type="button" class="kn-home-rocket-action" data-home-action="cleanMem">清理内存</button><button type="button" class="kn-home-rocket-action" data-home-action="coolDown">临时降温</button></div></div>',
+      '</div></section>'
     ].join('');
     var header = document.getElementById(HEADER_ID);
     if (header && header.parentNode === container) {
@@ -5824,7 +5860,12 @@
     updateHomeOperatorPluginCard();
     setTimeout(updateHomeOperatorPluginCard, 800);
     var exitIpCard = home.querySelector('#kn-home-exit-ip-card');
-    if (exitIpCard) exitIpCard.onclick = copyHomeExitIp;
+    if (exitIpCard) {
+      exitIpCard.onclick = copyHomeExitIp;
+      exitIpCard.onkeydown = function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyHomeExitIp(); }
+      };
+    }
     refreshHomeExitIp(false);
     var cleanBtn = home.querySelector('[data-home-action="cleanMem"]');
     if (cleanBtn) cleanBtn.onclick = function () { triggerHomeRocketAction(cleanBtn, 'clean'); };
@@ -6750,7 +6791,6 @@
     setHomeBar('#kn-home-bar-storage', '#kn-home-val-storage', storagePct, ctx.internalStorageText || ctx.storageUsage || '--', isFinite(storagePct) && storagePct >= 85 ? 'bad' : (isFinite(storagePct) && storagePct >= 70 ? 'warn' : 'good'));
     var sdPct = homePctFromCapacityText(ctx.sdStorageText || '');
     setHomeBar('#kn-home-bar-sd', '#kn-home-val-sd', sdPct, ctx.sdStorageText || '未检测到', isFinite(sdPct) && sdPct >= 85 ? 'bad' : (isFinite(sdPct) && sdPct >= 70 ? 'warn' : 'good'));
-    setHomeMini('#kn-home-temp-mem-label', joinHomeValues([ctx.memUsage ? '内存 ' + ctx.memUsage : '', ctx.internalStorageText ? '存储 ' + ctx.internalStorageText : '', ctx.sdStorageText ? 'SD ' + ctx.sdStorageText : ''], ' · ') || '--');
     renderHomeCpuCores(data, ctx.temp || '');
   }
 
@@ -6820,12 +6860,12 @@
   }
 
   function updateHomeOperatorPluginCard() {
-    var status = document.getElementById('kn-home-operator-plugin-status');
+    var status = document.getElementById('kn-home-operator-availability');
     var githubBtn = document.querySelector('#' + HOME_DASHBOARD_ID + ' [data-home-action="operatorGithub"]');
     var plugin = getExternalOperatorInfoPlugin();
     if (status) {
       status.className = 'kn-home-plugin-status ' + (plugin ? 'ready' : 'missing');
-      status.textContent = plugin ? '已检测到运营商查询插件' : '未检测到插件，可先打开 GitHub 获取模板';
+      status.textContent = plugin ? '可用' : '未安装';
     }
     if (githubBtn) githubBtn.style.display = plugin ? 'none' : '';
   }
@@ -6866,11 +6906,7 @@
     var oldHtml = btn ? btn.innerHTML : '';
     if (btn && btn.classList) {
       btn.disabled = true;
-      btn.classList.remove('launching');
-      void btn.offsetWidth;
-      btn.classList.add('launching');
-      btn.innerHTML = '<span class="kn-home-rocket-icon">🚀</span><span class="kn-home-rocket-label">' + (type === 'clean' ? '清理中…' : '降温中…') + '</span>';
-      setTimeout(function () { try { btn.classList.remove('launching'); } catch (e) {} }, 860);
+      btn.textContent = type === 'clean' ? '清理中…' : '降温中…';
     }
     setTimeout(function () { runHomeMaintenance(type, btn, oldHtml); }, 180);
   }
@@ -7297,7 +7333,7 @@
       if (!btn) return;
       btn.disabled = false;
       if (oldText && String(oldText).indexOf('<') !== -1) btn.innerHTML = oldText;
-      else btn.innerHTML = '<span class="kn-home-rocket-icon">🚀</span><span class="kn-home-rocket-label">' + label + '</span>';
+      else btn.textContent = label;
     };
     var cmd = isClean
       ? 'sync; echo 3 > /proc/sys/vm/drop_caches; pm trim-caches 999G 2>/dev/null || true'
