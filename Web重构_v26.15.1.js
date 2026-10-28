@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.15.0-settings-search';
+  var VERSION = '26.15.1-rsrp-fix';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.15.0.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.15.1.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -6030,6 +6030,8 @@
     m = raw.match(/-?\d+(?:\.\d+)?\s*(?:dBm|dB)?/i);
     if (!m) return '';
     var v = m[0].replace(/\s+/g, '');
+    // F50 的 rssi=0..5 是信号格数；空值占位的 RSRP=0 也不是接收功率。
+    if ((upperMetric === 'RSRP' || upperMetric === 'RSSI') && parseFloat(v) >= 0) return '';
     if (/^-?\d+(?:\.\d+)?$/.test(v)) {
       if (upperMetric === 'RSRP' || upperMetric === 'RSSI') v += ' dBm';
       else if (upperMetric === 'RSRQ' || upperMetric === 'SINR' || upperMetric === 'SNR') v += ' dB';
@@ -6432,9 +6434,11 @@
   }
 
   function pickHomeRadioValue(data, keys, labels, metric) {
-    var raw = firstClean(data || {}, keys || []);
-    var v = normalizeRadioMetricValue(raw, metric || (labels && labels[0]));
-    if (v) return v;
+    keys = keys || [];
+    for (var i = 0; i < keys.length; i += 1) {
+      var v = normalizeRadioMetricValue(data && data[keys[i]], metric || (labels && labels[0]));
+      if (v) return v;
+    }
     return extractRadioFromDom(labels || [], metric || (labels && labels[0]));
   }
 
@@ -6642,16 +6646,8 @@
     var num = homeParseNumber(raw);
     var last = state.homeLastRadio[metric] || '';
 
-    // 某些二次刷新/CPU 数据刷新阶段拿不到射频字段，会从页面说明或范围边界误读出
-    // RSRP -125、SINR -10、RSRQ -20 这类“量程最小值”。这些不是实时信号值。
-    var boundaryArtifact = false;
-    if (last && isFinite(num)) {
-      if (metric === 'rsrp' && num <= -125) boundaryArtifact = true;
-      if (metric === 'sinr' && num <= -10) boundaryArtifact = true;
-      if (metric === 'rsrq' && num <= -20) boundaryArtifact = true;
-    }
-
-    if (!raw || raw === '--' || boundaryArtifact) return last || '';
+    // 缺失字段保留上次值；量程边界和更弱的真实读数仍正常更新。
+    if (!raw || raw === '--') return last || '';
     if (isFinite(num)) state.homeLastRadio[metric] = raw;
     return raw;
   }
@@ -7347,7 +7343,7 @@
       'storage_usage','flash_usage','rom_usage','disk_usage','disk_total','disk_free','disk_used','rom_total','rom_free','rom_used','flash_total','flash_free','flash_used','storage_total','storage_free','storage_used','sd_total','sd_free','sd_used','sdcard_total','sdcard_free','sdcard_used','sd_card_total','sd_card_free','sd_card_used','emmc_total','emmc_free','emmc_used',
       'wifi_cur_state','wifi_enable','wifi_enabled','wlan_enable','m_ssid_enable','wifi_access_sta_num','wifi_sta_num','sta_count','station_num','station_count','ap_station_num','connected_devices','attached_devices_num','wifi_client_num','wlan_client_num','client_num','station_list','wifi_client_list','attached_devices','client_list',
       'realtime_tx_bytes','realtime_rx_bytes','realtime_tx_thrpt','realtime_rx_thrpt','daily_data','daily_used','today_data','today_used','monthly_data','month_data','monthly_used','month_used','monthly_data_used','month_data_used','monthly_tx_bytes','monthly_rx_bytes','total_tx_bytes','total_rx_bytes','total_data','total_used','data_volume_limit','data_volume_used',
-      'rssi','lte_rssi','nr5g_rssi','lte_rsrp','lte_rsrq','lte_snr','lte_sinr','nr5g_rsrp','nr5g_rsrq','nr5g_snr','nr5g_sinr','nr_rsrp','nr_rsrq','nr_sinr','rsrp','rsrq','sinr','snr','pci','lte_pci','nr5g_pci','cell_id','lte_cell_id','nr5g_cell_id','lac','tac','earfcn','nrarfcn','lte_band','nr5g_band','band','bandwidth','wan_active_band','nr5g_action_band','lte_action_band'
+      'rssi','lte_rssi','nr5g_rssi','nr_rssi','network_rssi','Z5g_rsrp','lte_rsrp','lte_rsrq','lte_snr','Lte_snr','lte_sinr','nr5g_rsrp','nr5g_rsrq','nr5g_snr','Nr_snr','nr5g_sinr','nr_rsrp','nr_rsrq','nr_sinr','rsrp','rsrq','sinr','snr','pci','lte_pci','nr5g_pci','cell_id','lte_cell_id','nr5g_cell_id','lac','tac','earfcn','nrarfcn','lte_band','nr5g_band','band','bandwidth','wan_active_band','nr5g_action_band','lte_action_band'
     ].join(',');
     var url = getHeaderBaseURL() + '/goform/goform_get_cmd_process?multi_data=1&isTest=false&cmd=' + encodeURIComponent(cmds) + '&_=' + Date.now();
     fetch(url, { headers: getHeaderHeaders() }).then(function (res) { return res.json(); }).then(function (data) {
@@ -7420,13 +7416,13 @@
       var dnsVals = extractHomeIPv4Values(dnsRaw).concat(extractHomeIPv6Values(dnsRaw));
       var dnsText = dnsVals.length ? dnsVals.join(' / ') : sanitizeHomeDisplayValue(dnsRaw, 'DNS');
       var ipMain = lanIpList.length ? lanIpList.join(' ｜ ') : (clientIp || '--');
-      var rsrp = pickHomeRadioValue(merged, ['nr5g_rsrp','nr_rsrp','lte_rsrp','rsrp'], ['RSRP','5G RSRP','NR RSRP','LTE RSRP'], 'RSRP');
+      var rsrp = pickHomeRadioValue(merged, ['Z5g_rsrp','nr5g_rsrp','nr_rsrp','lte_rsrp','rsrp'], ['5G接收功率','5G 接收功率','5G RSRP','NR RSRP','4G接收功率','4G 接收功率','LTE RSRP','RSRP'], 'RSRP');
       var rsrq = pickHomeRadioValue(merged, ['nr5g_rsrq','nr_rsrq','lte_rsrq','rsrq'], ['RSRQ','5G RSRQ','NR RSRQ','LTE RSRQ'], 'RSRQ');
-      var sinr = pickHomeRadioValue(merged, ['nr5g_sinr','nr5g_snr','nr_sinr','lte_sinr','lte_snr','sinr','snr'], ['SINR','SNR','5G SINR','NR SINR','LTE SINR'], 'SINR');
+      var sinr = pickHomeRadioValue(merged, ['Nr_snr','nr5g_sinr','nr5g_snr','nr_sinr','lte_sinr','Lte_snr','lte_snr','sinr','snr'], ['5G SINR','NR SINR','LTE SINR','SINR','SNR'], 'SINR');
       rsrp = stabilizeHomeRadioMetric('rsrp', rsrp);
       rsrq = stabilizeHomeRadioMetric('rsrq', rsrq);
       sinr = stabilizeHomeRadioMetric('sinr', sinr);
-      var rssi = pickHomeRadioValue(merged, ['nr5g_rssi','lte_rssi','rssi'], ['RSSI','5G RSSI','LTE RSSI'], 'RSSI');
+      var rssi = pickHomeRadioValue(merged, ['nr5g_rssi','nr_rssi','lte_rssi','network_rssi','rssi'], ['5G RSSI','LTE RSSI','RSSI'], 'RSSI');
       var pci = pickHomeRadioValue(merged, ['pci','lte_pci','nr5g_pci'], ['PCI'], 'PCI');
       var band = pickHomeRadioValue(merged, ['nr5g_band','lte_band','band','wan_active_band','nr5g_action_band','lte_action_band'], ['频段','Band','网络频段'], 'BAND');
       var radioMain = joinHomeValues([rsrp ? 'RSRP ' + rsrp : '', sinr ? 'SINR ' + sinr : '', rssi ? 'RSSI ' + rssi : ''], ' / ');
