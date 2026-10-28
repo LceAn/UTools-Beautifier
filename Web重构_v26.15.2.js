@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.15.1-rsrp-fix';
+  var VERSION = '26.15.2-home-cleanup';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.15.1.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.15.2.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -4300,7 +4300,7 @@
           title: '连接与网络',
           items: [
             ['运营商 / 制式', knDiagnosticsRead('kn-home-network')],
-            ['连接状态', knDiagnosticsRead('kn-home-net-context', knDiagnosticsRead('kn-home-modem'))],
+            ['连接状态', knDiagnosticsRead('kn-pop-ppp')],
             ['SIM 状态', knDiagnosticsRead('kn-home-sim')],
             ['信号格', knDiagnosticsRead('kn-home-signal')]
           ]
@@ -5760,7 +5760,6 @@
                 '<div class="kn-home-kpi"><div class="kn-home-kpi-label">本月已用</div><div class="kn-home-kpi-value" id="kn-home-kpi-month">--</div></div>',
                 '<div class="kn-home-kpi"><div class="kn-home-kpi-label">已用总流量</div><div class="kn-home-kpi-value" id="kn-home-kpi-total">--</div></div>',
                 '<div class="kn-home-kpi"><div class="kn-home-kpi-label">QoS / QCI</div><div class="kn-home-kpi-value small" id="kn-home-kpi-qci">--</div></div>',
-                '<div class="kn-home-kpi"><div class="kn-home-kpi-label">连接状态</div><div class="kn-home-kpi-value small" id="kn-home-net-context">--</div></div>',
               '</div>',
             '</section>',
             '<section class="kn-home-dash-card kn-home-resource-card">',
@@ -6730,7 +6729,6 @@
     setHomeMini('#kn-home-kpi-daily', daily || '--');
     setHomeMini('#kn-home-kpi-month', monthUsed || '--');
     setHomeMini('#kn-home-kpi-total', totalUsed || '--');
-    setHomeMini('#kn-home-net-context', data.ppp_status || '--');
     setHomeMini('#kn-home-throughput-label', '实时 RX / TX');
 
     setHomeMini('#kn-home-info-nettype', homeNetworkTypeLabel(data.network_type) || ctx.netType || '--');
@@ -7437,7 +7435,7 @@
       if (!connectionText && !uptimeText) refreshHomeUptimeFallback(false);
       setHomeTitle('#kn-home-network', [operator, netType].filter(Boolean).join(' · ') || '--');
       setHomePhoneLine(phone, operator);
-      setHomeTitle('#kn-home-signal', '信号 ' + signal + ' / 5' + (merged.ppp_status ? ' · ' + merged.ppp_status : ''));
+      setHomeTitle('#kn-home-signal', '信号 ' + signal + ' / 5');
       setHomeTitle('#kn-home-sim', simState || '--');
       setHomeTitle('#kn-home-sim-sub', '号码 ' + (phone || '--'));
       setHomeTitle('#kn-home-ip', ipMain || '--');
