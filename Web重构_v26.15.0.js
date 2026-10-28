@@ -2,16 +2,16 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.14.4-auto-data-query';
+  var VERSION = '26.15.0-settings-search';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.14.4.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.15.0.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
-  var GITHUB_LOCAL_PROXY_DEFAULTS = ['http://192.168.100.249:8000/project-version', 'http://127.0.0.1:8000/project-version', 'http://localhost:8000/project-version'];
+  var GITHUB_LOCAL_PROXY_DEFAULTS = [];
   var PHONE_SMS_PLUGIN_URL = GITHUB_REPO_URL;
   var OPERATOR_INFO_PLUGIN_URL = GITHUB_REPO_URL;
   var EXTERNAL_KANO_PHONE_SMS = (window.KanoPhoneSMS && typeof window.KanoPhoneSMS.open === 'function') ? window.KanoPhoneSMS : null;
@@ -1540,12 +1540,12 @@
     try {
       var raw = localStorage.getItem(GITHUB_CACHE_KEY);
       var cached = raw ? JSON.parse(raw) : null;
-      return cached && cached.info && cached.fetchedAt ? cached : null;
+      return cached && cached.info && normalizeVersionTag(cached.info.tag) && Number(cached.fetchedAt) > 0 ? cached : null;
     } catch (e) { return null; }
   }
 
   function saveGithubCache(info) {
-    try { localStorage.setItem(GITHUB_CACHE_KEY, JSON.stringify({ info: info, fetchedAt: Date.now() })); } catch (e) {}
+    try { localStorage.setItem(GITHUB_CACHE_KEY, JSON.stringify({ info: info, fetchedAt: Number(info.fetchedAt) || Date.now() })); } catch (e) {}
   }
 
   function formatGithubCheckedAt(timestamp) {
@@ -1593,13 +1593,25 @@
     return base.replace(/\/$/, '') + '/proxy/--' + String(targetUrl || '');
   }
 
-  async function fetchGithubRequest(url, options) {
+  async function fetchGithubRequest(url, options, timeoutMs) {
     var controller = typeof AbortController === 'function' ? new AbortController() : null;
-    var timer = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
+    var timer = null;
     var requestOptions = Object.assign({}, options || {});
     if (controller) requestOptions.signal = controller.signal;
     try {
-      return await fetch(url, requestOptions);
+      return await Promise.race([
+        (async function () {
+          var response = await fetch(url, requestOptions);
+          var raw = await response.text();
+          return { ok: response.ok, status: response.status, text: function () { return Promise.resolve(raw); }, json: function () { return Promise.resolve().then(function () { return JSON.parse(raw); }); } };
+        })(),
+        new Promise(function (resolve, reject) {
+          timer = setTimeout(function () {
+            reject(new Error('版本数据请求超时'));
+            if (controller) controller.abort();
+          }, Number(timeoutMs || 8000));
+        })
+      ]);
     } catch (error) {
       if (error && error.name === 'AbortError') throw new Error('版本数据请求超时');
       throw error;
@@ -1608,15 +1620,38 @@
     }
   }
 
-  async function fetchGithubLatestVersionViaWebOSProxy() {
+  function firstSuccessful(requests, labels) {
+    requests = Array.isArray(requests) ? requests : [];
+    labels = Array.isArray(labels) ? labels : [];
+    if (!requests.length) return Promise.reject(new Error('没有可用的版本查询通道'));
+    return new Promise(function (resolve, reject) {
+      var pending = requests.length;
+      var settled = false;
+      var errors = [];
+      requests.forEach(function (request, index) {
+        Promise.resolve().then(request).then(function (value) {
+          if (settled) return;
+          settled = true;
+          resolve(value);
+        }).catch(function (error) {
+          errors[index] = (labels[index] ? labels[index] + '：' : '') + (error && error.message ? error.message : String(error));
+          pending -= 1;
+          if (!pending && !settled) reject(new Error(errors.filter(Boolean).join('；') || '版本查询失败'));
+        });
+      });
+    });
+  }
+
+  async function fetchGithubSourceVersion(viaProxy) {
+    var requestUrl = function (url) { return viaProxy ? getWebOSProxyUrl(url) : url; };
     var headers = { Accept: 'application/vnd.github+json' };
     var apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO;
-    var repoRes = await fetchGithubRequest(getWebOSProxyUrl(apiUrl), { headers: headers, cache: 'no-store' });
+    var repoRes = await fetchGithubRequest(requestUrl(apiUrl), { headers: headers, cache: 'no-store' }, 7000);
     if (!repoRes.ok) throw new Error('设备同源代理读取 GitHub 仓库失败（HTTP ' + repoRes.status + '）');
     var repo = await repoRes.json();
     var branch = repo.default_branch || 'main';
     var contentsUrl = apiUrl + '/contents?ref=' + encodeURIComponent(branch);
-    var contentsRes = await fetchGithubRequest(getWebOSProxyUrl(contentsUrl), { headers: headers, cache: 'no-store' });
+    var contentsRes = await fetchGithubRequest(requestUrl(contentsUrl), { headers: headers, cache: 'no-store' }, 7000);
     if (!contentsRes.ok) throw new Error('设备同源代理读取仓库文件失败（HTTP ' + contentsRes.status + '）');
     var contents = await contentsRes.json();
     if (!Array.isArray(contents)) throw new Error('GitHub 仓库文件列表格式不正确');
@@ -1627,7 +1662,7 @@
     if (!candidates.length) throw new Error('GitHub 仓库中未找到 Web重构_v*.js');
     candidates.sort(function (a, b) { return compareVersionTags(a.version, b.version); });
     var latest = candidates[candidates.length - 1].item;
-    var sourceRes = await fetchGithubRequest(getWebOSProxyUrl(latest.download_url), { cache: 'no-store' });
+    var sourceRes = await fetchGithubRequest(requestUrl(latest.url || latest.download_url), { headers: latest.url ? { Accept: 'application/vnd.github.raw+json' } : {}, cache: 'no-store' }, 7000);
     if (!sourceRes.ok) throw new Error('设备同源代理读取 WebOS 源码失败（HTTP ' + sourceRes.status + '）');
     var sourceText = await sourceRes.text();
     var versionMatch = sourceText.match(/var\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
@@ -1635,7 +1670,7 @@
     return {
       tag: versionMatch[1],
       url: latest.html_url || GITHUB_REPO_URL,
-      source: '设备同源 GitHub 代理',
+      source: viaProxy ? '设备同源 GitHub 代理' : 'GitHub 直连',
       branch: branch,
       stars: Number(repo.stargazers_count || 0),
       pushedAt: repo.pushed_at || repo.updated_at || '',
@@ -1643,28 +1678,12 @@
     };
   }
 
+  async function fetchGithubLatestVersionViaWebOSProxy() {
+    return fetchGithubSourceVersion(true);
+  }
+
   async function fetchGithubLatestVersionDirect() {
-    var apiUrl = 'https://api.github.com/repos/' + GITHUB_REPO;
-    var repoRes = await fetchGithubRequest(apiUrl, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
-    if (!repoRes.ok) throw new Error('GitHub 仓库信息读取失败（HTTP ' + repoRes.status + '）');
-    var repo = await repoRes.json();
-    var branch = repo.default_branch || 'main';
-    var sourcePath = GITHUB_SOURCE_PATH.split('/').map(encodeURIComponent).join('/');
-    var sourceUrl = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/' + encodeURIComponent(branch) + '/' + sourcePath;
-    var sourceRes = await fetchGithubRequest(sourceUrl, { cache: 'no-store' });
-    if (!sourceRes.ok) throw new Error('默认分支中的 WebOS 源码读取失败（HTTP ' + sourceRes.status + '）');
-    var sourceText = await sourceRes.text();
-    var versionMatch = sourceText.match(/var\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
-    if (!versionMatch || !versionMatch[1]) throw new Error('未在 GitHub WebOS 源码中找到 VERSION');
-    return {
-      tag: versionMatch[1],
-      url: GITHUB_REPO_URL + '/blob/' + encodeURIComponent(branch) + '/' + sourcePath,
-      source: 'WebOS 源码',
-      branch: branch,
-      stars: Number(repo.stargazers_count || 0),
-      pushedAt: repo.pushed_at || repo.updated_at || '',
-      fetchedAt: Date.now()
-    };
+    return fetchGithubSourceVersion(false);
   }
 
   function getGithubLocalProxyUrls() {
@@ -1685,57 +1704,46 @@
   async function fetchGithubVersionFromLocalProxy(options) {
     options = options && typeof options === 'object' ? options : {};
     var urls = getGithubLocalProxyUrls();
-    var lastError = null;
-    for (var i = 0; i < urls.length; i += 1) {
+    var requests = [];
+    var labels = [];
+    urls.forEach(function (proxyUrl) {
       var query = 't=' + Date.now() + (options.force ? '&force=1' : '');
-      var targetUrl = urls[i] + (urls[i].indexOf('?') === -1 ? '?' : '&') + query;
+      var targetUrl = proxyUrl + (proxyUrl.indexOf('?') === -1 ? '?' : '&') + query;
       var requestUrls = [getWebOSProxyUrl(targetUrl), targetUrl];
-      for (var j = 0; j < requestUrls.length; j += 1) {
-        try {
-          var res = await fetchGithubRequest(requestUrls[j], { cache: 'no-store', mode: j === 0 ? 'same-origin' : 'cors' });
+      requestUrls.forEach(function (requestUrl, requestIndex) {
+        labels.push((requestIndex === 0 ? '设备转发 ' : '浏览器直连 ') + proxyUrl);
+        requests.push(async function () {
+          var res = await fetchGithubRequest(requestUrl, { cache: 'no-store', mode: requestIndex === 0 ? 'same-origin' : 'cors' }, 4500);
           if (!res.ok) throw new Error('HTTP ' + res.status);
           var data = await res.json();
           if (!data || data.ok === false || !data.tag) throw new Error(data && data.message ? data.message : '本地更新代理未返回版本');
           return {
             tag: String(data.tag),
             url: data.url || GITHUB_REPO_URL,
-            source: j === 0 ? '设备同源更新代理' : '本地更新代理',
+            source: requestIndex === 0 ? '设备同源更新代理' : '本地更新代理',
             branch: data.branch || 'main',
             stars: Number(data.stars || 0),
             pushedAt: data.pushed_at || data.pushedAt || '',
             fetchedAt: Date.now(),
-            proxyUrl: urls[i],
+            proxyUrl: proxyUrl,
             proxyCached: !!data.cached,
             proxyStale: !!data.stale
           };
-        } catch (e) {
-          lastError = e;
-        }
-      }
-    }
-    throw lastError || new Error('本地更新代理不可用');
+        });
+      });
+    });
+    return firstSuccessful(requests, labels);
   }
 
   async function fetchGithubLatestVersion(options) {
-    var sameOriginError = null;
-    try {
-      return await fetchGithubLatestVersionViaWebOSProxy();
-    } catch (e) {
-      sameOriginError = e;
-    }
-    var directError = null;
-    try {
-      return await fetchGithubLatestVersionDirect();
-    } catch (e) {
-      directError = e;
-    }
-    try {
-      return await fetchGithubVersionFromLocalProxy(options);
-    } catch (proxyError) {
-      var sameOriginMessage = sameOriginError && sameOriginError.message ? sameOriginError.message : '设备同源代理不可用';
-      var directMessage = directError && directError.message ? directError.message : '网络请求失败';
-      var proxyMessage = proxyError && proxyError.message ? proxyError.message : '本地代理不可用';
-      throw new Error(sameOriginMessage + '；直连 GitHub：' + directMessage + '；本地更新代理：' + proxyMessage);
+    try { return await firstSuccessful([
+      function () { return fetchGithubLatestVersionViaWebOSProxy(); },
+      function () { return fetchGithubLatestVersionDirect(); }
+    ], ['设备同源代理', '直连 GitHub']); }
+    catch (error) {
+      if (!getGithubLocalProxyUrls().length) throw error;
+      try { return await fetchGithubVersionFromLocalProxy(options); }
+      catch (proxyError) { throw new Error(error.message + '；本地更新代理：' + proxyError.message); }
     }
   }
 
@@ -1767,9 +1775,9 @@
     options = options && typeof options === 'object' ? options : { force: true };
     var btn = document.querySelector('[data-action="checkGithubVersion"]');
     var cached = readGithubCache();
-    var cacheFresh = cached && Date.now() - Number(cached.fetchedAt) < GITHUB_CACHE_TTL;
+    var cacheFresh = cached && !cached.info.proxyStale && Date.now() - Number(cached.fetchedAt) >= 0 && Date.now() - Number(cached.fetchedAt) < GITHUB_CACHE_TTL;
+    var cachedInfo = cached ? Object.assign({}, cached.info, { fetchedAt: cached.fetchedAt }) : null;
     if (!options.force && cacheFresh) {
-      var cachedInfo = Object.assign({}, cached.info, { fetchedAt: cached.fetchedAt });
       var cachedComparison = compareVersionTags(cachedInfo.tag, VERSION);
       setGithubVersionUI(cachedComparison > 0 ? '发现新版本' : (cachedComparison === 0 ? '当前已是最新版本' : '当前版本高于仓库版本'), cachedInfo.tag, '使用缓存的 GitHub 版本结果；上次检查：' + knEsc(formatGithubCheckedAt(cached.fetchedAt)) + '。', cachedComparison > 0 ? 'new' : (cachedComparison === 0 ? 'ok' : 'warn'), cachedInfo);
       renderHomeUpdateNotice(cachedInfo, cachedComparison);
@@ -1777,7 +1785,12 @@
     }
     if (githubCheckPromise) return githubCheckPromise;
     if (btn) { btn.disabled = true; btn.textContent = '正在检查…'; }
-    if (!options.quiet) setGithubVersionUI('正在连接 GitHub', '读取中…', '正在读取默认分支中的 WebOS 源码版本和仓库 Stars。', 'checking');
+    if (cachedInfo) {
+      setGithubVersionUI('正在刷新', cachedInfo.tag, '先显示上次结果，正在通过可用通道刷新 GitHub 版本与 Stars。', 'checking', cachedInfo);
+      renderHomeUpdateNotice(cachedInfo, compareVersionTags(cachedInfo.tag, VERSION));
+    } else if (!options.quiet) {
+      setGithubVersionUI('正在连接 GitHub', '读取中…', '正在并行检查设备代理、GitHub 直连和本地更新代理。', 'checking');
+    }
     githubCheckPromise = fetchGithubLatestVersion(options).then(function (info) {
       saveGithubCache(info);
       var comparison = compareVersionTags(info.tag, VERSION);
@@ -3496,6 +3509,15 @@
     });
     tabs.setAttribute('role', 'tablist');
     tabs.setAttribute('aria-label', '设置分类');
+    var search = document.createElement('div');
+    search.className = 'kn-settings-search';
+    search.innerHTML = '<div class="kn-settings-search-field"><input type="search" autocomplete="off" aria-label="搜索设置" placeholder="搜索设置"><button type="button" class="kn-settings-search-clear" aria-label="清空搜索" title="清空搜索" hidden>×</button></div><div class="kn-settings-search-status" aria-live="polite"></div>';
+    var searchInput = search.querySelector('input');
+    var searchClear = search.querySelector('.kn-settings-search-clear');
+    searchInput.oninput = function () { applySettingsSearch(dialog, searchInput.value); };
+    searchInput.onkeydown = function (event) { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); searchClear.onclick(); } };
+    searchClear.onclick = function () { searchInput.value = ''; applySettingsSearch(dialog, ''); searchInput.focus(); };
+    nav.appendChild(search);
     nav.appendChild(tabs);
     var mobileSelect = document.createElement('select');
     mobileSelect.className = 'kn-settings-mobile-select';
@@ -3522,10 +3544,54 @@
     });
     panels.forEach(function (panel) { stage.appendChild(panel); });
     body.appendChild(stage);
+    var empty = document.createElement('div');
+    empty.className = 'kn-settings-search-empty';
+    empty.textContent = '没有匹配的设置';
+    stage.appendChild(empty);
     var done = dialog.querySelector('.kn-dialog-footer [data-action="done"]');
     if (done) done.textContent = '完成';
     dialog.setAttribute('data-settings-tab', 'layout');
     mobileSelect.value = 'layout';
+  }
+
+  function getSettingsSearchText(dialog, btn) {
+    var key = btn.getAttribute('data-tab') || '';
+    var panel = dialog.querySelector('#kn-settings-panel-' + key);
+    var aliases = {
+      layout: '导航 页面 分组 移动 排序 隐藏 模块',
+      functions: '功能 网络 流量 短信 通信 设备 系统 调试',
+      appearance: '外观 主题 背景 颜色 字体 动画 语言 顶栏',
+      forward: '消息 转发 短信 电源 电话 钉钉 smtp curl webhook',
+      plugins: '插件 管理 导入 导出 备份 源码 商店',
+      webos: '兼容 性能 功能 开关 F50 欢迎页',
+      about: '关于 版本 更新 GitHub Stars 仓库 作者 许可'
+    };
+    var labels = panel ? Array.prototype.slice.call(panel.querySelectorAll('label,button,h2,h3,h4,.kn-form-title,.kn-webos-setting-title,.kn-about-card-title,.kn-zone-name,.kn-item-name,.kn-fc-card-title')).map(function (el) { return el.textContent || ''; }).join(' ') : '';
+    return clean([btn.textContent || '', aliases[key] || '', labels].join(' ')).toLowerCase();
+  }
+
+  function applySettingsSearch(dialog, value) {
+    if (!dialog) return;
+    var query = clean(value || '').toLowerCase();
+    var tabs = Array.prototype.slice.call(dialog.querySelectorAll('.kn-settings-tab'));
+    var matches = [];
+    tabs.forEach(function (btn) {
+      var text = getSettingsSearchText(dialog, btn);
+      var matched = !query || query.split(/\s+/).every(function (term) { return text.indexOf(term) !== -1; });
+      btn.hidden = !matched;
+      if (matched) matches.push(btn);
+    });
+    var clear = dialog.querySelector('.kn-settings-search-clear');
+    var status = dialog.querySelector('.kn-settings-search-status');
+    if (clear) clear.hidden = !query;
+    if (status) status.textContent = query ? (matches.length ? '找到 ' + matches.length + ' 个分类' : '未找到相关设置') : '';
+    dialog.classList.toggle('kn-settings-no-results', !!query && !matches.length);
+    syncSettingsMobileSelect(dialog);
+    if (query && matches.length) {
+      var activeKey = dialog.getAttribute('data-settings-tab') || 'layout';
+      var active = tabs.filter(function (btn) { return btn.getAttribute('data-tab') === activeKey; })[0];
+      if (!active || active.hidden) switchSettingsTab(matches[0].getAttribute('data-tab'));
+    }
   }
 
   function syncSettingsMobileSelect(dialog) {
@@ -3536,12 +3602,19 @@
     var active = dialog.getAttribute('data-settings-tab') || 'layout';
     select.innerHTML = '';
     Array.prototype.slice.call(tabs.querySelectorAll('.kn-settings-tab')).forEach(function (btn) {
+      if (btn.hidden) return;
       var option = document.createElement('option');
       option.value = btn.getAttribute('data-tab');
       option.textContent = btn.textContent;
       select.appendChild(option);
     });
     select.value = active;
+    select.disabled = !select.options.length;
+    if (select.disabled) {
+      var empty = document.createElement('option');
+      empty.textContent = '无匹配分类';
+      select.appendChild(empty);
+    }
   }
 
   function updateFunctionCenterSettingsEntry(enabled) {
@@ -3577,7 +3650,19 @@
       '#' + DIALOG_ID + ' .kn-dialog-body{min-height:0;display:grid;grid-template-columns:188px minmax(0,1fr);gap:0;padding:0;overflow:hidden;background:#15181e}' +
       '#' + DIALOG_ID + ' .kn-settings-nav{min-width:0;display:flex;flex-direction:column;padding:18px 10px 16px;background:#111419;border-right:1px solid rgba(232,234,237,.09)}' +
       '#' + DIALOG_ID + ' .kn-settings-nav-title{padding:0 10px;color:#f1f3f4;font-size:13px;font-weight:800}' +
-      '#' + DIALOG_ID + ' .kn-settings-nav-caption{padding:4px 10px 14px;color:#707987;font-size:10px}' +
+      '#' + DIALOG_ID + ' .kn-settings-nav-caption{padding:4px 10px 10px;color:#707987;font-size:10px}' +
+      '#' + DIALOG_ID + ' .kn-settings-search{margin:0 4px 10px}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-field{position:relative;min-width:0}' +
+      '#' + DIALOG_ID + ' .kn-settings-search input{width:100%;height:34px;padding:0 32px 0 10px;border:1px solid rgba(232,234,237,.12);border-radius:7px;background:#181c22;color:#e8eaed;font-size:11px;outline:0}' +
+      '#' + DIALOG_ID + ' .kn-settings-search input:focus{border-color:rgba(138,180,248,.52);box-shadow:0 0 0 2px rgba(138,180,248,.10)}' +
+      '#' + DIALOG_ID + ' .kn-settings-search input::-webkit-search-cancel-button{display:none}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-clear{position:absolute;right:4px;top:4px;width:26px;height:26px;padding:0;border:0;border-radius:5px;background:transparent;color:#9aa0a6;font-size:17px;line-height:1;cursor:pointer}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-clear:hover{background:#293039;color:#f1f3f4}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-clear[hidden],#' + DIALOG_ID + ' .kn-settings-tab[hidden]{display:none!important}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-status{min-height:14px;padding:4px 2px 0;color:#7f8794;font-size:9px;line-height:1.2}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-status:empty{display:none}' +
+      '#' + DIALOG_ID + ' .kn-settings-search-empty{display:none;padding:36px 12px;text-align:center;color:#9aa0a6;font-size:13px}' +
+      '#' + DIALOG_ID + '.kn-settings-no-results .kn-settings-panel{display:none!important}#' + DIALOG_ID + '.kn-settings-no-results .kn-settings-search-empty{display:block}#' + DIALOG_ID + '.kn-settings-no-results .kn-settings-stage{overflow:auto}' +
       '#' + DIALOG_ID + ' .kn-settings-tabs{display:flex;flex-direction:column;gap:3px;margin:0;padding:0;background:transparent;border:0;border-radius:0}' +
       '#' + DIALOG_ID + ' .kn-settings-tab{width:100%;min-height:40px;padding:0 10px;display:flex;align-items:center;text-align:left;border:1px solid transparent;border-radius:8px!important;background:transparent;color:#9aa0a6;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}' +
       '#' + DIALOG_ID + ' .kn-settings-tab:hover{background:#20242b;color:#e8eaed}' +
@@ -3597,7 +3682,7 @@
       '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card,#' + DIALOG_ID + ' .kn-about-hero,#' + DIALOG_ID + ' .kn-forward-card,#' + DIALOG_ID + ' .kn-webos-setting-card{border-radius:8px!important;box-shadow:none}' +
       '#' + DIALOG_ID + ' .kn-group-zone,#' + DIALOG_ID + ' .kn-form-card,#' + DIALOG_ID + ' .kn-about-card{padding:14px;background:#1b1f26!important;border-color:rgba(232,234,237,.10)!important}' +
       '#' + DIALOG_ID + ' .kn-about-hero{padding:16px;margin-bottom:12px;background:#1b2737!important;border-color:rgba(138,180,248,.18)!important}' +
-      '#' + DIALOG_ID + ' .kn-about-logo{border-radius:10px}' +
+      '#' + DIALOG_ID + ' .kn-about-logo{border-radius:10px;white-space:nowrap;overflow:hidden;line-height:1;letter-spacing:0}' +
       '#' + DIALOG_ID + ' .kn-about-hero-copy{min-width:0}' +
       '#' + DIALOG_ID + ' .kn-form-title,#' + DIALOG_ID + ' .kn-about-card-title{font-size:14px;font-weight:800}' +
       '#' + DIALOG_ID + ' .kn-about-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}' +
@@ -3650,10 +3735,10 @@
       '#' + DIALOG_ID + ' .kn-plugin-tool-btn,#' + DIALOG_ID + ' .kn-plugin-icon-action{border-radius:6px}' +
       '#' + DIALOG_ID + ' .kn-webos-settings-grid{gap:12px}' +
       '#' + DIALOG_ID + ' .kn-webos-setting-card{padding:14px;background:#1b1f26;border-color:rgba(232,234,237,.10)}' +
-      '.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-content{background:#f7f9fc!important;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-header,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-footer{background:#fff}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-body{background:#f7f9fc}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav{background:#eef2f7;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav-title,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-title{color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab:hover{background:#e3eaf3;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab.active,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-category-btn.active{background:#d9e8fb;color:#174a88}.kn-theme-light #' + DIALOG_ID + ' .kn-form-card,.kn-theme-light #' + DIALOG_ID + ' .kn-about-card,.kn-theme-light #' + DIALOG_ID + ' .kn-group-zone,.kn-theme-light #' + DIALOG_ID + ' .kn-forward-card,.kn-theme-light #' + DIALOG_ID + ' .kn-webos-setting-card{background:#fff!important;border-color:rgba(23,32,51,.10)!important}.kn-theme-light #' + DIALOG_ID + ' .kn-fc-card,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-head,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-topbar,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-layout{background:#fff;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-about-support-row,.kn-theme-light #' + DIALOG_ID + ' .kn-version-state{background:#f7f9fc;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-about-support-row b{color:#172033}' +
+      '.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-content{background:#f7f9fc!important;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-header,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-footer{background:#fff}.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-body{background:#f7f9fc}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav{background:#eef2f7;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-nav-title,.kn-theme-light #' + DIALOG_ID + ' .kn-dialog-title{color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-search input{background:#fff;color:#172033;border-color:rgba(23,32,51,.14)}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-search-clear{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-search-clear:hover{background:#e3eaf3;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-search-status{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab{color:#667085}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab:hover{background:#e3eaf3;color:#172033}.kn-theme-light #' + DIALOG_ID + ' .kn-settings-tab.active,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-category-btn.active{background:#d9e8fb;color:#174a88}.kn-theme-light #' + DIALOG_ID + ' .kn-form-card,.kn-theme-light #' + DIALOG_ID + ' .kn-about-card,.kn-theme-light #' + DIALOG_ID + ' .kn-group-zone,.kn-theme-light #' + DIALOG_ID + ' .kn-forward-card,.kn-theme-light #' + DIALOG_ID + ' .kn-webos-setting-card{background:#fff!important;border-color:rgba(23,32,51,.10)!important}.kn-theme-light #' + DIALOG_ID + ' .kn-fc-card,.kn-theme-light #' + DIALOG_ID + ' .kn-fc-head,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-topbar,.kn-theme-light #' + DIALOG_ID + ' .kn-plugin-layout{background:#fff;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-about-support-row,.kn-theme-light #' + DIALOG_ID + ' .kn-version-state{background:#f7f9fc;border-color:rgba(23,32,51,.10)}.kn-theme-light #' + DIALOG_ID + ' .kn-about-support-row b{color:#172033}' +
       '@media(max-width:680px){#' + DIALOG_ID + ' .kn-about-version-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-about-card-title-row{align-items:flex-start;flex-direction:column}#' + DIALOG_ID + ' .kn-about-support-row{align-items:stretch;flex-direction:column}#' + DIALOG_ID + ' .kn-about-support-row .kn-google-btn{width:100%}#' + DIALOG_ID + ' .kn-about-kv span{max-width:100%}}' +
-      '@media(max-width:820px){#' + DIALOG_ID + '{width:calc(100vw - 16px)}#' + DIALOG_ID + ' .kn-dialog-content{height:calc(100dvh - 16px);min-height:0;border-radius:12px}#' + DIALOG_ID + ' .kn-dialog-header{min-height:64px;padding:13px 14px;flex-direction:row!important;align-items:center!important;justify-content:space-between!important}#' + DIALOG_ID + ' .kn-dialog-title{font-size:18px}#' + DIALOG_ID + ' .kn-dialog-body{display:flex;flex-direction:column}#' + DIALOG_ID + ' .kn-settings-nav{display:block;padding:10px 12px 8px;border-right:0;border-bottom:1px solid rgba(232,234,237,.09)}#' + DIALOG_ID + ' .kn-settings-nav-title,#' + DIALOG_ID + ' .kn-settings-nav-caption{display:none}#' + DIALOG_ID + ' .kn-settings-tabs{display:none!important}#' + DIALOG_ID + ' .kn-settings-mobile-select{display:block!important;width:100%;height:38px;border:1px solid rgba(232,234,237,.14);border-radius:6px;background:#1b1f26;color:#e8eaed;padding:0 10px;font-size:12px}#' + DIALOG_ID + ' .kn-settings-stage{padding:14px 12px 18px}#' + DIALOG_ID + ' .kn-dialog-footer{min-height:52px;padding:8px 12px}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-form-grid,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-forward-grid.modern{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-group-zone.full,#' + DIALOG_ID + ' .kn-form-card.full{grid-column:auto}#' + DIALOG_ID + ' .kn-function-center-head{align-items:stretch;flex-direction:column;gap:10px}#' + DIALOG_ID + ' .kn-fc-category-nav{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}#' + DIALOG_ID + ' .kn-fc-category-btn{flex:0 0 auto}#' + DIALOG_ID + ' .kn-fc-body{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-layout{grid-template-columns:1fr;overflow:auto}#' + DIALOG_ID + ' .kn-plugin-list-card{min-height:220px;max-height:34vh;border-right:0;border-bottom:1px solid rgba(232,234,237,.08)}#' + DIALOG_ID + ' .kn-plugin-editor-card{min-height:420px}#' + DIALOG_ID + ' .kn-native-control-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-template-grid{grid-template-columns:1fr}}' +
-      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-input-row,#' + DIALOG_ID + ' .kn-input-row.compact{grid-template-columns:1fr;gap:5px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-forward-head-actions{align-items:stretch}#' + DIALOG_ID + ' .kn-forward-head-actions .kn-google-btn{flex:1 1 auto}#' + DIALOG_ID + ' .kn-plugin-editor-actions{gap:5px}#' + DIALOG_ID + ' .kn-plugin-editor-actions .kn-plugin-icon-action{width:36px!important;min-width:36px!important}}' +
+      '@media(max-width:820px){#' + DIALOG_ID + '{width:calc(100vw - 16px)}#' + DIALOG_ID + ' .kn-dialog-content{height:calc(100dvh - 16px);min-height:0;border-radius:12px}#' + DIALOG_ID + ' .kn-dialog-header{min-height:64px;padding:13px 14px;flex-direction:row!important;align-items:center!important;justify-content:space-between!important}#' + DIALOG_ID + ' .kn-dialog-title{font-size:18px}#' + DIALOG_ID + ' .kn-dialog-body{display:flex;flex-direction:column}#' + DIALOG_ID + ' .kn-settings-nav{display:block;padding:10px 12px 8px;border-right:0;border-bottom:1px solid rgba(232,234,237,.09)}#' + DIALOG_ID + ' .kn-settings-nav-title,#' + DIALOG_ID + ' .kn-settings-nav-caption{display:none}#' + DIALOG_ID + ' .kn-settings-search{margin:0 0 8px}#' + DIALOG_ID + ' .kn-settings-search input{height:38px;font-size:12px}#' + DIALOG_ID + ' .kn-settings-search-clear{top:6px}#' + DIALOG_ID + ' .kn-settings-tabs{display:none!important}#' + DIALOG_ID + ' .kn-settings-mobile-select{display:block!important;width:100%;height:38px;border:1px solid rgba(232,234,237,.14);border-radius:6px;background:#1b1f26;color:#e8eaed;padding:0 10px;font-size:12px}#' + DIALOG_ID + ' .kn-settings-stage{padding:14px 12px 18px}#' + DIALOG_ID + ' .kn-dialog-footer{min-height:52px;padding:8px 12px}#' + DIALOG_ID + ' .kn-group-board,#' + DIALOG_ID + ' .kn-form-grid,#' + DIALOG_ID + ' .kn-about-grid,#' + DIALOG_ID + ' .kn-forward-grid.modern{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-group-zone.full,#' + DIALOG_ID + ' .kn-form-card.full{grid-column:auto}#' + DIALOG_ID + ' .kn-function-center-head{align-items:stretch;flex-direction:column;gap:10px}#' + DIALOG_ID + ' .kn-fc-category-nav{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}#' + DIALOG_ID + ' .kn-fc-category-btn{flex:0 0 auto}#' + DIALOG_ID + ' .kn-fc-body{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-plugin-layout{grid-template-columns:1fr;overflow:auto}#' + DIALOG_ID + ' .kn-plugin-list-card{min-height:220px;max-height:34vh;border-right:0;border-bottom:1px solid rgba(232,234,237,.08)}#' + DIALOG_ID + ' .kn-plugin-editor-card{min-height:420px}#' + DIALOG_ID + ' .kn-native-control-grid{grid-template-columns:1fr}#' + DIALOG_ID + ' .kn-template-grid{grid-template-columns:1fr}}' +
+      '@media(max-width:520px){#' + DIALOG_ID + ' .kn-about-logo{font-size:18px!important}#' + DIALOG_ID + ' .kn-input-row,#' + DIALOG_ID + ' .kn-input-row.compact{grid-template-columns:1fr;gap:5px}#' + DIALOG_ID + ' .kn-field-help{margin-left:0}#' + DIALOG_ID + ' .kn-forward-head-actions{align-items:stretch}#' + DIALOG_ID + ' .kn-forward-head-actions .kn-google-btn{flex:1 1 auto}#' + DIALOG_ID + ' .kn-plugin-editor-actions{gap:5px}#' + DIALOG_ID + ' .kn-plugin-editor-actions .kn-plugin-icon-action{width:36px!important;min-width:36px!important}}' +
       '@media(max-width:820px){#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-block{display:flex!important;flex-direction:column!important;gap:4px!important;grid-template-columns:none!important;grid-template-areas:none!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-title-line{height:auto!important;min-height:24px!important;display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:6px!important}#' + DIALOG_ID + ' .kn-plugin-merged-head .kn-plugin-desc{grid-area:auto!important;white-space:normal!important;display:block!important;line-height:1.35!important;margin:0!important}}';
     document.head.appendChild(style);
   }
