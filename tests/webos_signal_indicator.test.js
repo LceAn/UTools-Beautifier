@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.18.0.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.18.1.js'), 'utf8');
 assert.ok(!source.includes('id="kn-home-signal"'), 'home must not duplicate the header signal');
 assert.ok(!source.includes('kn-home-signal-indicator'));
 assert.ok(!source.includes('setHomeSignalIndicator'));

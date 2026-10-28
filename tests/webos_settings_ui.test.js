@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.18.0.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.18.1.js'), 'utf8');
 let css = '';
 const sandbox = {
   DIALOG_ID: 'kn-ui-settings-dialog',

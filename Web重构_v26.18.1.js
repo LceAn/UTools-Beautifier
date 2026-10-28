@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.18.0-communications';
+  var VERSION = '26.18.1-communications-scope';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.18.0.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.18.1.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -4313,6 +4313,10 @@
     return selected || clean(sel.getAttribute('title') || sel.getAttribute('aria-label') || '') || '选择项';
   }
 
+  function knFunctionCenterIsDialogControl(el) {
+    return !!(el && el.closest && el.closest('dialog,[role="dialog"],[aria-modal="true"],.modal,.modal-wrapper,#kn_phone_sms_modal'));
+  }
+
   function knFunctionCenterElementLabel(el) {
     if (!el) return '';
     if (el.tagName && el.tagName.toUpperCase() === 'SELECT') return knFunctionCenterInferSelectLabel(el);
@@ -4419,6 +4423,7 @@
       if (!el || !(el instanceof HTMLElement)) return;
       var tag = el.tagName ? el.tagName.toUpperCase() : '';
       if (tag !== 'BUTTON' && tag !== 'SELECT') return;
+      if (knFunctionCenterIsDialogControl(el) && el.getAttribute('data-kn-fc-direct-native') !== '1') return;
       if (el.closest && (el.closest('#' + DIALOG_ID) || el.closest('#' + HEADER_ID) || el.closest('#' + TOOLBOX_WRAPPER_ID) || el.closest('#' + TOOLBOX_DRAWER_ID) || el.closest('#' + TOOLBOX_SETTINGS_ID)) && el.getAttribute('data-kn-fc-direct-native') !== '1') return;
       if (seen.indexOf(el) !== -1) return;
       var label = knFunctionCenterElementLabel(el);
@@ -4809,9 +4814,16 @@
   function hideHomeFunctionListButtons() {
     if (!isWebOSFeatureEnabled('nativeButtonMigration')) { restoreHomeFunctionListButtons(); return; }
     ensureFunctionCenterStyles();
+    // Dialog text is user content, not a native home-entry label.
+    Array.prototype.slice.call(document.querySelectorAll('.kn-home-function-hidden')).forEach(function (el) {
+      if (!knFunctionCenterIsDialogControl(el)) return;
+      el.classList.remove('kn-home-function-hidden');
+      el.removeAttribute('data-kn-home-function-hidden');
+    });
     var boxes = getNativeFunctionButtonBoxes();
     function hideControl(el) {
       if (!(el instanceof HTMLElement)) return;
+      if (knFunctionCenterIsDialogControl(el)) return;
       var tag = el.tagName ? el.tagName.toUpperCase() : '';
       if (tag !== 'BUTTON' && tag !== 'SELECT') return;
       if (el.closest && el.closest('#' + HOME_DASHBOARD_ID)) return;
@@ -4823,6 +4835,7 @@
     // 这里只隐藏已明确接管的入口，不隐藏承载容器，避免破坏原生二级面板。
     Array.prototype.slice.call(document.querySelectorAll('button,select')).forEach(function (el) {
       if (!(el instanceof HTMLElement)) return;
+      if (knFunctionCenterIsDialogControl(el)) return;
       if (el.closest && (el.closest('#' + DIALOG_ID) || el.closest('#' + HEADER_ID) || el.closest('#' + TOOLBOX_WRAPPER_ID) || el.closest('#' + TOOLBOX_DRAWER_ID) || el.closest('#' + TOOLBOX_SETTINGS_ID))) return;
       var label = knFunctionCenterElementLabel(el);
       if (knFunctionCenterShouldSuppress(label, el)) hideControl(el);

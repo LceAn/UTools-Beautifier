@@ -3,7 +3,7 @@
   'use strict';
 
   const TITLE = '电话与短信';
-  const VERSION = '1.4.0-communications';
+  const VERSION = '1.4.1-stable-layout';
   const MODAL_NAME = 'kn_phone_sms_modal';
   const STYLE_ID = 'kn_phone_sms_style';
   const MAIN_BTN_ID = 'kn_phone_sms_main_btn';
@@ -180,7 +180,10 @@
 
   const setNotice = (id, text, tone = '') => {
     const el = document.getElementById(id);
-    if (el) { el.textContent = text; el.dataset.tone = tone; }
+    if (el) {
+      if (el.textContent !== text) el.textContent = text;
+      if (el.dataset.tone !== tone) el.dataset.tone = tone;
+    }
   };
 
   const updateComposer = () => {
@@ -264,13 +267,15 @@
       ${s} .ps-modal-subtitle{font-size:11px;color:var(--kn-muted);white-space:nowrap}
       ${s} .ps-tabs{display:flex;align-items:stretch;gap:22px;min-height:44px;padding:0 18px;border-bottom:1px solid var(--kn-border);flex:0 0 auto}
       ${s} .ps-tab{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 2px;border-radius:0!important;border-bottom:2px solid transparent;border-color:transparent!important;color:var(--kn-muted)!important;font-size:13px;font-weight:600}
-      ${s} .ps-tab.active{color:var(--kn-text)!important;border-bottom-color:var(--kn-green)!important}
+      ${s} .ps-tab.is-active{color:var(--kn-text)!important;border-bottom-color:var(--kn-green)!important}
       ${s} .ps-modal-body{flex:1;min-height:0;overflow:hidden}
       ${s} .ps-page{display:none;height:100%;min-height:0}
-      ${s} .ps-page.active{display:block}
-      ${s} .ps-page.active,${s} .ps-tab.active{background:transparent!important}
+      ${s} .ps-page.is-active{display:block}
+      ${s} .ps-page.is-active,${s} .ps-tab.is-active{background:transparent!important}
       ${s} .ps-page[data-page="phone"]{overflow-y:auto;padding:20px}
-      ${s} .phone-shell{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:30px;min-width:0}
+      ${s} .phone-shell{display:grid;grid-template-columns:minmax(260px,.9fr) minmax(0,1.1fr);gap:30px;min-width:0;height:100%;min-height:480px}
+      ${s} .phone-dial-card{display:flex;flex-direction:column;min-height:0}
+      ${s} .phone-dial-card>:not(.phone-keypad){flex-shrink:0}
       ${s} .ps-card{min-width:0;background:none;border:0;border-radius:0;box-shadow:none;padding:0}
       ${s} .ps-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:24px}
       ${s} .ps-title strong{font-size:13px;font-weight:600}
@@ -279,8 +284,8 @@
       ${s} .phone-input:focus,${s} .sms-input:focus,${s} .sms-textarea:focus{border-color:var(--kn-blue)}
       ${s} input::placeholder,${s} textarea::placeholder{color:var(--kn-muted);opacity:.7}
       ${s} .phone-input{height:48px;text-align:center;font-size:23px;font-weight:500;font-variant-numeric:tabular-nums}
-      ${s} .phone-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
-      ${s} .phone-key{height:42px;display:flex;align-items:center;justify-content:center;border:1px solid var(--kn-border);border-radius:6px;background:var(--kn-field)!important;font-size:21px;font-weight:500;line-height:1}
+      ${s} .phone-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(4,minmax(42px,1fr));gap:6px;margin-top:10px;flex:1;min-height:186px}
+      ${s} .phone-key{height:100%;min-height:42px;display:flex;align-items:center;justify-content:center;border:1px solid var(--kn-border);border-radius:6px;background:var(--kn-field)!important;font-size:21px;font-weight:500;line-height:1}
       ${s} .phone-key:hover,${s} .ps-btn:hover,${s} .ps-icon-btn:hover{background:var(--kn-field)!important}
       ${s} .phone-secondary-actions,${s} .phone-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
       ${s} .phone-secondary-actions .ps-icon-btn{width:100%}
@@ -291,9 +296,10 @@
       .kn-theme-light ${s} .phone-action-btn.dial,.kn-theme-light ${s} .ps-btn.send{color:#fff!important}
       ${s} .phone-action-btn.answer{color:var(--kn-blue)!important}
       ${s} .phone-action-btn.hangup,${s} .danger{color:var(--kn-red)!important}
-      ${s} .phone-status-card{border-left:1px solid var(--kn-border);padding-left:26px}
-      ${s} .phone-status-grid{display:grid;grid-template-columns:80px minmax(0,1fr);gap:0;font-size:13px}
-      ${s} .phone-status-grid b,${s} .phone-status-grid span{padding:11px 0;border-bottom:1px solid var(--kn-border);font-weight:400;overflow-wrap:anywhere}
+      ${s} .phone-status-card{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--kn-border);padding-left:26px}
+      ${s} .phone-status-panel{flex:1;min-height:0;display:flex;overflow-y:auto}
+      ${s} .phone-status-grid{display:grid;grid-template-columns:80px minmax(0,1fr);grid-auto-rows:minmax(40px,1fr);gap:0;font-size:13px;width:100%;min-height:100%}
+      ${s} .phone-status-grid b,${s} .phone-status-grid span{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--kn-border);font-weight:400;overflow-wrap:anywhere}
       ${s} .phone-status-grid b{color:var(--kn-muted)}
       ${s} .phone-raw{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--kn-muted);font:11px/1.6 ui-monospace,monospace;margin-top:12px;max-height:100px;overflow:auto}
       ${s} .ps-status{min-height:22px;margin:8px 0 0;color:var(--kn-muted);font-size:11px;overflow-wrap:anywhere}
@@ -308,7 +314,8 @@
       ${s} .sms-thread-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 6px 6px}
       ${s} .sms-thread-item{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:12px 9px;border-radius:6px;border:1px solid transparent;text-align:left;margin:1px 0}
       ${s} .sms-thread-item:hover{background:var(--kn-field)}
-      ${s} .sms-thread-item.active{background:var(--kn-field)!important;border-color:var(--kn-border)}
+      ${s} .sms-thread-item.is-selected{background:var(--kn-field)!important;border-color:var(--kn-border)}
+      ${s} .sms-thread-item{transition:none!important}
       ${s} .sms-thread-copy{min-width:0;flex:1}
       ${s} .sms-thread-number{font-size:13px;font-weight:600;overflow-wrap:anywhere}
       ${s} .sms-thread-preview{font-size:11px;color:var(--kn-muted);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;margin-top:3px}
@@ -344,7 +351,7 @@
       ${s} .ps-empty,${s} .sms-empty-chat{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;min-height:120px;padding:20px;color:var(--kn-muted);font-size:12px;text-align:center}
       ${s} .sms-empty-chat{height:100%}
       @media(max-width:700px){${s}{padding:10px!important}${s} .ps-modal-panel{height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}${s} .ps-modal-header{padding:10px 14px}${s} .ps-modal-subtitle{display:none}${s} .sms-shell{grid-template-columns:minmax(0,1fr)}${s} .sms-shell[data-mobile-pane="list"] .sms-chat-card{display:none}${s} .sms-shell[data-mobile-pane="chat"] .sms-sidebar{display:none}${s} .sms-sidebar{border-right:0}${s} .sms-back{display:inline-flex}${s} .sms-chat-header{padding:10px 12px}${s} .sms-chat-body{padding:12px}${s} .sms-composer{padding:10px 12px}${s} .sms-bubble{max-width:94%}}
-      @media(max-width:560px){${s} .ps-page[data-page="phone"]{padding:14px}${s} .phone-shell{grid-template-columns:minmax(0,1fr);gap:20px}${s} .phone-status-card{padding:16px 0 0;border-left:0;border-top:1px solid var(--kn-border)}${s} .phone-key{height:36px}${s} .phone-input{height:44px;font-size:22px}${s} .phone-secondary-actions,${s} .phone-actions{margin-top:7px}${s} .ps-modal-title{font-size:16px}${s} .ps-tabs{min-height:40px}${s} .phone-status-grid b,${s} .phone-status-grid span{padding:8px 0}}
+      @media(max-width:700px){${s} .ps-page[data-page="phone"]{padding:14px}${s} .phone-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(390px,1.4fr) minmax(250px,1fr);min-height:660px;gap:18px}${s} .phone-status-card{padding:16px 0 0;border-left:0;border-top:1px solid var(--kn-border)}${s} .phone-keypad{grid-template-rows:repeat(4,minmax(36px,1fr));min-height:162px}${s} .phone-key{min-height:36px}${s} .phone-input{height:44px;font-size:22px}${s} .phone-secondary-actions,${s} .phone-actions{margin-top:7px}${s} .ps-modal-title{font-size:16px}${s} .ps-tabs{min-height:40px}${s} .phone-status-grid b,${s} .phone-status-grid span{padding:8px 0}}
       @media(prefers-reduced-motion:reduce){${s} *{transition:none!important;scroll-behavior:auto!important}}
     `;
     document.head.appendChild(style);
@@ -356,13 +363,13 @@
   const switchTab = (tab) => {
     document.querySelectorAll(`#${MODAL_NAME} .ps-tab`).forEach((btn) => {
       const active = btn.dataset.tab === tab;
-      btn.classList.toggle('active', active);
+      btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', String(active));
       btn.tabIndex = active ? 0 : -1;
     });
 
     document.querySelectorAll(`#${MODAL_NAME} .ps-page`).forEach((page) => {
-      page.classList.toggle('active', page.dataset.page === tab);
+      page.classList.toggle('is-active', page.dataset.page === tab);
     });
 
     if (tab === 'sms') {
@@ -1224,6 +1231,41 @@
     });
   };
 
+  const updateSmsMarkup = (el, signature, render) => {
+    if (el._knSmsSignature === signature) return false;
+    el.innerHTML = render();
+    el._knSmsSignature = signature;
+    return true;
+  };
+
+  // Keep unchanged rows mounted so polling does not restart styles or focus.
+  const reconcileSmsNodes = (box, items, tag, getKey, update) => {
+    const existing = new Map(Array.from(box.children).map(el => [el.dataset.smsKey, el]));
+    const kept = new Set();
+    let cursor = box.firstElementChild;
+    let changed = false;
+    items.forEach((item, index) => {
+      const key = String(getKey(item, index));
+      let row = existing.get(key);
+      if (!row) {
+        row = document.createElement(tag);
+        row.dataset.smsKey = key;
+        changed = true;
+      }
+      changed = update(row, item) || changed;
+      if (row !== cursor) {
+        box.insertBefore(row, cursor);
+        changed = true;
+      }
+      cursor = row.nextElementSibling;
+      kept.add(row);
+    });
+    Array.from(box.children).forEach(row => {
+      if (!kept.has(row)) { row.remove(); changed = true; }
+    });
+    return changed;
+  };
+
   const renderSmsThreadList = () => {
     const box = document.querySelector('#kn_sms_threads');
     if (!box) return;
@@ -1232,13 +1274,20 @@
     const list = getFilteredSmsThreads();
 
     if (!list.length) {
-      box.innerHTML = `<div class="ps-empty">${smsSearchKeyword.trim() ? '没有匹配的会话' : '暂无短信会话'}</div>`;
+      updateSmsMarkup(box, `empty:${smsSearchKeyword.trim() ? 'search' : 'all'}`, () => `<div class="ps-empty">${smsSearchKeyword.trim() ? '没有匹配的会话' : '暂无短信会话'}</div>`);
       return;
     }
 
-    box.innerHTML = list.map((thread) => {
+    box._knSmsSignature = null;
+    reconcileSmsNodes(box, list, 'button', thread => thread.key, (row, thread) => {
       const last = thread.lastMessage || {};
-      const active = thread.key === activeSmsThreadKey ? ' active' : '';
+      const selected = thread.key === activeSmsThreadKey;
+      const classes = `sms-thread-item${selected ? ' is-selected' : ''}`;
+      let changed = false;
+      if (row.className !== classes) { row.className = classes; changed = true; }
+      if (row.getAttribute('aria-pressed') !== String(selected)) row.setAttribute('aria-pressed', String(selected));
+      if (row.type !== 'button') row.type = 'button';
+      if (row.dataset.threadKey !== thread.key) row.dataset.threadKey = thread.key;
       const unread = thread.unreadCount > 0
         ? `<span class="sms-unread-badge">${thread.unreadCount > 99 ? '99+' : thread.unreadCount}</span>`
         : '';
@@ -1246,8 +1295,8 @@
       const previewPrefix = last.direction === 'out' ? '我：' : '';
       const preview = `${previewPrefix}${last.content || ''}`;
 
-      return `
-        <button type="button" class="sms-thread-item${active}" data-thread-key="${escapeHTML(thread.key)}" aria-pressed="${thread.key === activeSmsThreadKey}">
+      const signature = JSON.stringify([thread.number, preview, last.date, thread.unreadCount]);
+      return updateSmsMarkup(row, signature, () => `
           <span class="sms-thread-copy">
             <div class="sms-thread-number">${escapeHTML(thread.number || '未知号码')}</div>
             <div class="sms-thread-preview">${escapeHTML(preview || '无内容')}</div>
@@ -1256,9 +1305,8 @@
             <span class="sms-thread-time" title="${escapeHTML(last.date || '')}">${escapeHTML((last.date || '-').split(' ')[0])}</span>
             ${unread}
           </span>
-        </button>
-      `;
-    }).join('');
+      `) || changed;
+    });
 
     box.querySelectorAll('.sms-thread-item').forEach((item) => {
       item.onclick = () => {
@@ -1286,16 +1334,16 @@
     const back = `<button type="button" class="ps-icon-btn sms-back" id="kn_sms_back_btn" title="返回会话列表" aria-label="返回会话列表">${icon('arrow-left')}</button>`;
 
     if (!thread) {
-      header.innerHTML = `
+      updateSmsMarkup(header, 'new', () => `
           ${back}<div class="sms-chat-title"><div class="sms-chat-number">新短信</div></div>
-      `;
-      body.innerHTML = `<div class="sms-empty-chat">${icon('message-square')}<span>新短信</span></div>`;
-      body.dataset.threadKey = 'new';
+      `);
+      updateSmsMarkup(body, 'new', () => `<div class="sms-empty-chat">${icon('message-square')}<span>新短信</span></div>`);
+      if (body.dataset.threadKey !== 'new') body.dataset.threadKey = 'new';
       document.getElementById('kn_sms_back_btn').onclick = () => setSmsMobilePane('list');
       return;
     }
 
-    header.innerHTML = `
+    updateSmsMarkup(header, JSON.stringify([thread.key, thread.number, thread.messages.length, thread.unreadCount]), () => `
       ${back}
       <div class="sms-chat-title">
         <div class="sms-chat-number">${escapeHTML(thread.number || '未知号码')}</div>
@@ -1305,14 +1353,15 @@
         ${iconButton('phone', '转到拨号盘', 'kn_sms_call_current')}
         ${iconButton('refresh-cw', '刷新当前会话', 'kn_sms_refresh_current')}
       </div>
-    `;
+    `);
 
-    body.innerHTML = thread.messages.map((msg) => {
+    body._knSmsSignature = null;
+    const messagesChanged = reconcileSmsNodes(body, thread.messages, 'div', (msg, index) => msg.id ?? `${msg.dateRaw}:${index}`, (row, msg) => {
       const dirClass = msg.direction === 'out' ? 'out' : 'in';
       const failClass = msg.tag === '3' ? ' fail' : '';
-
-      return `
-        <div class="sms-msg-row ${dirClass}${failClass}">
+      const classes = `sms-msg-row ${dirClass}${failClass}`;
+      if (row.className !== classes) row.className = classes;
+      return updateSmsMarkup(row, JSON.stringify([msg.number, msg.content, msg.date, msg.tag, msg.direction]), () => `
           <div class="sms-bubble">
             <div class="sms-bubble-text">${escapeHTML(msg.content || '')}</div>
             <div class="sms-bubble-meta">
@@ -1330,9 +1379,8 @@
               <button type="button" class="ps-icon-btn danger" title="删除短信" aria-label="删除短信" data-action="sms-delete" data-id="${escapeHTML(msg.id)}">${icon('trash-2')}</button>
             </div>
           </div>
-        </div>
-      `;
-    }).join('');
+      `);
+    });
 
     body.querySelectorAll('[data-action="sms-reply"]').forEach((btn) => {
       btn.onclick = () => {
@@ -1393,8 +1441,8 @@
     }
 
     document.getElementById('kn_sms_back_btn').onclick = () => setSmsMobilePane('list');
-    body.dataset.threadKey = thread.key;
-    body.scrollTop = previousThread !== thread.key || nearBottom ? body.scrollHeight : oldTop;
+    if (previousThread !== thread.key) body.dataset.threadKey = thread.key;
+    if (messagesChanged || previousThread !== thread.key) body.scrollTop = previousThread !== thread.key || nearBottom ? body.scrollHeight : oldTop;
   };
 
   const renderSmsViewer = () => {
@@ -1449,7 +1497,7 @@
     smsReadBusy = true;
     const buttons = document.querySelectorAll('#kn_sms_refresh_btn, #kn_sms_refresh_current');
     buttons.forEach(btn => { btn.disabled = true; });
-    setNotice('kn_sms_load_status', '正在读取...');
+    if (manual || !smsCache.length) setNotice('kn_sms_load_status', '正在读取...');
     try {
       if (!await ensureUfiSmsAuth()) throw new Error('请先登录 UFI-TOOLS');
       const res = await getSmsInfoNative(0, 500);
@@ -1664,18 +1712,18 @@
         <header class="ps-modal-header">
           <div class="ps-modal-heading">
             <h2 class="ps-modal-title" id="kn_phone_sms_title">${escapeHTML(TITLE)}</h2>
-            <span class="ps-modal-subtitle">v1.4.0</span>
+            <span class="ps-modal-subtitle">v1.4.1</span>
           </div>
           ${iconButton('x', '关闭通信面板', 'kn_phone_sms_close')}
         </header>
         <div class="ps-tabs" role="tablist" aria-label="通信分类">
-          <button type="button" class="ps-tab active" id="kn_ps_tab_phone" role="tab" aria-selected="true" aria-controls="kn_ps_page_phone" data-tab="phone">${icon('phone')}电话</button>
+          <button type="button" class="ps-tab is-active" id="kn_ps_tab_phone" role="tab" aria-selected="true" aria-controls="kn_ps_page_phone" data-tab="phone">${icon('phone')}电话</button>
           <button type="button" class="ps-tab" id="kn_ps_tab_sms" role="tab" aria-selected="false" aria-controls="kn_ps_page_sms" tabindex="-1" data-tab="sms">${icon('message-square')}短信</button>
         </div>
         <div class="ps-modal-body">
-          <section class="ps-page active" id="kn_ps_page_phone" role="tabpanel" aria-labelledby="kn_ps_tab_phone" data-page="phone">
+          <section class="ps-page is-active" id="kn_ps_page_phone" role="tabpanel" aria-labelledby="kn_ps_tab_phone" data-page="phone">
             <div class="phone-shell">
-              <div class="ps-card">
+              <div class="ps-card phone-dial-card">
                 <div class="ps-title"><strong>拨号盘</strong><span class="ps-chip">SIM ${Number(getATSlot()) + 1}</span></div>
                 <input id="kn_phone_number" class="phone-input" type="tel" inputmode="tel" autocomplete="off" aria-label="拨号号码" placeholder="输入号码" maxlength="32">
                 <div class="phone-keypad">${keypad}</div>
