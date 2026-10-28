@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.16.2.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.17.0.js'), 'utf8');
 const cfg = { auto: true, interval: 10000, userSetAuto: false };
 const auto = { checked: false, disabled: false };
 const interval = { value: '' };

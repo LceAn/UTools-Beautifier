@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.16.2.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.17.0.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function normalizeVersionTag');
 const end = source.indexOf('  var FORWARD_CONFIG_KEY');
@@ -45,10 +45,10 @@ const sandbox = {
   encodeURIComponent,
   URL,
   location: { href: 'http://192.168.100.1:2333/' },
-  VERSION: '26.16.2-home-fit',
+  VERSION: '26.17.0-settings-ui',
   GITHUB_REPO: 'LceAn/UTools-Beautifier',
   GITHUB_REPO_URL: 'https://github.com/LceAn/UTools-Beautifier',
-  GITHUB_SOURCE_PATH: 'Web重构_v26.16.2.js',
+  GITHUB_SOURCE_PATH: 'Web重构_v26.17.0.js',
   GITHUB_LOCAL_PROXY_DEFAULTS: ['http://127.0.0.1:8000/project-version'],
   GITHUB_CACHE_KEY: 'test-github-cache',
   GITHUB_UPDATE_DISMISS_KEY: 'test-update-dismissed',
@@ -89,13 +89,13 @@ const sandbox = {
         async text() {
           return JSON.stringify([
             { name: 'Web重构_v26.15.0.js', download_url: 'https://raw.githubusercontent.com/example/26.15.0.js', html_url: 'https://example/26.15.0' },
-            { name: 'Web重构_v26.17.0.js', download_url: 'https://raw.githubusercontent.com/example/26.17.0.js', html_url: 'https://example/26.17.0' },
+            { name: 'Web重构_v26.18.0.js', download_url: 'https://raw.githubusercontent.com/example/26.18.0.js', html_url: 'https://example/26.18.0' },
           ]);
         },
       };
     }
-    if (value === '/api/proxy/--https://raw.githubusercontent.com/example/26.17.0.js') {
-      return { ok: true, status: 200, async text() { return "var VERSION = '26.17.0-next';"; } };
+    if (value === '/api/proxy/--https://raw.githubusercontent.com/example/26.18.0.js') {
+      return { ok: true, status: 200, async text() { return "var VERSION = '26.18.0-next';"; } };
     }
     throw new Error(`Unexpected URL: ${url}`);
   },
@@ -115,23 +115,23 @@ async function main() {
   ], ['first', 'second']), 'second succeeded');
 
   const info = await sandbox.fetchGithubLatestVersion();
-  assert.equal(info.tag, '26.17.0-next');
+  assert.equal(info.tag, '26.18.0-next');
   assert.equal(info.stars, 42);
   assert.equal(info.branch, 'main');
   assert.equal(info.source, '设备同源 GitHub 代理');
   assert.equal(sandbox.getWebOSProxyUrl('https://example.com/a'), '/api/proxy/--https://example.com/a');
 
   await sandbox.checkGithubVersion({ force: true, quiet: true });
-  assert.equal(elements.get('kn-about-latest-version').textContent, '26.17.0-next');
+  assert.equal(elements.get('kn-about-latest-version').textContent, '26.18.0-next');
   assert.equal(elements.get('kn-about-stars').textContent, '42');
   assert.equal(elements.get('kn-home-update-notice').hidden, false);
-  assert.match(elements.get('kn-home-update-version').textContent, /26\.17\.0-next/);
+  assert.match(elements.get('kn-home-update-version').textContent, /26\.18\.0-next/);
   assert.equal(checkButton.disabled, false);
   assert.equal(checkButton.textContent, '立即检查');
 
   elements.get('kn-home-update-close').onclick();
   assert.equal(elements.get('kn-home-update-notice').hidden, true);
-  assert.equal(storage.get('test-update-dismissed'), '26.17.0-next');
+  assert.equal(storage.get('test-update-dismissed'), '26.18.0-next');
 
   sandbox.fetch = async (url) => {
     sandbox.lastProxyUrl = String(url);
@@ -176,7 +176,7 @@ async function main() {
 
   sandbox.fetch = async () => { throw new Error('offline'); };
   const retained = await sandbox.checkGithubVersion({ force: true });
-  assert.equal(retained.tag, '26.17.0-next');
+  assert.equal(retained.tag, '26.18.0-next');
   assert.equal(elements.get('kn-about-version-state').textContent, '使用上次结果');
   assert.equal(checkButton.disabled, false);
   assert.equal(checkButton.textContent, '立即检查');
