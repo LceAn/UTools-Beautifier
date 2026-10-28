@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.17.1-signal-indicator';
+  var VERSION = '26.18.0-communications';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.17.1.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.18.0.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -4611,7 +4611,7 @@
             ['运营商 / 制式', knDiagnosticsRead('kn-home-network')],
             ['连接状态', knDiagnosticsRead('kn-pop-ppp')],
             ['SIM 状态', knDiagnosticsRead('kn-home-sim')],
-            ['信号格', knDiagnosticsRead('kn-home-signal')]
+            ['信号格', knDiagnosticsRead('kn-pop-signal')]
           ]
         },
         {
@@ -5922,18 +5922,6 @@
       ${s} .kn-home-stat-sub{color:var(--home-muted-2);font-size:10px;line-height:1.5;margin-top:6px;overflow-wrap:anywhere}
       ${s} .kn-home-network-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:7px}
       ${s} .kn-home-network-meta .kn-home-stat-sub{margin:0}
-      ${s} .kn-home-signal-indicator{--signal-ink:var(--home-muted-2);display:inline-flex;align-items:center;flex:0 0 auto;height:15px;margin:0;padding:0 4px;border:1px solid var(--home-line);border-radius:4px;background:var(--home-soft);color:var(--signal-ink);vertical-align:middle}
-      ${s} .kn-home-signal-indicator[data-tone="good"]{--signal-ink:var(--home-good)}
-      ${s} .kn-home-signal-indicator[data-tone="warn"]{--signal-ink:var(--home-warn)}
-      ${s} .kn-home-signal-indicator[data-tone="bad"]{--signal-ink:var(--home-bad)}
-      ${s} .kn-home-signal-bars{display:inline-flex;align-items:flex-end;gap:2px;width:23px;height:13px;flex:0 0 23px}
-      ${s} .kn-home-signal-bars i{display:block;width:3px;flex:0 0 3px;border-radius:1px;background:var(--home-line)}
-      ${s} .kn-home-signal-bars i:nth-child(1){height:3px}
-      ${s} .kn-home-signal-bars i:nth-child(2){height:5px}
-      ${s} .kn-home-signal-bars i:nth-child(3){height:8px}
-      ${s} .kn-home-signal-bars i:nth-child(4){height:10px}
-      ${s} .kn-home-signal-bars i:nth-child(5){height:13px}
-      ${s} .kn-home-signal-bars i.is-on{background:var(--signal-ink)}
       ${s} .kn-home-phone-line{cursor:pointer;color:var(--home-muted);font-size:10px;line-height:1.5;white-space:nowrap}
       ${s} .kn-home-phone-line:hover{color:var(--home-blue)}
       ${s} .kn-home-dashboard-fusion{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 28px;align-items:start}
@@ -6178,7 +6166,7 @@
       '</div>',
       '<div id="kn-home-update-notice" class="kn-home-update-notice" hidden><span class="kn-home-update-icon" aria-hidden="true">↑</span><div class="kn-home-update-copy"><b>发现新版本</b><span id="kn-home-update-version">GitHub 已有更新</span></div><div class="kn-home-update-actions"><a id="kn-home-update-link" class="kn-home-update-link" href="' + GITHUB_REPO_URL + '" target="_blank" rel="noopener noreferrer">查看</a><button id="kn-home-update-close" class="kn-home-update-close" type="button" title="暂不提醒" aria-label="暂不提醒">×</button></div></div>',
       '<div class="kn-home-status-grid">',
-        '<div class="kn-home-stat kn-home-network-stat"><div class="kn-home-stat-label">当前网络</div><div id="kn-home-network" class="kn-home-stat-value">--</div><div class="kn-home-network-meta"><span id="kn-home-phone-line" class="kn-home-phone-line" title="复制手机号" role="button" tabindex="0">--</span><span id="kn-home-signal" class="kn-home-signal-indicator" role="img" aria-label="信号强度暂未获取" title="信号强度暂未获取" data-level="unknown" data-tone="unknown"><span class="kn-home-signal-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></span></div></div>',
+        '<div class="kn-home-stat kn-home-network-stat"><div class="kn-home-stat-label">当前网络</div><div id="kn-home-network" class="kn-home-stat-value">--</div><div class="kn-home-network-meta"><span id="kn-home-phone-line" class="kn-home-phone-line" title="复制手机号" role="button" tabindex="0">--</span></div></div>',
         '<div class="kn-home-stat"><div class="kn-home-stat-label">连接时长</div><div id="kn-home-modem" class="kn-home-stat-value">--</div><div id="kn-home-uptime" class="kn-home-stat-sub">--</div></div>',
         '<div class="kn-home-stat"><div class="kn-home-stat-label">WiFi 接入</div><div id="kn-home-wifi" class="kn-home-stat-value">--</div><div id="kn-home-wifi-sub" class="kn-home-stat-sub">--</div></div>',
         '<div class="kn-home-stat kn-home-local-stat"><div class="kn-home-stat-label">内网地址</div><div id="kn-home-ip" class="kn-home-stat-value">--</div><div id="kn-home-ip-sub" class="kn-home-stat-sub">IPv4</div></div>',
@@ -6272,30 +6260,6 @@
     if (!el) return;
     if (keepHomePreviousIfNewWeak(el, value)) return;
     el.textContent = value == null || value === '' ? '--' : String(value);
-  }
-
-  function getHomeSignalPresentation(value) {
-    var validType = typeof value === 'number' || typeof value === 'string';
-    var number = validType && String(value).trim() !== '' ? Number(value) : NaN;
-    var level = isFinite(number) ? Math.round(Math.max(0, Math.min(5, number))) : null;
-    return {
-      level: level,
-      tone: level === null ? 'unknown' : (level >= 4 ? 'good' : (level >= 2 ? 'warn' : 'bad')),
-      label: level === null ? '信号强度暂未获取' : ('信号强度：' + level + ' / 5')
-    };
-  }
-
-  function setHomeSignalIndicator(value) {
-    var el = document.getElementById('kn-home-signal');
-    if (!el) return;
-    var signal = getHomeSignalPresentation(value);
-    el.setAttribute('data-level', signal.level === null ? 'unknown' : String(signal.level));
-    el.setAttribute('data-tone', signal.tone);
-    el.setAttribute('aria-label', signal.label);
-    el.title = signal.label;
-    Array.prototype.slice.call(el.querySelectorAll('.kn-home-signal-bars i')).forEach(function (bar, index) {
-      bar.classList.toggle('is-on', signal.level !== null && index < signal.level);
-    });
   }
 
   function setHomeTitle(selector, value) {
@@ -7799,7 +7763,6 @@
       if (!connectionText) connectionText = normalizeHomeConnectionDuration(pickHomeMetricFromDom(['连接时长','连接时间','联网时长','在线时长','已连接时长']));
       var operator = pickHomeFromDataOrDom(merged, ['network_provider','spn_name'], ['运营商','网络运营商']);
       var netType = pickHomeFromDataOrDom(merged, ['network_type'], ['网络类型','制式']);
-      var signal = normalizeSignal(merged.signalbar || merged.network_signalbar || pickHomeMetricFromDom(['信号格','信号强度']) || 0);
       var simRaw = pickHomeFromDataOrDom(merged, ['simcard_status','sim_status','sim_state'], ['SIM状态','SIM 卡状态','SIM卡状态']);
       var simState = normalizeSimState(simRaw) || '--';
       var phone = firstClean(merged, ['msisdn','mdn','sim_phone_number','own_number','my_number','tel_number','phone_number']) || domInfo.phone || pickHomeMetricFromDom(['手机号','本机号码','号码','SIM号码','SIM 号码','MDN']);
@@ -7874,7 +7837,6 @@
       if (!connectionText && !uptimeText) refreshHomeUptimeFallback(false);
       setHomeTitle('#kn-home-network', [operator, netType].filter(Boolean).join(' · ') || '--');
       setHomePhoneLine(phone, operator);
-      setHomeSignalIndicator(signal);
       setHomeTitle('#kn-home-sim', simState || '--');
       setHomeTitle('#kn-home-sim-sub', '号码 ' + (phone || '--'));
       setHomeTitle('#kn-home-ip', ipMain || '--');

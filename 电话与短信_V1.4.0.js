@@ -3,12 +3,13 @@
   'use strict';
 
   const TITLE = '电话与短信';
-  const VERSION = '1.3.3-ui-polish-2026';
+  const VERSION = '1.4.0-communications';
   const MODAL_NAME = 'kn_phone_sms_modal';
   const STYLE_ID = 'kn_phone_sms_style';
   const MAIN_BTN_ID = 'kn_phone_sms_main_btn';
 
   let statusTimer = null;
+  let smsTimer = null;
   let statusBusy = false;
   let callSession = null;
   let escHandler = null;
@@ -17,6 +18,17 @@
   let smsThreads = [];
   let activeSmsThreadKey = '';
   let smsSearchKeyword = '';
+  let smsReadBusy = false;
+  let smsSendBusy = false;
+  let smsNewMode = false;
+  let composerKey = 'new';
+  let modalOpener = null;
+  let phoneBusy = false;
+  let currentCalls = [];
+  let statusKnown = false;
+  let sendingDraftKey = '';
+  const smsDrafts = new Map();
+  const smsNotices = new Map();
 
   // ==============================
   // 1. 基础工具
@@ -144,832 +156,196 @@
   };
 
   // ==============================
-  // 2. 样式：2026 美化版
+  // 2. 通信面板样式
   // ==============================
+  // Lucide v0.468.0 (ISC), Copyright (c) 2020, Lucide Contributors.
+  // Copyright (c) 2013-2020 Cole Bemis (Feather).
+  // Permission to use, copy, modify, and/or distribute this software for any
+  // purpose with or without fee is hereby granted, provided that the above
+  // copyright notice and this permission notice appear in all copies.
+  // THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  // ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  const icon = (name) => {
+    const paths = {"phone":"<path d=\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\" />","phone-incoming":"<polyline points=\"16 2 16 8 22 8\" /><line x1=\"22\" x2=\"16\" y1=\"2\" y2=\"8\" /><path d=\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\" />","phone-off":"<path d=\"M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91\" /><line x1=\"22\" x2=\"2\" y1=\"2\" y2=\"22\" />","message-square":"<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\" />","x":"<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />","delete":"<path d=\"M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z\" /><path d=\"m12 9 6 6\" /><path d=\"m18 9-6 6\" />","plus":"<path d=\"M5 12h14\" /><path d=\"M12 5v14\" />","trash-2":"<path d=\"M3 6h18\" /><path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\" /><path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\" /><line x1=\"10\" x2=\"10\" y1=\"11\" y2=\"17\" /><line x1=\"14\" x2=\"14\" y1=\"11\" y2=\"17\" />","refresh-cw":"<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\" /><path d=\"M21 3v5h-5\" /><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\" /><path d=\"M8 16H3v5\" />","clipboard-paste":"<path d=\"M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z\" /><path d=\"M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10\" /><path d=\"m17 10 4 4-4 4\" />","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /><path d=\"M3 3v5h5\" />","send":"<path d=\"M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z\" /><path d=\"m21.854 2.147-10.94 10.939\" />","arrow-left":"<path d=\"m12 19-7-7 7-7\" /><path d=\"M19 12H5\" />","reply":"<polyline points=\"9 17 4 12 9 7\" /><path d=\"M20 18v-2a4 4 0 0 0-4-4H4\" />","copy":"<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\" ry=\"2\" /><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\" />","square-pen":"<path d=\"M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\" /><path d=\"M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z\" />"};
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths['message-square']}</svg>`;
+  };
+
+  const iconButton = (name, label, id = '', extra = '') =>
+    `<button type="button" class="ps-icon-btn" ${id ? `id="${id}"` : ''} title="${escapeHTML(label)}" aria-label="${escapeHTML(label)}" ${extra}>${icon(name)}</button>`;
+
+  const setNotice = (id, text, tone = '') => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = text; el.dataset.tone = tone; }
+  };
+
+  const updateComposer = () => {
+    const input = document.getElementById('kn_sms_number');
+    const text = document.getElementById('kn_sms_text');
+    const count = document.getElementById('kn_sms_count');
+    const send = document.getElementById('kn_sms_send_btn');
+    const length = text?.value.length || 0;
+    if (count) { count.textContent = `${length} 字符`; count.dataset.long = String(length > 500); }
+    if (send) {
+      send.disabled = smsSendBusy || !/^\d{3,20}$/.test(normalizeSmsSendNumber(input?.value)) || !text?.value.trim();
+      send.innerHTML = icon('send') + `<span>${smsSendBusy ? '发送中' : '发送'}</span>`;
+    }
+    const sendingThis = smsSendBusy && composerKey === sendingDraftKey;
+    if (input) input.disabled = sendingThis;
+    if (text) text.disabled = sendingThis;
+    ['kn_sms_clear_btn', 'kn_sms_paste_btn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = sendingThis;
+    });
+  };
+
+  const saveSmsDraft = () => {
+    const number = document.getElementById('kn_sms_number');
+    const text = document.getElementById('kn_sms_text');
+    if (number && text) smsDrafts.set(composerKey, { number: number.value, content: text.value });
+  };
+
+  const restoreSmsDraft = (key, number = '') => {
+    composerKey = key;
+    const draft = smsDrafts.get(key);
+    const numberInput = document.getElementById('kn_sms_number');
+    const textInput = document.getElementById('kn_sms_text');
+    if (numberInput) numberInput.value = draft ? draft.number : normalizeSmsSendNumber(number);
+    if (textInput) textInput.value = draft?.content || '';
+    updateComposer();
+    const notice = smsNotices.get(key);
+    setNotice('kn_sms_send_status', notice?.text || '', notice?.tone || '');
+  };
+
+  const setSmsNotice = (key, text, tone = '') => {
+    smsNotices.set(key, { text, tone });
+    if (composerKey === key) setNotice('kn_sms_send_status', text, tone);
+  };
+
+  const setSmsMobilePane = (pane) => {
+    const shell = document.querySelector(`#${MODAL_NAME} .sms-shell`);
+    if (shell) shell.dataset.mobilePane = pane;
+  };
+
+  const newSms = () => {
+    saveSmsDraft();
+    smsNewMode = true;
+    activeSmsThreadKey = '';
+    restoreSmsDraft('new');
+    renderSmsViewer();
+    setSmsMobilePane('chat');
+    document.getElementById('kn_sms_number')?.focus();
+  };
+
   const ensureStyle = () => {
     if (document.getElementById(STYLE_ID)) return;
-
     const style = document.createElement('style');
     style.id = STYLE_ID;
+    const s = `#${MODAL_NAME}`;
     style.textContent = `
-      #${MODAL_NAME} {
-        --kn-bg: rgba(10, 14, 22, .72);
-        --kn-panel: rgba(18, 24, 34, .82);
-        --kn-panel-2: rgba(22, 30, 42, .72);
-        --kn-panel-3: rgba(255,255,255,.055);
-        --kn-border: rgba(255,255,255,.10);
-        --kn-border-strong: rgba(150,190,255,.22);
-        --kn-text: rgba(255,255,255,.94);
-        --kn-muted: rgba(255,255,255,.52);
-        --kn-faint: rgba(255,255,255,.32);
-        --kn-blue: #7fb4ff;
-        --kn-blue-2: #4d8dff;
-        --kn-green: #39d279;
-        --kn-red: #ff5f68;
-        --kn-yellow: #f7c948;
-
-        position: fixed !important;
-        inset: 0 !important;
-        z-index: 999999 !important;
-        display: none;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 24px !important;
-        box-sizing: border-box !important;
-        background:
-          radial-gradient(circle at 18% 16%, rgba(80,130,255,.18), transparent 32%),
-          radial-gradient(circle at 82% 78%, rgba(54,211,153,.12), transparent 34%),
-          rgba(0,0,0,.58) !important;
-        backdrop-filter: blur(18px) saturate(1.15) !important;
-        -webkit-backdrop-filter: blur(18px) saturate(1.15) !important;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      }
-
-      #${MODAL_NAME}.show {
-        display: flex !important;
-      }
-
-      #${MODAL_NAME} * {
-        box-sizing: border-box;
-      }
-
-      #${MODAL_NAME} button,
-      #${MODAL_NAME} input,
-      #${MODAL_NAME} textarea {
-        font-family: inherit;
-      }
-
-      #${MODAL_NAME} .ps-modal-panel {
-        position: relative;
-        width: min(1420px, 96vw) !important;
-        height: min(860px, 92vh) !important;
-        max-width: 96vw !important;
-        max-height: 92vh !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        border-radius: 30px;
-        border: 1px solid rgba(255,255,255,.14);
-        background:
-          linear-gradient(180deg, rgba(24,31,44,.92), rgba(11,15,23,.94)),
-          rgba(12,16,24,.92);
-        box-shadow:
-          0 42px 120px rgba(0,0,0,.62),
-          0 0 0 1px rgba(255,255,255,.03) inset,
-          0 1px 0 rgba(255,255,255,.08) inset;
-      }
-
-      #${MODAL_NAME} .ps-modal-panel::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background:
-          radial-gradient(circle at 18% 0%, rgba(120,170,255,.18), transparent 32%),
-          radial-gradient(circle at 90% 8%, rgba(80,220,170,.08), transparent 28%);
-        opacity: .9;
-      }
-
-      #${MODAL_NAME} .ps-modal-header {
-        position: relative;
-        z-index: 1;
-        flex: 0 0 auto;
-        height: 74px;
-        padding: 0 26px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid rgba(255,255,255,.08);
-        background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
-      }
-
-      #${MODAL_NAME} .ps-modal-header > div:first-child {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-        min-width: 0;
-      }
-
-      #${MODAL_NAME} .ps-modal-title {
-        font-size: 20px;
-        font-weight: 950;
-        letter-spacing: .02em;
-        color: var(--kn-text);
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .ps-modal-subtitle {
-        margin-left: 0;
-        font-size: 12px;
-        color: rgba(180,205,255,.58);
-        font-weight: 750;
-        padding: 4px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(160,195,255,.14);
-        background: rgba(100,140,210,.10);
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .ps-modal-close {
-        min-width: 76px;
-        height: 40px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.14);
-        background: rgba(255,255,255,.065);
-        color: rgba(255,255,255,.88);
-        font-weight: 850;
-        cursor: pointer;
-        transition: transform .16s ease, background .16s ease, border-color .16s ease;
-      }
-
-      #${MODAL_NAME} .ps-modal-close:hover {
-        transform: translateY(-1px);
-        background: rgba(255,255,255,.105);
-        border-color: rgba(255,255,255,.22);
-      }
-
-      #${MODAL_NAME} .ps-tabs {
-        position: relative;
-        z-index: 1;
-        flex: 0 0 auto;
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-        padding: 8px;
-        margin: 16px 22px 0;
-        border-radius: 22px;
-        background: rgba(3,7,13,.42);
-        border: 1px solid rgba(255,255,255,.075);
-        box-shadow: 0 10px 28px rgba(0,0,0,.16) inset;
-      }
-
-      #${MODAL_NAME} .ps-tab {
-        height: 48px;
-        border: 0;
-        border-radius: 17px;
-        background: transparent;
-        color: rgba(255,255,255,.54);
-        font-size: 13px;
-        font-weight: 900;
-        cursor: pointer;
-        transition: background .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
-      }
-
-      #${MODAL_NAME} .ps-tab:hover {
-        color: rgba(255,255,255,.82);
-        background: rgba(255,255,255,.045);
-      }
-
-      #${MODAL_NAME} .ps-tab.active {
-        color: #fff;
-        background:
-          linear-gradient(180deg, rgba(132,171,230,.58), rgba(82,116,170,.42));
-        box-shadow:
-          0 12px 30px rgba(74,121,220,.20),
-          0 1px 0 rgba(255,255,255,.18) inset;
-      }
-
-      #${MODAL_NAME} .ps-modal-body {
-        position: relative;
-        z-index: 1;
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow: hidden !important;
-        padding: 20px 22px 22px;
-      }
-
-      #${MODAL_NAME} .ps-page {
-        display: none;
-        width: 100%;
-        height: 100%;
-        min-height: 0;
-        overflow: hidden;
-      }
-
-      #${MODAL_NAME} .ps-page.active {
-        display: block;
-      }
-
-      #${MODAL_NAME} .phone-shell,
-      #${MODAL_NAME} .sms-shell {
-        width: 100%;
-        height: 100%;
-        min-height: 0;
-        display: grid;
-        gap: 20px;
-        overflow: hidden;
-      }
-
-      #${MODAL_NAME} .phone-shell {
-        grid-template-columns: 390px minmax(0, 1fr);
-      }
-
-      #${MODAL_NAME} .sms-shell {
-        grid-template-columns: 360px minmax(0, 1fr);
-      }
-
-      #${MODAL_NAME} .ps-card {
-        min-height: 0;
-        border-radius: 26px;
-        border: 1px solid var(--kn-border);
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.025)),
-          rgba(10,15,23,.58);
-        box-shadow:
-          0 20px 55px rgba(0,0,0,.22),
-          0 1px 0 rgba(255,255,255,.06) inset;
-        padding: 18px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      #${MODAL_NAME} .ps-title {
-        flex: 0 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 14px;
-      }
-
-      #${MODAL_NAME} .ps-title strong {
-        font-size: 15px;
-        color: var(--kn-text);
-        font-weight: 950;
-        letter-spacing: .02em;
-      }
-
-      #${MODAL_NAME} .ps-chip {
-        font-size: 11px;
-        color: rgba(190,210,245,.66);
-        padding: 5px 9px;
-        border-radius: 999px;
-        border: 1px solid rgba(160,195,255,.14);
-        background: rgba(100,140,210,.10);
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .phone-input,
-      #${MODAL_NAME} .sms-input,
-      #${MODAL_NAME} .sms-textarea {
-        width: 100%;
-        border-radius: 18px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(3,7,13,.46);
-        color: var(--kn-text);
-        outline: none;
-        transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
-      }
-
-      #${MODAL_NAME} .phone-input {
-        height: 56px;
-        font-size: 24px;
-        font-weight: 950;
-        letter-spacing: .08em;
-        padding: 0 16px;
-        text-align: center;
-      }
-
-      #${MODAL_NAME} .sms-input {
-        height: 46px;
-        font-size: 13px;
-        font-weight: 760;
-        padding: 0 14px;
-      }
-
-      #${MODAL_NAME} .sms-textarea {
-        min-height: 46px;
-        resize: vertical;
-        padding: 13px 14px;
-        font-size: 13px;
-        line-height: 1.62;
-      }
-
-      #${MODAL_NAME} .phone-input::placeholder,
-      #${MODAL_NAME} .sms-input::placeholder,
-      #${MODAL_NAME} .sms-textarea::placeholder {
-        color: rgba(255,255,255,.28);
-      }
-
-      #${MODAL_NAME} .phone-input:focus,
-      #${MODAL_NAME} .sms-input:focus,
-      #${MODAL_NAME} .sms-textarea:focus {
-        background: rgba(3,7,13,.62);
-        border-color: rgba(127,180,255,.72);
-        box-shadow:
-          0 0 0 4px rgba(127,180,255,.12),
-          0 12px 30px rgba(40,85,170,.14);
-      }
-
-      #${MODAL_NAME} .phone-keypad {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 11px;
-        margin-top: 15px;
-      }
-
-      #${MODAL_NAME} .phone-key {
-        height: 56px;
-        border-radius: 20px;
-        border: 1px solid rgba(255,255,255,.10);
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.035));
-        color: var(--kn-text);
-        font-size: 22px;
-        font-weight: 950;
-        cursor: pointer;
-        transition: transform .14s ease, background .14s ease, border-color .14s ease, box-shadow .14s ease;
-      }
-
-      #${MODAL_NAME} .phone-key:hover {
-        transform: translateY(-1px);
-        background: rgba(255,255,255,.10);
-        border-color: rgba(127,180,255,.30);
-        box-shadow: 0 10px 26px rgba(0,0,0,.20);
-      }
-
-      #${MODAL_NAME} .phone-actions,
-      #${MODAL_NAME} .phone-secondary-actions,
-      #${MODAL_NAME} .sms-actions {
-        display: grid;
-        gap: 10px;
-        margin-top: 11px;
-      }
-
-      #${MODAL_NAME} .phone-actions {
-        grid-template-columns: repeat(3, 1fr);
-        margin-top: 15px;
-      }
-
-      #${MODAL_NAME} .phone-secondary-actions {
-        grid-template-columns: repeat(3, 1fr);
-      }
-
-      #${MODAL_NAME} .sms-actions {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      #${MODAL_NAME} .phone-action-btn,
-      #${MODAL_NAME} .ps-btn {
-        min-height: 40px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.11);
-        background: rgba(255,255,255,.065);
-        color: rgba(255,255,255,.86);
-        font-size: 12px;
-        font-weight: 850;
-        cursor: pointer;
-        transition: transform .16s ease, filter .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
-      }
-
-      #${MODAL_NAME} .phone-action-btn {
-        min-height: 46px;
-        border-radius: 18px;
-        color: #fff;
-        font-size: 13px;
-        font-weight: 900;
-      }
-
-      #${MODAL_NAME} .phone-action-btn:hover,
-      #${MODAL_NAME} .ps-btn:hover {
-        transform: translateY(-1px);
-        filter: brightness(1.06);
-        background: rgba(255,255,255,.105);
-        border-color: rgba(255,255,255,.18);
-        box-shadow: 0 10px 25px rgba(0,0,0,.18);
-      }
-
-      #${MODAL_NAME} .phone-action-btn.dial,
-      #${MODAL_NAME} .ps-btn.send {
-        background: linear-gradient(135deg, rgba(65,211,125,.96), rgba(28,162,85,.92));
-        border-color: rgba(134,239,172,.34);
-        color: #fff;
-        box-shadow: 0 12px 26px rgba(31,196,107,.18);
-      }
-
-      #${MODAL_NAME} .phone-action-btn.answer {
-        background: linear-gradient(135deg, rgba(90,150,255,.96), rgba(51,104,210,.92));
-        border-color: rgba(147,197,253,.34);
-        box-shadow: 0 12px 26px rgba(70,130,240,.18);
-      }
-
-      #${MODAL_NAME} .phone-action-btn.hangup,
-      #${MODAL_NAME} .ps-btn.danger {
-        background: linear-gradient(135deg, rgba(255,92,104,.98), rgba(200,44,58,.92));
-        border-color: rgba(252,165,165,.34);
-        color: #fff;
-        box-shadow: 0 12px 26px rgba(239,68,68,.18);
-      }
-
-      #${MODAL_NAME} .phone-status-card {
-        flex: 1 1 auto;
-        min-height: 0;
-      }
-
-      #${MODAL_NAME} .phone-status-panel {
-        flex: 1 1 auto;
-        min-height: 0;
-        padding: 18px;
-        border-radius: 22px;
-        background: rgba(3,7,13,.38);
-        border: 1px solid rgba(255,255,255,.075);
-        color: rgba(255,255,255,.72);
-        font-size: 13px;
-        line-height: 1.75;
-        word-break: break-word;
-        overflow: auto;
-      }
-
-      #${MODAL_NAME} .phone-status-grid {
-        display: grid;
-        grid-template-columns: 108px minmax(0, 1fr);
-        gap: 10px 12px;
-      }
-
-      #${MODAL_NAME} .phone-status-grid b {
-        color: rgba(255,255,255,.46);
-        font-weight: 800;
-      }
-
-      #${MODAL_NAME} .phone-status-grid span {
-        color: rgba(255,255,255,.88);
-      }
-
-      #${MODAL_NAME} .phone-raw {
-        margin-top: 14px;
-        padding: 12px;
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,.07);
-        background: rgba(0,0,0,.20);
-        color: rgba(255,255,255,.42);
-        font-size: 12px;
-        white-space: pre-wrap;
-      }
-
-      #${MODAL_NAME} .ps-note {
-        margin-top: 12px;
-        padding: 11px 13px;
-        border-radius: 16px;
-        border: 1px solid rgba(127,180,255,.16);
-        background: rgba(127,180,255,.07);
-        color: rgba(220,232,255,.62);
-        font-size: 12px;
-        line-height: 1.65;
-      }
-
-      #${MODAL_NAME} .sms-sidebar {
-        padding: 16px;
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025)),
-          rgba(8,13,20,.62);
-      }
-
-      #${MODAL_NAME} .sms-search-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 86px;
-        gap: 10px;
-        margin-bottom: 14px;
-        flex: 0 0 auto;
-      }
-
-      #${MODAL_NAME} .sms-thread-list {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
-        padding-right: 5px;
-      }
-
-      #${MODAL_NAME} .sms-thread-list::-webkit-scrollbar,
-      #${MODAL_NAME} .sms-chat-body::-webkit-scrollbar,
-      #${MODAL_NAME} .phone-status-panel::-webkit-scrollbar {
-        width: 8px;
-      }
-
-      #${MODAL_NAME} .sms-thread-list::-webkit-scrollbar-thumb,
-      #${MODAL_NAME} .sms-chat-body::-webkit-scrollbar-thumb,
-      #${MODAL_NAME} .phone-status-panel::-webkit-scrollbar-thumb {
-        border-radius: 999px;
-        background: rgba(255,255,255,.14);
-      }
-
-      #${MODAL_NAME} .sms-thread-item {
-        position: relative;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 10px;
-        padding: 14px;
-        margin-bottom: 10px;
-        border-radius: 21px;
-        border: 1px solid rgba(255,255,255,.075);
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
-        cursor: pointer;
-        transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
-      }
-
-      #${MODAL_NAME} .sms-thread-item::before {
-        content: "";
-        position: absolute;
-        left: 10px;
-        top: 14px;
-        bottom: 14px;
-        width: 3px;
-        border-radius: 999px;
-        background: transparent;
-        transition: background .18s ease;
-      }
-
-      #${MODAL_NAME} .sms-thread-item:hover {
-        transform: translateY(-1px);
-        background: rgba(255,255,255,.065);
-        border-color: rgba(127,180,255,.18);
-        box-shadow: 0 14px 28px rgba(0,0,0,.16);
-      }
-
-      #${MODAL_NAME} .sms-thread-item.active {
-        background:
-          linear-gradient(180deg, rgba(127,180,255,.24), rgba(78,120,190,.13));
-        border-color: rgba(127,180,255,.40);
-        box-shadow:
-          0 18px 36px rgba(45,95,180,.17),
-          0 1px 0 rgba(255,255,255,.08) inset;
-      }
-
-      #${MODAL_NAME} .sms-thread-item.active::before {
-        background: linear-gradient(180deg, var(--kn-blue), var(--kn-green));
-      }
-
-      #${MODAL_NAME} .sms-thread-number {
-        color: var(--kn-text);
-        font-size: 14px;
-        font-weight: 950;
-        margin: 0 0 7px 10px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .sms-thread-preview {
-        color: rgba(255,255,255,.54);
-        font-size: 12px;
-        line-height: 1.48;
-        margin-left: 10px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .sms-thread-meta {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 7px;
-        flex: 0 0 auto;
-      }
-
-      #${MODAL_NAME} .sms-thread-time {
-        color: rgba(255,255,255,.38);
-        font-size: 11px;
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .sms-unread-badge {
-        min-width: 19px;
-        height: 19px;
-        padding: 0 6px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, rgba(255,95,104,.98), rgba(210,45,58,.95));
-        color: #fff;
-        font-size: 11px;
-        font-weight: 950;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 8px 18px rgba(239,68,68,.28);
-      }
-
-      #${MODAL_NAME} .sms-chat-card {
-        padding: 0;
-        background:
-          radial-gradient(circle at 20% 0%, rgba(127,180,255,.10), transparent 28%),
-          linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.022)),
-          rgba(8,13,20,.58);
-      }
-
-      #${MODAL_NAME} .sms-chat-header {
-        flex: 0 0 auto;
-        height: 76px;
-        padding: 0 22px;
-        border-bottom: 1px solid rgba(255,255,255,.075);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        background: rgba(0,0,0,.12);
-      }
-
-      #${MODAL_NAME} .sms-chat-title {
-        min-width: 0;
-      }
-
-      #${MODAL_NAME} .sms-chat-number {
-        color: var(--kn-text);
-        font-size: 18px;
-        font-weight: 950;
-        letter-spacing: .01em;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      #${MODAL_NAME} .sms-chat-subtitle {
-        margin-top: 6px;
-        color: rgba(205,220,245,.48);
-        font-size: 12px;
-        font-weight: 720;
-      }
-
-      #${MODAL_NAME} .sms-chat-header .ps-btn {
-        min-width: 62px;
-        height: 38px;
-      }
-
-      #${MODAL_NAME} .sms-chat-body {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
-        padding: 22px 22px 18px;
-        background:
-          radial-gradient(circle at 16% 12%, rgba(127,180,255,.075), transparent 26%),
-          radial-gradient(circle at 84% 72%, rgba(57,210,121,.055), transparent 28%),
-          rgba(0,0,0,.075);
-      }
-
-      #${MODAL_NAME} .sms-msg-row {
-        display: flex;
-        margin-bottom: 14px;
-      }
-
-      #${MODAL_NAME} .sms-msg-row.in {
-        justify-content: flex-start;
-      }
-
-      #${MODAL_NAME} .sms-msg-row.out {
-        justify-content: flex-end;
-      }
-
-      #${MODAL_NAME} .sms-bubble {
-        position: relative;
-        max-width: min(640px, 70%);
-        padding: 13px 14px 12px;
-        border-radius: 22px;
-        border: 1px solid rgba(255,255,255,.085);
-        box-shadow:
-          0 14px 34px rgba(0,0,0,.20),
-          0 1px 0 rgba(255,255,255,.06) inset;
-      }
-
-      #${MODAL_NAME} .sms-msg-row.in .sms-bubble {
-        border-top-left-radius: 8px;
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.085), rgba(255,255,255,.045));
-      }
-
-      #${MODAL_NAME} .sms-msg-row.out .sms-bubble {
-        border-top-right-radius: 8px;
-        background:
-          linear-gradient(135deg, rgba(86,142,232,.62), rgba(43,91,170,.48));
-        border-color: rgba(155,196,255,.25);
-      }
-
-      #${MODAL_NAME} .sms-msg-row.fail .sms-bubble {
-        background:
-          linear-gradient(135deg, rgba(255,92,104,.22), rgba(150,40,50,.20));
-        border-color: rgba(255,130,140,.28);
-      }
-
-      #${MODAL_NAME} .sms-bubble-text {
-        color: rgba(255,255,255,.91);
-        font-size: 13px;
-        line-height: 1.68;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-
-      #${MODAL_NAME} .sms-bubble-meta {
-        margin-top: 9px;
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        color: rgba(255,255,255,.43);
-        font-size: 11px;
-        font-weight: 720;
-      }
-
-      #${MODAL_NAME} .sms-bubble-actions {
-        margin-top: 9px;
-        display: flex;
-        justify-content: flex-end;
-        gap: 7px;
-      }
-
-      #${MODAL_NAME} .sms-bubble-actions button {
-        min-height: 28px;
-        padding: 0 10px;
-        font-size: 11px;
-      }
-
-      #${MODAL_NAME} .sms-composer {
-        flex: 0 0 auto;
-        padding: 16px 18px;
-        border-top: 1px solid rgba(255,255,255,.075);
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.035), rgba(0,0,0,.12));
-      }
-
-      #${MODAL_NAME} .sms-compose-grid {
-        display: grid;
-        grid-template-columns: 220px minmax(0, 1fr) 98px;
-        gap: 12px;
-        align-items: end;
-      }
-
-      #${MODAL_NAME} .sms-compose-textarea {
-        min-height: 46px !important;
-        max-height: 104px;
-        resize: vertical;
-      }
-
-      #${MODAL_NAME} .sms-empty-chat {
-        height: 100%;
-        min-height: 260px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: rgba(255,255,255,.34);
-        text-align: center;
-        border-radius: 22px;
-        border: 1px dashed rgba(255,255,255,.10);
-        background: rgba(255,255,255,.025);
-      }
-
-      #${MODAL_NAME} .ps-empty {
-        padding: 42px 14px;
-        text-align: center;
-        color: rgba(255,255,255,.34);
-        font-size: 13px;
-        border-radius: 20px;
-        border: 1px dashed rgba(255,255,255,.10);
-        background: rgba(255,255,255,.025);
-      }
-
-      @media (max-width: 920px) {
-        #${MODAL_NAME} {
-          align-items: flex-start !important;
-          overflow-y: auto !important;
-          padding: 14px !important;
-        }
-
-        #${MODAL_NAME} .ps-modal-panel {
-          height: auto !important;
-          min-height: auto !important;
-          max-height: none !important;
-        }
-
-        #${MODAL_NAME} .ps-modal-body {
-          overflow: visible !important;
-        }
-
-        #${MODAL_NAME} .phone-shell,
-        #${MODAL_NAME} .sms-shell {
-          grid-template-columns: 1fr !important;
-          height: auto;
-          overflow: visible;
-        }
-
-        #${MODAL_NAME} .ps-card {
-          overflow: visible;
-        }
-
-        #${MODAL_NAME} .phone-actions,
-        #${MODAL_NAME} .phone-secondary-actions,
-        #${MODAL_NAME} .sms-actions {
-          grid-template-columns: 1fr;
-        }
-
-        #${MODAL_NAME} .sms-chat-body {
-          min-height: 420px;
-        }
-
-        #${MODAL_NAME} .sms-compose-grid {
-          grid-template-columns: 1fr;
-        }
-
-        #${MODAL_NAME} .sms-bubble {
-          max-width: 92%;
-        }
-      }
+      ${s}{--kn-panel:rgba(25,28,33,.97);--kn-field:rgba(255,255,255,.045);--kn-border:rgba(255,255,255,.11);--kn-text:#eef0f3;--kn-muted:#9ca4af;--kn-blue:#8bb8ff;--kn-green:#74d2a3;--kn-red:#ff959e;position:fixed!important;inset:0!important;z-index:999999!important;display:none;align-items:center;justify-content:center;padding:20px!important;background:rgba(0,0,0,.44)!important;backdrop-filter:blur(8px);font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--kn-text);font-size:13px;line-height:1.5;text-align:left}
+      .kn-theme-light ${s}{--kn-panel:rgba(250,252,254,.98);--kn-field:rgba(30,38,48,.035);--kn-border:rgba(30,38,48,.13);--kn-text:#242a32;--kn-muted:#67717e;--kn-blue:#235eb2;--kn-green:#1c784d;--kn-red:#b52b39}
+      ${s}.show{display:flex!important}
+      ${s}{font-weight:400}
+      ${s} *,${s} *::before,${s} *::after{box-sizing:border-box;letter-spacing:0;text-shadow:none!important}
+      ${s} button,${s} input,${s} textarea{font:inherit;color:inherit;box-shadow:none!important;margin:0;min-width:0}
+      ${s} button{cursor:pointer;background:transparent!important;color:inherit!important;border:0;border-color:var(--kn-border)!important;border-radius:6px!important;transform:none!important;transition:background .12s,color .12s}
+      ${s} button:disabled{cursor:default;opacity:.45}
+      ${s} :focus-visible{outline:2px solid var(--kn-blue);outline-offset:2px}
+      ${s} svg{display:block;flex:0 0 auto;width:17px;height:17px;pointer-events:none}
+      ${s} .ps-modal-panel{display:flex;flex-direction:column;width:min(1080px,100%);height:min(680px,calc(100dvh - 40px));min-height:0;max-height:calc(100dvh - 40px);overflow:hidden;border:1px solid var(--kn-border);border-radius:8px;background:var(--kn-panel);box-shadow:0 18px 70px rgba(0,0,0,.35)}
+      ${s} .ps-modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:57px;padding:10px 18px;border-bottom:1px solid var(--kn-border);flex:0 0 auto}
+      ${s} .ps-modal-heading{display:flex;align-items:center;gap:10px;min-width:0}
+      ${s} .ps-modal-title{margin:0;font-size:17px;font-weight:650;line-height:1.4}
+      ${s} .ps-modal-subtitle{font-size:11px;color:var(--kn-muted);white-space:nowrap}
+      ${s} .ps-tabs{display:flex;align-items:stretch;gap:22px;min-height:44px;padding:0 18px;border-bottom:1px solid var(--kn-border);flex:0 0 auto}
+      ${s} .ps-tab{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 2px;border-radius:0!important;border-bottom:2px solid transparent;border-color:transparent!important;color:var(--kn-muted)!important;font-size:13px;font-weight:600}
+      ${s} .ps-tab.active{color:var(--kn-text)!important;border-bottom-color:var(--kn-green)!important}
+      ${s} .ps-modal-body{flex:1;min-height:0;overflow:hidden}
+      ${s} .ps-page{display:none;height:100%;min-height:0}
+      ${s} .ps-page.active{display:block}
+      ${s} .ps-page.active,${s} .ps-tab.active{background:transparent!important}
+      ${s} .ps-page[data-page="phone"]{overflow-y:auto;padding:20px}
+      ${s} .phone-shell{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:30px;min-width:0}
+      ${s} .ps-card{min-width:0;background:none;border:0;border-radius:0;box-shadow:none;padding:0}
+      ${s} .ps-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:24px}
+      ${s} .ps-title strong{font-size:13px;font-weight:600}
+      ${s} .ps-chip{font-size:11px;color:var(--kn-muted);white-space:nowrap}
+      ${s} .phone-input,${s} .sms-input,${s} .sms-textarea{width:100%;border:1px solid var(--kn-border);border-radius:6px;background:var(--kn-field);padding:8px 10px;outline:none;line-height:1.5}
+      ${s} .phone-input:focus,${s} .sms-input:focus,${s} .sms-textarea:focus{border-color:var(--kn-blue)}
+      ${s} input::placeholder,${s} textarea::placeholder{color:var(--kn-muted);opacity:.7}
+      ${s} .phone-input{height:48px;text-align:center;font-size:23px;font-weight:500;font-variant-numeric:tabular-nums}
+      ${s} .phone-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
+      ${s} .phone-key{height:42px;display:flex;align-items:center;justify-content:center;border:1px solid var(--kn-border);border-radius:6px;background:var(--kn-field)!important;font-size:21px;font-weight:500;line-height:1}
+      ${s} .phone-key:hover,${s} .ps-btn:hover,${s} .ps-icon-btn:hover{background:var(--kn-field)!important}
+      ${s} .phone-secondary-actions,${s} .phone-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+      ${s} .phone-secondary-actions .ps-icon-btn{width:100%}
+      ${s} .ps-btn,${s} .ps-icon-btn,${s} .phone-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:6px 10px;border:1px solid var(--kn-border);border-radius:6px;font-size:12px;line-height:1.3;white-space:nowrap}
+      ${s} .ps-icon-btn{width:34px;height:34px;padding:7px;flex:0 0 34px}
+      ${s} .phone-action-btn{height:40px}
+      ${s} .phone-action-btn.dial,${s} .ps-btn.send{background:var(--kn-green)!important;border-color:transparent!important;color:#10291e!important;font-weight:650}
+      .kn-theme-light ${s} .phone-action-btn.dial,.kn-theme-light ${s} .ps-btn.send{color:#fff!important}
+      ${s} .phone-action-btn.answer{color:var(--kn-blue)!important}
+      ${s} .phone-action-btn.hangup,${s} .danger{color:var(--kn-red)!important}
+      ${s} .phone-status-card{border-left:1px solid var(--kn-border);padding-left:26px}
+      ${s} .phone-status-grid{display:grid;grid-template-columns:80px minmax(0,1fr);gap:0;font-size:13px}
+      ${s} .phone-status-grid b,${s} .phone-status-grid span{padding:11px 0;border-bottom:1px solid var(--kn-border);font-weight:400;overflow-wrap:anywhere}
+      ${s} .phone-status-grid b{color:var(--kn-muted)}
+      ${s} .phone-raw{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--kn-muted);font:11px/1.6 ui-monospace,monospace;margin-top:12px;max-height:100px;overflow:auto}
+      ${s} .ps-status{min-height:22px;margin:8px 0 0;color:var(--kn-muted);font-size:11px;overflow-wrap:anywhere}
+      ${s} .ps-status[data-tone="error"]{color:var(--kn-red)}
+      ${s} .ps-status[data-tone="success"]{color:var(--kn-green)}
+      ${s} .sms-shell{display:grid;grid-template-columns:250px minmax(0,1fr);height:100%;min-height:0}
+      ${s} .sms-sidebar{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--kn-border)}
+      ${s} .sms-sidebar .ps-title{padding:12px 14px 0;margin-bottom:8px}
+      ${s} .sms-toolbar{display:flex;gap:6px}
+      ${s} .sms-search-row{padding:0 12px 12px}
+      ${s} .sms-input{height:36px;font-size:12px}
+      ${s} .sms-thread-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 6px 6px}
+      ${s} .sms-thread-item{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:12px 9px;border-radius:6px;border:1px solid transparent;text-align:left;margin:1px 0}
+      ${s} .sms-thread-item:hover{background:var(--kn-field)}
+      ${s} .sms-thread-item.active{background:var(--kn-field)!important;border-color:var(--kn-border)}
+      ${s} .sms-thread-copy{min-width:0;flex:1}
+      ${s} .sms-thread-number{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+      ${s} .sms-thread-preview{font-size:11px;color:var(--kn-muted);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;margin-top:3px}
+      ${s} .sms-thread-meta{display:flex;align-items:flex-end;flex-direction:column;gap:5px;flex:0 0 auto}
+      ${s} .sms-thread-time{font-size:10px;color:var(--kn-muted)}
+      ${s} .sms-unread-badge{min-width:17px;height:17px;padding:0 4px;border-radius:8px;background:var(--kn-green);color:#10291e;text-align:center;font-size:10px;line-height:17px;font-weight:600}
+      ${s} .sms-chat-card{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+      ${s} .sms-chat-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;min-height:65px;border-bottom:1px solid var(--kn-border);flex:0 0 auto}
+      ${s} .sms-chat-title{min-width:0;flex:1}
+      ${s} .sms-chat-number{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+      ${s} .sms-chat-subtitle{font-size:11px;color:var(--kn-muted);margin-top:2px}
+      ${s} .sms-back{display:none}
+      ${s} .sms-chat-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px;scrollbar-gutter:stable}
+      ${s} .sms-msg-row{display:flex;margin:0 0 14px}
+      ${s} .sms-msg-row.out{justify-content:flex-end}
+      ${s} .sms-bubble{max-width:88%;padding:10px 12px;border:1px solid var(--kn-border);border-radius:8px;background:var(--kn-field);min-width:100px}
+      ${s} .sms-msg-row.out .sms-bubble{border-left:2px solid var(--kn-green)}
+      ${s} .sms-msg-row.fail .sms-bubble{border-color:var(--kn-red)}
+      ${s} .sms-bubble-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7}
+      ${s} .sms-bubble-meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:7px;color:var(--kn-muted);font-size:10px}
+      ${s} .sms-bubble-actions{display:flex;justify-content:flex-end;gap:4px;margin-top:5px}
+      ${s} .sms-bubble-actions .ps-icon-btn{width:28px;height:28px;min-height:28px;flex-basis:28px;padding:5px;border:0;color:var(--kn-muted)!important}
+      ${s} .sms-bubble-actions .danger{color:var(--kn-red)!important}
+      ${s} .sms-composer{padding:12px 16px;border-top:1px solid var(--kn-border);flex:0 0 auto}
+      ${s} .sms-recipient{display:flex;align-items:center;gap:10px;margin-bottom:8px;color:var(--kn-muted);font-size:12px}
+      ${s} .sms-recipient .sms-input{flex:1}
+      ${s} .sms-compose-grid{display:grid;grid-template-columns:minmax(0,1fr) 72px;align-items:stretch;gap:8px}
+      ${s} .sms-compose-textarea{resize:vertical;min-height:64px;max-height:130px;font-size:13px}
+      ${s} .sms-compose-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+      ${s} .sms-actions{display:flex;gap:4px;flex:0 0 auto}
+      ${s} .sms-compose-count{font-size:11px;color:var(--kn-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+      ${s} .sms-compose-count[data-long="true"]{color:var(--kn-red)}
+      ${s} .ps-empty,${s} .sms-empty-chat{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;min-height:120px;padding:20px;color:var(--kn-muted);font-size:12px;text-align:center}
+      ${s} .sms-empty-chat{height:100%}
+      @media(max-width:700px){${s}{padding:10px!important}${s} .ps-modal-panel{height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}${s} .ps-modal-header{padding:10px 14px}${s} .ps-modal-subtitle{display:none}${s} .sms-shell{grid-template-columns:minmax(0,1fr)}${s} .sms-shell[data-mobile-pane="list"] .sms-chat-card{display:none}${s} .sms-shell[data-mobile-pane="chat"] .sms-sidebar{display:none}${s} .sms-sidebar{border-right:0}${s} .sms-back{display:inline-flex}${s} .sms-chat-header{padding:10px 12px}${s} .sms-chat-body{padding:12px}${s} .sms-composer{padding:10px 12px}${s} .sms-bubble{max-width:94%}}
+      @media(max-width:560px){${s} .ps-page[data-page="phone"]{padding:14px}${s} .phone-shell{grid-template-columns:minmax(0,1fr);gap:20px}${s} .phone-status-card{padding:16px 0 0;border-left:0;border-top:1px solid var(--kn-border)}${s} .phone-key{height:36px}${s} .phone-input{height:44px;font-size:22px}${s} .phone-secondary-actions,${s} .phone-actions{margin-top:7px}${s} .ps-modal-title{font-size:16px}${s} .ps-tabs{min-height:40px}${s} .phone-status-grid b,${s} .phone-status-grid span{padding:8px 0}}
+      @media(prefers-reduced-motion:reduce){${s} *{transition:none!important;scroll-behavior:auto!important}}
     `;
     document.head.appendChild(style);
   };
@@ -979,7 +355,10 @@
   // ==============================
   const switchTab = (tab) => {
     document.querySelectorAll(`#${MODAL_NAME} .ps-tab`).forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.tab === tab);
+      const active = btn.dataset.tab === tab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+      btn.tabIndex = active ? 0 : -1;
     });
 
     document.querySelectorAll(`#${MODAL_NAME} .ps-page`).forEach((page) => {
@@ -987,7 +366,15 @@
     });
 
     if (tab === 'sms') {
-      setTimeout(() => readSmsList(false), 120);
+      stopStatusTimer();
+      renderSmsViewer();
+      readSmsList(false);
+      if (smsTimer) clearInterval(smsTimer);
+      smsTimer = setInterval(() => { if (!document.hidden && !smsSendBusy) readSmsList(false); }, 15000);
+    } else {
+      if (smsTimer) { clearInterval(smsTimer); smsTimer = null; }
+      refreshStatus(false);
+      startStatusTimer();
     }
   };
 
@@ -1089,7 +476,6 @@
             <b>结束时间</b><span>${escapeHTML(formatTime(callSession.endedAt))}</span>
             <b>持续时间</b><span>${escapeHTML(formatDuration(start, callSession.endedAt))}</span>
           </div>
-          <div class="phone-raw">${escapeHTML(String(raw || '').trim() || 'AT+CLCC 未返回活动通话')}</div>
         `;
         return;
       }
@@ -1102,7 +488,6 @@
           <b>接通时间</b><span>-</span>
           <b>通话时间</b><span>-</span>
         </div>
-        <div class="phone-raw">${escapeHTML(String(raw || '').trim() || 'AT+CLCC 未返回活动通话')}</div>
       `;
       return;
     }
@@ -1128,7 +513,6 @@
         <b>接通时间</b><span>${escapeHTML(formatTime(callSession.connectedAt))}</span>
         <b>通话时间</b><span>${escapeHTML(durationLabel)}</span>
       </div>
-      <div class="phone-raw">${escapeHTML(activeCall.raw || raw || '')}</div>
     `;
   };
 
@@ -1139,12 +523,22 @@
     try {
       const res = await execAT('AT+CLCC');
       const raw = res?.data || '';
-      const calls = res?.ok ? parseCLCCCalls(raw) : [];
-
-      renderCurrentStatus(calls, raw || 'AT+CLCC 查询失败');
+      const ok = Boolean(res?.ok && /(?:\bOK\b|\+CLCC:)/i.test(raw) && !/ERROR/i.test(raw));
+      if (ok) {
+        statusKnown = true;
+        currentCalls = parseCLCCCalls(raw);
+        renderCurrentStatus(currentCalls, '');
+        updatePhoneControls();
+        const notice = document.getElementById('kn_phone_action_status');
+        if (notice?.dataset.tone === 'error') setNotice('kn_phone_action_status', '');
+      } else {
+        statusKnown = false;
+        setNotice('kn_phone_action_status', '通话状态读取失败，保留上次状态', 'error');
+        updatePhoneControls();
+      }
 
       if (manual) {
-        if (res?.ok) toast('通话状态已刷新', 'green');
+        if (ok) toast('通话状态已刷新', 'green');
         else toast('通话状态查询失败', 'red');
       }
     } finally {
@@ -1169,19 +563,25 @@
   // ==============================
   // 5. 电话：拨号 / 挂断 / 接听
   // ==============================
-  const setBusy = (busy) => {
+  const updatePhoneControls = () => {
     const root = document.querySelector(`#${MODAL_NAME}`);
     if (!root) return;
-
-    root.querySelectorAll('button, input, textarea').forEach((el) => {
-      if (el.id === 'kn_phone_sms_close') return;
-      el.disabled = busy;
-      el.style.opacity = busy ? '.62' : '';
-      el.style.pointerEvents = busy ? 'none' : '';
+    root.querySelectorAll('[data-page="phone"] button, #kn_phone_number').forEach((el) => {
+      el.disabled = phoneBusy;
     });
+    const number = root.querySelector('#kn_phone_number')?.value;
+    root.querySelector('#kn_phone_dial_btn').disabled = phoneBusy || !isValidDialNumber(number) || currentCalls.length > 0;
+    root.querySelector('#kn_phone_answer_btn').disabled = phoneBusy || !statusKnown || !currentCalls.some(call => call.status === 4 || call.status === 5);
+    root.querySelector('#kn_phone_hangup_btn').disabled = phoneBusy || (statusKnown && !currentCalls.length);
+  };
+
+  const setBusy = (busy) => {
+    phoneBusy = busy;
+    updatePhoneControls();
   };
 
   const dial = async (numberFromArg = null) => {
+    if (phoneBusy || currentCalls.length) return;
     const input = document.querySelector('#kn_phone_number');
     const number = sanitizeNumber(numberFromArg == null ? input?.value : numberFromArg);
 
@@ -1229,10 +629,13 @@
 
       if (!ok) {
         toast('拨号失败', 'red');
+        callSession.endedAt = Date.now();
+        setNotice('kn_phone_action_status', '拨号失败，请检查 SIM 和语音服务', 'error');
         return;
       }
 
       toast('拨号指令已发送', 'green');
+      setNotice('kn_phone_action_status', '拨号指令已发送', 'success');
       setTimeout(() => refreshStatus(false), 800);
     } finally {
       setBusy(false);
@@ -1240,6 +643,7 @@
   };
 
   const hangup = async () => {
+    if (phoneBusy) return;
     setBusy(true);
     toast('正在挂断', 'pink');
 
@@ -1264,6 +668,7 @@
   };
 
   const answer = async () => {
+    if (phoneBusy) return;
     const now = Date.now();
 
     if (!callSession) {
@@ -1302,15 +707,24 @@
   const appendDigit = (digit) => {
     const input = document.querySelector('#kn_phone_number');
     if (!input) return;
-    input.value = sanitizeNumber(input.value + digit).slice(0, 32);
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    input.value = (input.value.slice(0, start) + digit + input.value.slice(end)).slice(0, 32);
     input.focus();
+    input.setSelectionRange(Math.min(start + digit.length, 32), Math.min(start + digit.length, 32));
+    updatePhoneControls();
   };
 
   const backspace = () => {
     const input = document.querySelector('#kn_phone_number');
     if (!input) return;
-    input.value = sanitizeNumber(input.value).slice(0, -1);
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    const cursor = start === end ? Math.max(0, start - 1) : start;
+    input.value = input.value.slice(0, cursor) + input.value.slice(end);
     input.focus();
+    input.setSelectionRange(cursor, cursor);
+    updatePhoneControls();
   };
 
   const clearNumber = () => {
@@ -1318,6 +732,7 @@
     if (!input) return;
     input.value = '';
     input.focus();
+    updatePhoneControls();
   };
 
   const pasteFromClipboardToPhone = async () => {
@@ -1331,6 +746,7 @@
       const number = sanitizeNumber(text);
       const input = document.querySelector('#kn_phone_number');
       if (input) input.value = number.slice(0, 32);
+      updatePhoneControls();
     } catch (e) {
       toast('读取剪贴板失败', 'red');
     }
@@ -1374,7 +790,7 @@
       const h = parts[3] || '';
       const min = parts[4] || '';
       const s = parts[5] || '';
-      return `${y}-${pad2(m)}-${pad2(d)} ${pad2(h)}:${pad2(min)}${s ? ':' + pad2(s) : ''}`;
+      return `${y.length === 2 ? '20' + y : y}-${pad2(m)}-${pad2(d)} ${pad2(h)}:${pad2(min)}${s ? ':' + pad2(s) : ''}`;
     }
 
     return raw;
@@ -1522,11 +938,11 @@
     }
 
     const rawText = stringifySafe(raw).toLowerCase();
-    if (
+    if (!result && !message && (
       rawText.includes('"success"') ||
       rawText.includes('send sms success') ||
       rawText.includes('sms success')
-    ) {
+    )) {
       return {
         ok: true,
         pending: false,
@@ -1612,7 +1028,6 @@
       simSlotId: '1',
     };
 
-    console.log('[PhoneSMS] SEND_SMS full payload json:', stringifySafe(payload));
 
     try {
       const response = await postData(cookie, payload);
@@ -1693,7 +1108,7 @@
     });
   };
 
-  const verifySmsSentByList = async ({ number, content }) => {
+  const verifySmsSentByList = async ({ number, content, existingIds = new Set() }) => {
     const targetKey = normalizeSmsNumberKey(normalizeSmsSendNumber(number));
     const contentTrim = String(content || '').trim();
 
@@ -1706,6 +1121,7 @@
 
         const hit = messages.find((msg) => {
           return (
+            !existingIds.has(String(msg.id)) &&
             normalizeSmsNumberKey(msg.number) === targetKey &&
             String(msg.content || '').trim() === contentTrim &&
             (msg.tag === '2' || msg.tag === '3')
@@ -1788,7 +1204,7 @@
       return thread;
     }).sort((a, b) => b.lastTime - a.lastTime);
 
-    if (!smsThreads.some((thread) => thread.key === activeSmsThreadKey)) {
+    if (!smsNewMode && !smsThreads.some((thread) => thread.key === activeSmsThreadKey)) {
       activeSmsThreadKey = smsThreads[0]?.key || '';
     }
   };
@@ -1811,11 +1227,12 @@
   const renderSmsThreadList = () => {
     const box = document.querySelector('#kn_sms_threads');
     if (!box) return;
+    const previousScroll = box.scrollTop;
 
     const list = getFilteredSmsThreads();
 
     if (!list.length) {
-      box.innerHTML = '<div class="ps-empty">暂无会话</div>';
+      box.innerHTML = `<div class="ps-empty">${smsSearchKeyword.trim() ? '没有匹配的会话' : '暂无短信会话'}</div>`;
       return;
     }
 
@@ -1830,16 +1247,16 @@
       const preview = `${previewPrefix}${last.content || ''}`;
 
       return `
-        <div class="sms-thread-item${active}" data-thread-key="${escapeHTML(thread.key)}">
-          <div style="min-width:0;">
+        <button type="button" class="sms-thread-item${active}" data-thread-key="${escapeHTML(thread.key)}" aria-pressed="${thread.key === activeSmsThreadKey}">
+          <span class="sms-thread-copy">
             <div class="sms-thread-number">${escapeHTML(thread.number || '未知号码')}</div>
             <div class="sms-thread-preview">${escapeHTML(preview || '无内容')}</div>
-          </div>
-          <div class="sms-thread-meta">
-            <div class="sms-thread-time">${escapeHTML(last.date || '-')}</div>
+          </span>
+          <span class="sms-thread-meta">
+            <span class="sms-thread-time" title="${escapeHTML(last.date || '')}">${escapeHTML((last.date || '-').split(' ')[0])}</span>
             ${unread}
-          </div>
-        </div>
+          </span>
+        </button>
       `;
     }).join('');
 
@@ -1849,39 +1266,44 @@
         selectSmsThread(key, true);
       };
     });
+    box.scrollTop = previousScroll;
   };
 
   const renderSmsConversation = () => {
     const header = document.querySelector('#kn_sms_chat_header');
     const body = document.querySelector('#kn_sms_chat_body');
-    const numberInput = document.querySelector('#kn_sms_number');
-
     if (!header || !body) return;
 
     const thread = smsThreads.find((item) => item.key === activeSmsThreadKey);
+    const nextKey = thread ? thread.key : 'new';
+    if (composerKey !== nextKey) {
+      saveSmsDraft();
+      restoreSmsDraft(nextKey, thread?.number || '');
+    }
+    const previousThread = body.dataset.threadKey;
+    const oldTop = body.scrollTop;
+    const nearBottom = body.scrollHeight - body.clientHeight - oldTop < 64;
+    const back = `<button type="button" class="ps-icon-btn sms-back" id="kn_sms_back_btn" title="返回会话列表" aria-label="返回会话列表">${icon('arrow-left')}</button>`;
 
     if (!thread) {
       header.innerHTML = `
-        <div class="sms-chat-title">
-          <div class="sms-chat-number">请选择一个短信会话</div>
-          <div class="sms-chat-subtitle">左侧按手机号聚合展示</div>
-        </div>
+          ${back}<div class="sms-chat-title"><div class="sms-chat-number">新短信</div></div>
       `;
-      body.innerHTML = '<div class="sms-empty-chat">暂无选中的会话</div>';
-      if (numberInput) numberInput.value = '';
+      body.innerHTML = `<div class="sms-empty-chat">${icon('message-square')}<span>新短信</span></div>`;
+      body.dataset.threadKey = 'new';
+      document.getElementById('kn_sms_back_btn').onclick = () => setSmsMobilePane('list');
       return;
     }
 
-    if (numberInput) numberInput.value = normalizeSmsSendNumber(thread.number || '');
-
     header.innerHTML = `
+      ${back}
       <div class="sms-chat-title">
         <div class="sms-chat-number">${escapeHTML(thread.number || '未知号码')}</div>
         <div class="sms-chat-subtitle">${thread.messages.length} 条短信 · ${thread.unreadCount ? thread.unreadCount + ' 条未读' : '无未读'}</div>
       </div>
-      <div style="display:flex;gap:8px;flex:0 0 auto;">
-        <button type="button" class="ps-btn" id="kn_sms_call_current">拨号</button>
-        <button type="button" class="ps-btn" id="kn_sms_refresh_current">刷新</button>
+      <div class="sms-toolbar">
+        ${iconButton('phone', '转到拨号盘', 'kn_sms_call_current')}
+        ${iconButton('refresh-cw', '刷新当前会话', 'kn_sms_refresh_current')}
       </div>
     `;
 
@@ -1898,13 +1320,14 @@
               <span>${escapeHTML(msg.tagText || '-')}</span>
             </div>
             <div class="sms-bubble-actions">
-              <button type="button" class="ps-btn" data-action="sms-reply" data-number="${escapeHTML(msg.number || '')}">回复</button>
+              ${iconButton('reply', '回复短信', '', `data-action="sms-reply" data-number="${escapeHTML(msg.number || '')}"`)}
+              ${iconButton('copy', '复制短信内容', '', `data-action="sms-copy" data-id="${escapeHTML(msg.id)}"`)}
               ${
                 msg.tag === '3'
-                  ? `<button type="button" class="ps-btn send" data-action="sms-resend" data-id="${escapeHTML(msg.id)}">重发</button>`
+                  ? iconButton('rotate-ccw', '编辑重发', '', `data-action="sms-resend" data-id="${escapeHTML(msg.id)}"`)
                   : ''
               }
-              <button type="button" class="ps-btn danger" data-action="sms-delete" data-id="${escapeHTML(msg.id)}">删除</button>
+              <button type="button" class="ps-icon-btn danger" title="删除短信" aria-label="删除短信" data-action="sms-delete" data-id="${escapeHTML(msg.id)}">${icon('trash-2')}</button>
             </div>
           </div>
         </div>
@@ -1918,6 +1341,8 @@
         if (input) input.value = normalizeSmsSendNumber(number);
         const text = document.querySelector('#kn_sms_text');
         if (text) text.focus();
+        saveSmsDraft();
+        updateComposer();
       };
     });
 
@@ -1933,7 +1358,16 @@
         if (numberInput2) numberInput2.value = normalizeSmsSendNumber(msg.number || '');
         if (textInput) textInput.value = msg.content || '';
 
-        await sendSms();
+        saveSmsDraft();
+        updateComposer();
+        textInput?.focus();
+      };
+    });
+
+    body.querySelectorAll('[data-action="sms-copy"]').forEach((btn) => {
+      btn.onclick = () => {
+        const msg = smsCache.find(item => String(item.id) === btn.dataset.id);
+        if (msg) copySmsContent(msg.content);
       };
     });
 
@@ -1949,6 +1383,7 @@
         switchTab('phone');
         const phoneInput = document.querySelector('#kn_phone_number');
         if (phoneInput) phoneInput.value = sanitizeNumber(thread.number || '');
+        updatePhoneControls();
       };
     }
 
@@ -1957,9 +1392,9 @@
       refreshBtn.onclick = () => readSmsList(true);
     }
 
-    setTimeout(() => {
-      body.scrollTop = body.scrollHeight;
-    }, 20);
+    document.getElementById('kn_sms_back_btn').onclick = () => setSmsMobilePane('list');
+    body.dataset.threadKey = thread.key;
+    body.scrollTop = previousThread !== thread.key || nearBottom ? body.scrollHeight : oldTop;
   };
 
   const renderSmsViewer = () => {
@@ -1979,7 +1414,8 @@
     if (!unreadIds.length) return;
 
     try {
-      await markSmsReadNative(unreadIds);
+      const result = await markSmsReadNative(unreadIds);
+      if (!result || result.error || (result.result != null && !['success', '0', 'true', 'ok'].includes(String(result.result).toLowerCase()))) return;
 
       smsCache.forEach((msg) => {
         if (unreadIds.map(String).includes(String(msg.id))) {
@@ -1996,65 +1432,44 @@
   };
 
   const selectSmsThread = (threadKey, markRead = true) => {
+    saveSmsDraft();
+    smsNewMode = false;
     activeSmsThreadKey = threadKey || '';
     renderSmsViewer();
+    setSmsMobilePane('chat');
 
     if (markRead && activeSmsThreadKey) {
-      setTimeout(() => markSmsThreadRead(activeSmsThreadKey), 120);
+      const selectedKey = activeSmsThreadKey;
+      setTimeout(() => markSmsThreadRead(selectedKey), 120);
     }
   };
 
   const readSmsList = async (manual = true) => {
-    const threadBox = document.querySelector('#kn_sms_threads');
-    const chatBody = document.querySelector('#kn_sms_chat_body');
-
-    if (threadBox) threadBox.innerHTML = '<div class="ps-empty">正在读取短信会话...</div>';
-    if (chatBody) chatBody.innerHTML = '<div class="sms-empty-chat">正在加载短信内容...</div>';
-
-    const okAuth = await ensureUfiSmsAuth();
-    if (!okAuth) return;
-
-    setBusy(true);
-
+    if (smsReadBusy) return;
+    smsReadBusy = true;
+    const buttons = document.querySelectorAll('#kn_sms_refresh_btn, #kn_sms_refresh_current');
+    buttons.forEach(btn => { btn.disabled = true; });
+    setNotice('kn_sms_load_status', '正在读取...');
     try {
+      if (!await ensureUfiSmsAuth()) throw new Error('请先登录 UFI-TOOLS');
       const res = await getSmsInfoNative(0, 500);
-
-      if (!res) {
-        smsCache = [];
-        buildSmsThreads(smsCache);
-        renderSmsViewer();
-        toast('读取短信失败：接口无返回', 'red');
-        return;
-      }
-
-      const messages = Array.isArray(res.messages) ? res.messages : [];
-
-      smsCache = normalizeSmsList(messages);
+      if (!res || !Array.isArray(res.messages)) throw new Error('设备未返回有效的短信列表');
+      saveSmsDraft();
+      smsCache = normalizeSmsList(res.messages);
       buildSmsThreads(smsCache);
       renderSmsViewer();
-
-      if (manual) {
-        toast(`短信读取完成：${smsCache.length} 条，${smsThreads.length} 个会话`, 'green');
-      }
+      setNotice('kn_sms_load_status', `${smsThreads.length} 个会话 · ${smsCache.length} 条短信`);
+      if (manual) toast('短信已刷新', 'green');
     } catch (e) {
-      console.error('[PhoneSMS] read sms failed:', e);
-
-      smsCache = [];
-      smsThreads = [];
-      renderSmsViewer();
-
-      if (chatBody) {
-        chatBody.innerHTML = `
-          <div class="sms-empty-chat">
-            读取短信失败<br>
-            ${escapeHTML(e.message || String(e))}
-          </div>
-        `;
+      setNotice('kn_sms_load_status', `读取失败：${e.message || e}`, 'error');
+      if (!smsCache.length) {
+        const box = document.getElementById('kn_sms_threads');
+        if (box) box.innerHTML = '<div class="ps-empty">短信读取失败</div>';
       }
-
-      if (manual) toast('读取短信失败', 'red');
+      if (manual) toast('短信读取失败，保留已有内容', 'red');
     } finally {
-      setBusy(false);
+      smsReadBusy = false;
+      document.querySelectorAll('#kn_sms_refresh_btn, #kn_sms_refresh_current').forEach(btn => { btn.disabled = false; });
     }
   };
 
@@ -2124,102 +1539,58 @@
   };
 
   const sendSms = async () => {
+    if (smsSendBusy) return;
     const numberInput = document.querySelector('#kn_sms_number');
     const textInput = document.querySelector('#kn_sms_text');
-
-    const thread = smsThreads.find((item) => item.key === activeSmsThreadKey);
-    const numberRaw = numberInput?.value || thread?.number || '';
-    const number = normalizeSmsSendNumber(numberRaw);
+    const number = normalizeSmsSendNumber(numberInput?.value);
     const content = String(textInput?.value || '').trim();
-
-    if (!number) {
-      toast('请输入短信号码，或先选择一个会话', 'red');
-      return;
-    }
-
-    if (!/^\d{3,20}$/.test(number)) {
-      toast(`短信号码格式不正确：${number}。建议使用纯数字号码，例如 13800000000`, 'red');
-      return;
-    }
-
-    if (!content) {
-      toast('请输入短信内容', 'red');
-      return;
-    }
-
-    if (content.length > 500) {
-      const ok = confirm(`短信内容较长：${content.length} 字符。继续发送吗？`);
-      if (!ok) return;
-    }
-
-    const okAuth = await ensureUfiSmsAuth();
-    if (!okAuth) return;
-
-    setBusy(true);
-    toast('正在提交短信发送请求', 'pink');
-
+    const draftKey = composerKey;
+    if (!/^\d{3,20}$/.test(number)) { toast('请输入正确的短信号码', 'red'); return; }
+    if (!content) { toast('请输入短信内容', 'red'); return; }
+    if (content.length > 500 && !confirm(`短信包含 ${content.length} 个字符，可能拆分计费。继续发送吗？`)) return;
+    saveSmsDraft();
+    smsSendBusy = true;
+    sendingDraftKey = draftKey;
+    updateComposer();
+    setSmsNotice(draftKey, '正在提交短信...', '');
     try {
+      if (!await ensureUfiSmsAuth()) throw new Error('请先登录 UFI-TOOLS');
+      // Exclude existing records so repeated content cannot confirm a new send.
+      const baseline = await getSmsInfoNative(0, 500);
+      if (!baseline || !Array.isArray(baseline.messages)) throw new Error('无法读取发送前状态，请稍后重试');
+      const existingIds = new Set(baseline.messages.map(item => String(item.id)));
       await checkSmsSendPrerequisites();
-
-      const sendResult = await sendSmsNative({
-        number,
-        content,
-      });
-
-      console.log('[PhoneSMS] send raw result json:', stringifySafe(sendResult));
-
+      const sendResult = await sendSmsNative({ number, content });
       const normalized = normalizeSendResult(sendResult.response);
-
-      if (!normalized.ok) {
-        console.warn('[PhoneSMS] SEND_SMS returned non-success:', stringifySafe(normalized.raw));
-
-        toast(normalized.message || 'SEND_SMS 提交失败', 'red');
-        appendFailedSmsBubble(content, normalized.message, stringifySafe(normalized.raw));
-        return;
+      if (!normalized.ok) throw new Error(normalized.message || '设备拒绝了发送请求');
+      const draft = smsDrafts.get(draftKey);
+      if (draft && normalizeSmsSendNumber(draft.number) === number && draft.content.trim() === content) {
+        draft.content = '';
       }
-
-      toast('设备已接收发送请求，等待短信列表确认', 'green');
-
-      if (textInput) textInput.value = '';
-
-      activeSmsThreadKey = normalizeSmsNumberKey(number);
-
-      appendLocalSmsBubble(content, '设备已接收');
-
-      const verify = await verifySmsSentByList({ number, content });
-
-      console.log('[PhoneSMS] verify after submit json:', stringifySafe(verify));
-
+      if (composerKey === draftKey && String(textInput?.value || '').trim() === content) {
+        textInput.value = '';
+        updateComposer();
+        appendLocalSmsBubble(content, '等待设备确认');
+      }
+      setSmsNotice(draftKey, '已提交，等待设备确认...', '');
+      const verify = await verifySmsSentByList({ number, content, existingIds });
       if (verify.failed) {
-        toast('设备短信列表显示发送失败', 'red');
-        appendFailedSmsBubble(content, '设备短信列表显示发送失败', stringifySafe(verify.sms?.raw || verify));
-        await readSmsList(false);
-        return;
+        smsDrafts.set(draftKey, { number, content });
+        if (composerKey === draftKey) restoreSmsDraft(draftKey);
+        setSmsNotice(draftKey, '发送失败，已恢复草稿', 'error');
+      } else if (verify.sent) {
+        setSmsNotice(draftKey, '已写入设备发送记录，非送达回执', 'success');
+      } else {
+        setSmsNotice(draftKey, '已提交，暂未确认。请刷新核实，避免重复发送。', '');
       }
-
-      if (verify.sent) {
-        toast('设备已写入已发送记录', 'green');
-        await readSmsList(false);
-        return;
-      }
-
-      toast('短信已提交，但暂未在短信列表确认；请稍后刷新或检查运营商投递状态', 'green');
-
-      setTimeout(async () => {
-        try {
-          await readSmsList(false);
-        } catch (e) {
-          console.warn('[PhoneSMS] refresh after send failed:', e);
-        }
-      }, 1500);
+      if (document.getElementById(MODAL_NAME)) await readSmsList(false);
     } catch (e) {
-      console.error('[PhoneSMS] send sms failed:', e);
-
-      const msg = e.message || String(e);
-      toast(`短信发送异常：${msg}`, 'red');
-      appendFailedSmsBubble(content, '发送异常', msg);
+      setSmsNotice(draftKey, `发送未完成：${e.message || e}。请先核实设备记录。`, 'error');
+      toast('短信发送未完成，请查看状态', 'red');
     } finally {
-      setBusy(false);
+      smsSendBusy = false;
+      sendingDraftKey = '';
+      updateComposer();
     }
   };
 
@@ -2233,16 +1604,37 @@
       const text = await navigator.clipboard.readText();
       const input = document.querySelector('#kn_sms_number');
       if (input) input.value = normalizeSmsSendNumber(text).slice(0, 32);
+      saveSmsDraft();
+      updateComposer();
     } catch (e) {
       toast('读取剪贴板失败', 'red');
     }
+  };
+
+  const copySmsContent = async (content) => {
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(content);
+      else {
+        const area = document.createElement('textarea');
+        area.value = content;
+        area.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+        document.getElementById(MODAL_NAME).appendChild(area);
+        area.select();
+        const copied = document.execCommand('copy');
+        area.remove();
+        if (!copied) throw new Error('copy failed');
+      }
+      toast('短信内容已复制', 'green');
+    } catch (e) { toast('复制失败，请手动选择内容', 'red'); }
   };
 
   // ==============================
   // 7. 弹窗
   // ==============================
   const closePhoneSmsModal = () => {
+    saveSmsDraft();
     stopStatusTimer();
+    if (smsTimer) { clearInterval(smsTimer); smsTimer = null; }
 
     if (escHandler) {
       document.removeEventListener('keydown', escHandler);
@@ -2251,12 +1643,13 @@
 
     const modal = document.getElementById(MODAL_NAME);
     if (modal) modal.remove();
+    if (modalOpener?.isConnected) modalOpener.focus();
   };
 
   const openModal = async () => {
     ensureStyle();
-
-    document.getElementById(MODAL_NAME)?.remove();
+    closePhoneSmsModal();
+    modalOpener = document.activeElement;
 
     const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#']
       .map((key) => `<button type="button" class="phone-key" data-key="${key}">${key}</button>`)
@@ -2267,132 +1660,85 @@
     modal.className = 'show';
 
     modal.innerHTML = `
-      <div class="ps-modal-panel">
-        <div class="ps-modal-header">
-          <div>
-            <span class="ps-modal-title">${escapeHTML(TITLE)}</span>
-            <span class="ps-modal-subtitle">v${escapeHTML(VERSION)}</span>
+      <div class="ps-modal-panel" role="dialog" aria-modal="true" aria-labelledby="kn_phone_sms_title" tabindex="-1">
+        <header class="ps-modal-header">
+          <div class="ps-modal-heading">
+            <h2 class="ps-modal-title" id="kn_phone_sms_title">${escapeHTML(TITLE)}</h2>
+            <span class="ps-modal-subtitle">v1.4.0</span>
           </div>
-          <button type="button" class="ps-modal-close" id="kn_phone_sms_close">关闭</button>
+          ${iconButton('x', '关闭通信面板', 'kn_phone_sms_close')}
+        </header>
+        <div class="ps-tabs" role="tablist" aria-label="通信分类">
+          <button type="button" class="ps-tab active" id="kn_ps_tab_phone" role="tab" aria-selected="true" aria-controls="kn_ps_page_phone" data-tab="phone">${icon('phone')}电话</button>
+          <button type="button" class="ps-tab" id="kn_ps_tab_sms" role="tab" aria-selected="false" aria-controls="kn_ps_page_sms" tabindex="-1" data-tab="sms">${icon('message-square')}短信</button>
         </div>
-
-        <div class="ps-tabs">
-          <button type="button" class="ps-tab active" data-tab="phone">电话</button>
-          <button type="button" class="ps-tab" data-tab="sms">短信</button>
-        </div>
-
         <div class="ps-modal-body">
-          <div class="ps-page active" data-page="phone">
+          <section class="ps-page active" id="kn_ps_page_phone" role="tabpanel" aria-labelledby="kn_ps_tab_phone" data-page="phone">
             <div class="phone-shell">
               <div class="ps-card">
-                <div class="ps-title">
-                  <strong>拨号盘</strong>
-                  <span class="ps-chip">Slot ${escapeHTML(getATSlot())}</span>
-                </div>
-
-                <input
-                  id="kn_phone_number"
-                  class="phone-input"
-                  type="tel"
-                  inputmode="tel"
-                  autocomplete="off"
-                  placeholder="请输入号码"
-                  value=""
-                >
-
-                <div class="phone-keypad">
-                  ${keypad}
-                </div>
-
+                <div class="ps-title"><strong>拨号盘</strong><span class="ps-chip">SIM ${Number(getATSlot()) + 1}</span></div>
+                <input id="kn_phone_number" class="phone-input" type="tel" inputmode="tel" autocomplete="off" aria-label="拨号号码" placeholder="输入号码" maxlength="32">
+                <div class="phone-keypad">${keypad}</div>
                 <div class="phone-secondary-actions">
-                  <button type="button" class="ps-btn" id="kn_phone_plus_btn">+ 号</button>
-                  <button type="button" class="ps-btn" id="kn_phone_backspace_btn">退格</button>
-                  <button type="button" class="ps-btn" id="kn_phone_clear_btn">清空</button>
+                  ${iconButton('plus', '输入加号', 'kn_phone_plus_btn')}
+                  ${iconButton('delete', '退格', 'kn_phone_backspace_btn')}
+                  ${iconButton('trash-2', '清空号码', 'kn_phone_clear_btn')}
                 </div>
-
                 <div class="phone-actions">
-                  <button type="button" class="phone-action-btn dial" id="kn_phone_dial_btn">拨号</button>
-                  <button type="button" class="phone-action-btn answer" id="kn_phone_answer_btn">接听</button>
-                  <button type="button" class="phone-action-btn hangup" id="kn_phone_hangup_btn">挂断</button>
+                  <button type="button" class="phone-action-btn dial" id="kn_phone_dial_btn">${icon('phone')}拨号</button>
+                  <button type="button" class="phone-action-btn answer" id="kn_phone_answer_btn" disabled>${icon('phone-incoming')}接听</button>
+                  <button type="button" class="phone-action-btn hangup" id="kn_phone_hangup_btn" disabled>${icon('phone-off')}挂断</button>
                 </div>
-
-                <div class="phone-secondary-actions">
-                  <button type="button" class="ps-btn" id="kn_phone_status_btn">刷新状态</button>
-                  <button type="button" class="ps-btn" id="kn_phone_paste_btn">粘贴号码</button>
-                  <button type="button" class="ps-btn" id="kn_phone_reset_btn">重置状态</button>
-                </div>
-
-                <div class="ps-note">
-                  拨号：ATD号码;　挂断：ATH　接听：ATA　状态：AT+CLCC
-                </div>
+                <div class="ps-status" id="kn_phone_action_status" role="status" aria-live="polite"></div>
               </div>
-
-              <div class="ps-card phone-status-card">
+              <section class="ps-card phone-status-card" aria-label="通话状态">
                 <div class="ps-title">
-                  <strong>当前通话状态</strong>
-                  <span class="ps-chip">AT+CLCC · 自动刷新</span>
+                  <strong>通话状态</strong>
+                  <div class="sms-toolbar">
+                    ${iconButton('clipboard-paste', '粘贴拨号号码', 'kn_phone_paste_btn')}
+                    ${iconButton('refresh-cw', '刷新通话状态', 'kn_phone_status_btn')}
+                    ${iconButton('rotate-ccw', '重置通话显示', 'kn_phone_reset_btn')}
+                  </div>
                 </div>
-
-                <div id="kn_phone_status" class="phone-status-panel">
-                  正在查询当前通话状态...
-                </div>
-
-                <div class="ps-note">
-                  拨出时间、接通时间、通话时间由插件根据 AT+CLCC 状态实时计算。
-                </div>
-              </div>
+                <div id="kn_phone_status" class="phone-status-panel">正在查询通话状态...</div>
+              </section>
             </div>
-          </div>
-
-          <div class="ps-page" data-page="sms">
-            <div class="sms-shell">
-              <div class="ps-card sms-sidebar">
+          </section>
+          <section class="ps-page" id="kn_ps_page_sms" role="tabpanel" aria-labelledby="kn_ps_tab_sms" data-page="sms">
+            <div class="sms-shell" data-mobile-pane="list">
+              <aside class="ps-card sms-sidebar" aria-label="短信会话">
                 <div class="ps-title">
                   <strong>短信会话</strong>
-                  <span class="ps-chip">按手机号聚合</span>
-                </div>
-
-                <div class="sms-search-row">
-                  <input id="kn_sms_search" class="sms-input" type="text" placeholder="搜索号码或内容">
-                  <button type="button" class="ps-btn" id="kn_sms_refresh_btn">刷新</button>
-                </div>
-
-                <div id="kn_sms_threads" class="sms-thread-list">
-                  <div class="ps-empty">点击“刷新”读取短信。</div>
-                </div>
-              </div>
-
-              <div class="ps-card sms-chat-card">
-                <div id="kn_sms_chat_header" class="sms-chat-header">
-                  <div class="sms-chat-title">
-                    <div class="sms-chat-number">请选择一个短信会话</div>
-                    <div class="sms-chat-subtitle">左侧按手机号聚合展示</div>
+                  <div class="sms-toolbar">
+                    ${iconButton('square-pen', '新建短信', 'kn_sms_new_btn')}
+                    ${iconButton('refresh-cw', '刷新短信', 'kn_sms_refresh_btn')}
                   </div>
                 </div>
-
-                <div id="kn_sms_chat_body" class="sms-chat-body">
-                  <div class="sms-empty-chat">暂无选中的会话</div>
-                </div>
-
+                <div class="sms-search-row"><input id="kn_sms_search" class="sms-input" type="search" aria-label="搜索短信" placeholder="搜索号码或内容"></div>
+                <div id="kn_sms_threads" class="sms-thread-list"><div class="ps-empty">正在读取短信...</div></div>
+                <div id="kn_sms_load_status" class="ps-status" role="status" aria-live="polite" style="padding:0 14px 10px"></div>
+              </aside>
+              <section class="ps-card sms-chat-card" aria-label="短信内容">
+                <div id="kn_sms_chat_header" class="sms-chat-header"></div>
+                <div id="kn_sms_chat_body" class="sms-chat-body"></div>
                 <div class="sms-composer">
+                  <label class="sms-recipient" for="kn_sms_number">收件人<input id="kn_sms_number" class="sms-input" type="tel" inputmode="tel" aria-label="短信收件人" autocomplete="off" maxlength="32" placeholder="号码"></label>
                   <div class="sms-compose-grid">
-                    <input id="kn_sms_number" class="sms-input" type="tel" inputmode="tel" placeholder="号码">
-                    <textarea id="kn_sms_text" class="sms-textarea sms-compose-textarea" placeholder="输入短信内容，选择会话后可直接回复"></textarea>
-                    <button type="button" class="ps-btn send" id="kn_sms_send_btn">发送</button>
+                    <textarea id="kn_sms_text" class="sms-textarea sms-compose-textarea" rows="2" aria-label="短信内容" placeholder="输入短信内容"></textarea>
+                    <button type="button" class="ps-btn send" id="kn_sms_send_btn" disabled>${icon('send')}<span>发送</span></button>
                   </div>
-
-                  <div class="sms-actions" style="grid-template-columns:repeat(2,1fr);margin-top:10px;">
-                    <button type="button" class="ps-btn" id="kn_sms_paste_btn">粘贴号码</button>
-                    <button type="button" class="ps-btn" id="kn_sms_clear_btn">清空内容</button>
+                  <div class="sms-compose-foot">
+                    <div class="sms-actions">
+                      ${iconButton('clipboard-paste', '粘贴短信号码', 'kn_sms_paste_btn')}
+                      ${iconButton('trash-2', '清空短信内容', 'kn_sms_clear_btn')}
+                    </div>
+                    <span id="kn_sms_count" class="sms-compose-count">0 字符</span>
                   </div>
-
-                  <div class="ps-note">
-                    说明：SEND_SMS 返回 success 只代表设备已接收发送请求；是否真正投递成功仍取决于设备短信列表状态、短信中心、运营商和对方号码状态。
-                  </div>
+                  <div id="kn_sms_send_status" class="ps-status" role="status" aria-live="polite"></div>
                 </div>
-              </div>
+              </section>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     `;
@@ -2409,6 +1755,13 @@
 
     root.querySelectorAll('.ps-tab').forEach((btn) => {
       btn.onclick = () => switchTab(btn.dataset.tab);
+      btn.onkeydown = (e) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+        e.preventDefault();
+        const tab = (e.key === 'Home' || e.key === 'ArrowLeft') ? 'phone' : 'sms';
+        switchTab(tab);
+        root.querySelector(`[data-tab="${tab}"]`).focus();
+      };
     });
 
     root.querySelectorAll('.phone-key').forEach((btn) => {
@@ -2436,6 +1789,13 @@
         await dial();
       }
     });
+    root.querySelector('#kn_phone_number').oninput = updatePhoneControls;
+    root.querySelector('#kn_sms_new_btn').onclick = newSms;
+    root.querySelector('#kn_sms_number').oninput = () => { saveSmsDraft(); updateComposer(); };
+    root.querySelector('#kn_sms_text').oninput = () => { saveSmsDraft(); updateComposer(); };
+    root.querySelector('#kn_sms_text').onkeydown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendSms(); }
+    };
 
     root.querySelector('#kn_sms_send_btn').onclick = sendSms;
 
@@ -2444,6 +1804,8 @@
     root.querySelector('#kn_sms_clear_btn').onclick = () => {
       const input = root.querySelector('#kn_sms_text');
       if (input) input.value = '';
+      saveSmsDraft();
+      updateComposer();
     };
 
     root.querySelector('#kn_sms_refresh_btn').onclick = () => readSmsList(true);
@@ -2455,14 +1817,22 @@
 
     escHandler = (e) => {
       if (e.key === 'Escape') closePhoneSmsModal();
+      if (e.key === 'Tab') {
+        const focusable = Array.from(root.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex="0"]')).filter(el => el.getClientRects().length);
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     };
 
     document.addEventListener('keydown', escHandler);
 
-    setTimeout(() => {
-      refreshStatus(false);
-      startStatusTimer();
-    }, 120);
+    root.querySelector('#kn_sms_search').value = smsSearchKeyword;
+    restoreSmsDraft(composerKey, smsThreads.find(item => item.key === composerKey)?.number || '');
+    updatePhoneControls();
+    root.querySelector('#kn_phone_number').focus();
+    refreshStatus(false);
+    startStatusTimer();
   };
 
   // ==============================
