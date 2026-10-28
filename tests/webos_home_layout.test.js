@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.16.0.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.16.1.js'), 'utf8');
 const cfg = { auto: true, interval: 10000, userSetAuto: false };
 const auto = { checked: false, disabled: false };
 const interval = { value: '' };
@@ -111,3 +111,19 @@ const syncEnd = source.indexOf('  function ensureWebOSRuntimeCSS', syncStart);
 vm.runInContext(source.slice(syncStart, syncEnd), sandbox);
 sandbox.syncWebOSSettingsControls({ querySelectorAll: () => [featureInput], querySelector: () => null });
 assert.equal(featureInput.checked, true, 'detached compatibility panel must initialize from actual config');
+
+let dashboardCss = '';
+sandbox.HOME_STYLE_ID = 'home-test-style';
+sandbox.document = {
+  getElementById: () => null,
+  createElement: () => ({}),
+  head: { appendChild(style) { dashboardCss = style.textContent; } },
+};
+const cssStart = source.indexOf('  function injectHomeDashboardCSS()');
+const cssEnd = source.indexOf('  function buildHomePage', cssStart);
+vm.runInContext(source.slice(cssStart, cssEnd), sandbox);
+sandbox.injectHomeDashboardCSS();
+assert.match(dashboardCss, /#kn-home-dashboard\.kn-home-dashboard\{[^}]*background:var\(--home-panel\)/, 'wallpaper must not sit directly behind dashboard text');
+assert.match(dashboardCss, /--home-panel:rgba\(20,23,28,\.86\)/);
+assert.match(dashboardCss, /\.kn-theme-light #kn-home-dashboard\.kn-home-dashboard\{--home-panel:rgba\(250,252,254,\.9\)/);
+assert.ok(dashboardCss.includes('-webkit-backdrop-filter:blur(14px)'));

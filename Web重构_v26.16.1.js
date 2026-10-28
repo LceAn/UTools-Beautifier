@@ -2,12 +2,12 @@
 (function () {
   'use strict';
 
-  var VERSION = '26.16.0-home-layout';
+  var VERSION = '26.16.1-wallpaper-surface';
   var GITHUB_REPO = 'LceAn/UTools-Beautifier';
   var GITHUB_REPO_URL = 'https://github.com/' + GITHUB_REPO;
   var GITHUB_ISSUES_URL = GITHUB_REPO_URL + '/issues/new';
   var GITHUB_STARGAZERS_URL = GITHUB_REPO_URL + '/stargazers';
-  var GITHUB_SOURCE_PATH = 'Web重构_v26.16.0.js';
+  var GITHUB_SOURCE_PATH = 'Web重构_v26.16.1.js';
   var GITHUB_CACHE_KEY = 'kano_webos_github_meta_v3';
   var GITHUB_UPDATE_DISMISS_KEY = 'kano_webos_update_dismissed_v1';
   var GITHUB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -5582,7 +5582,7 @@
     style.textContent = `
       ${s}{--home-text:#e9ecef;--home-muted:#a2a9b2;--home-muted-2:#858e99;--home-line:rgba(224,231,238,.13);--home-surface:rgba(27,30,35,.86);--home-soft:rgba(255,255,255,.035);--home-good:#64cb9d;--home-warn:#e9bd61;--home-bad:#f17f89;--home-blue:#85b6ed;box-sizing:border-box;width:min(1280px,calc(100% - 40px));margin:0 auto 20px;min-height:0;flex:1 1 auto;overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain;color:var(--home-text)}
       ${s} *{box-sizing:border-box;letter-spacing:0}
-      ${s}.kn-home-dashboard{display:flex;flex-direction:column;gap:0;padding:0 6px 16px}
+      ${s}.kn-home-dashboard{--home-panel:rgba(20,23,28,.86);display:flex;flex-direction:column;gap:0;padding:0 18px 16px;background:var(--home-panel);border:1px solid var(--home-line);border-radius:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
       ${s}>*{flex-shrink:0}
       ${s} button,${s} select,${s} input{font:inherit}
       ${s} button{cursor:pointer}
@@ -5720,6 +5720,7 @@
       .kn-phone-missing-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
       .kn-phone-missing-actions button{min-height:34px;padding:0 12px;border:1px solid #454c56;border-radius:6px;background:#292f37;color:#e9ecef;cursor:pointer}
       .kn-theme-light ${s}{--home-text:#20262c;--home-muted:#56616c;--home-muted-2:#6e7a85;--home-line:rgba(39,52,65,.14);--home-surface:rgba(255,255,255,.82);--home-soft:rgba(255,255,255,.35);--home-good:#207c57;--home-warn:#996c11;--home-bad:#ba3e4b;--home-blue:#2364a4}
+      .kn-theme-light ${s}.kn-home-dashboard{--home-panel:rgba(250,252,254,.9)}
       .kn-theme-light ${s} .kn-home-refresh-select{background:#fff}
       .kn-theme-light ${s} .kn-home-phone-dock{background:rgba(255,255,255,.5)}
       @media(max-width:1080px){
@@ -5733,6 +5734,7 @@
       }
       @media(max-width:760px){
         ${s}{width:calc(100% - 24px)}
+        ${s}.kn-home-dashboard{padding-right:12px;padding-left:12px}
         ${s} .kn-home-card-head{align-items:flex-start;flex-direction:column;gap:10px;padding:12px 0}
         ${s} .kn-home-title{font-size:18px}
         ${s} .kn-home-refresh-controls{width:100%;justify-content:flex-start;gap:8px}
@@ -5767,7 +5769,7 @@
         ${s} .kn-home-details-wrap>summary span:last-child{display:none}
       }
       @media(max-width:420px){
-        ${s}{width:calc(100% - 18px);padding-right:4px;padding-left:4px}
+        ${s}{width:calc(100% - 18px)}
         ${s} .kn-home-refresh-controls{gap:7px}
         ${s} .kn-home-refresh-time{font-size:10px}
         ${s} .kn-home-refresh-select{width:74px}

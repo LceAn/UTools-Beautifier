@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.join(__dirname, '..', 'Web重构_v26.16.0.js');
+const sourcePath = path.join(__dirname, '..', 'Web重构_v26.16.1.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const start = source.indexOf('  function normalizeVersionTag');
 const end = source.indexOf('  var FORWARD_CONFIG_KEY');
@@ -45,10 +45,10 @@ const sandbox = {
   encodeURIComponent,
   URL,
   location: { href: 'http://192.168.100.1:2333/' },
-  VERSION: '26.16.0-home-layout',
+  VERSION: '26.16.1-wallpaper-surface',
   GITHUB_REPO: 'LceAn/UTools-Beautifier',
   GITHUB_REPO_URL: 'https://github.com/LceAn/UTools-Beautifier',
-  GITHUB_SOURCE_PATH: 'Web重构_v26.16.0.js',
+  GITHUB_SOURCE_PATH: 'Web重构_v26.16.1.js',
   GITHUB_LOCAL_PROXY_DEFAULTS: ['http://127.0.0.1:8000/project-version'],
   GITHUB_CACHE_KEY: 'test-github-cache',
   GITHUB_UPDATE_DISMISS_KEY: 'test-update-dismissed',
