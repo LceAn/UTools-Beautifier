@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.17.0.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'Web重构_v26.17.1.js'), 'utf8');
 new vm.Script(source.replace(/^<script>\s*/, '').replace(/<\/script>\s*$/, ''));
 let nativeText = '';
 const sandbox = {
