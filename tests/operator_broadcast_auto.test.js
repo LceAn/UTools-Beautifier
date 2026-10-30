@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', '运营商信息_V1.0.0.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', '运营商信息_V1.4.0.js'), 'utf8');
 const helperStart = source.indexOf('  function clean');
 const helperEnd = source.indexOf('  function firstValue');
 const urlStart = source.indexOf('  function getBroadcastApiUrls');
@@ -39,14 +39,16 @@ const sandbox = {
   BROADCAST_API_KEY: 'test-broadcast-api',
   BROADCAST_DEFAULT_API_URLS: [],
   KANO_baseURL: '/api',
+  common_headers: { authorization: 'device-test-token' },
   window: { location: { href: 'http://192.168.100.1:2333/' } },
   localStorage: {
     getItem(key) { return storage.has(key) ? storage.get(key) : null; },
     setItem(key, value) { storage.set(key, String(value)); },
     removeItem(key) { storage.delete(key); },
   },
-  async fetch(url) {
+  async fetch(url, options) {
     calls.push(String(url));
+    assert.equal(options.headers.authorization, String(url).startsWith('/api/') ? 'device-test-token' : undefined, 'device credentials must not be forwarded to external services');
     if (String(url).startsWith('/api/proxy/--http://10.0.0.2:8000/traffic')) {
       return {
         ok: true,
@@ -97,6 +99,7 @@ async function main() {
   assert.equal(result.automatic, true);
   assert.equal(result.lastSuccessAt, '2026-07-30 15:30:00');
   assert.equal(calls.length, 1);
+  await assert.rejects(() => sandbox.fetchBroadcastApiRequest('http://10.0.0.2:8000/unavailable'));
 
   assert.equal(sandbox.decodeSmsContent('MQ=='), '1');
   assert.equal(sandbox.decodeSmsContent('MTAwOTk='), '10099');
